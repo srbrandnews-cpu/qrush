@@ -42,6 +42,27 @@ restaurant ke liye ek hi QR sticker print karke zindagi bhar use kar sakte ho.
 
 ## Step 3 — Cloudflare Tunnel banao (free, 2 minute)
 
+### ⭐ Sabse aasan: ek command
+
+Domain Cloudflare par set hone ke baad, bas yeh chalayein:
+
+```bash
+npm run setup:domain -- myhotel.in
+```
+
+(Yahan `myhotel.in` ko apne domain se replace karein.)
+
+Yeh script khud:
+1. Cloudflare login karwayega (browser khulega — aap account choose karein)
+2. **named tunnel** bana dega
+3. `order.myhotel.in` ka **DNS record** automatically bana dega
+4. `.env` mein `TUNNEL_TOKEN` + `PUBLIC_HOSTNAME` likh dega
+5. `BASE_URL` bhi update kar dega
+
+Phir bas `npm run tunnel` chalao — URL permanent ho jayega.
+
+### Ya manually (dashboard se)
+
 1. https://one.dash.cloudflare.com → pehli baar **team name** aur **plan (Free)** choose karein
 2. Left menu → **Networks → Tunnels**
 3. **Create a tunnel** → type `table-nest` → **Cloudflared** choose karein

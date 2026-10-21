@@ -106,12 +106,16 @@ function startQuickTunnel() {
 /** Named tunnel: stable URL from our own domain. */
 function startNamedTunnel(token, hostname) {
   return new Promise((resolve, reject) => {
-    const proc = spawnCloudflared(['tunnel', 'run', '--token', token, '--no-autoupdate']);
+    // NOTE: --no-autoupdate is only valid for the quick-tunnel command
+    // (`cloudflared tunnel --url ...`), NOT for `tunnel run`.
+    const proc = spawnCloudflared(['tunnel', 'run', '--token', token]);
     children.push(proc);
 
     let settled = false;
+    let cloudflaredLog = '';
     const onData = (buf) => {
       const text = buf.toString();
+      cloudflaredLog += text;
       // The tunnel is up once it reports a registered connection.
       if (/Registered tunnel connection|connection.*registered/i.test(text) && !settled) {
         settled = true;
@@ -125,8 +129,22 @@ function startNamedTunnel(token, hostname) {
       if (!settled) reject(new Error('Could not start cloudflared: ' + err.message));
     });
     proc.on('exit', (code) => {
-      if (!settled) reject(new Error('cloudflared exited (code ' + code + ') — check TUNNEL_TOKEN'));
-      else shutdown(1);
+      if (!settled) {
+        // Show what cloudflared actually complained about — much more useful
+        // than a generic "check your token" message.
+        const detail = (cloudflaredLog.split('\n')
+          .map((l) => l.trim())
+          .filter((l) => /ERR|error|invalid|unauth|flag|usage/i.test(l))
+          .slice(0, 3).join(' | '));
+        reject(new Error(
+          'Tunnel start nahi hua' + (detail ? ': ' + detail : ' (cloudflared ne koi detail nahi di)') + '\n' +
+          '  • TUNNEL_TOKEN sahi hai? (docs/DOMAIN-SETUP.md — Cloudflare dashboard se copy karo)\n' +
+          '  • PUBLIC_HOSTNAME sahi hai? (domain Cloudflare ke nameservers par hona chahiye)\n' +
+          '  • DNS propagate hua? (nslookup ' + hostname + ')'
+        ));
+      } else {
+        shutdown(1);
+      }
     });
 
     setTimeout(() => {
