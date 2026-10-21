@@ -27,7 +27,8 @@ function initSocket(httpServer) {
     if (auth.token) {
       const user = verifyToken(auth.token);
       if (!user) {
-        socket.emit('error', { message: 'Invalid session' });
+        // Expired or tampered token — tell the client to log in again.
+        socket.emit('unauthorized', { reason: 'Session expire ho gaya' });
         socket.disconnect(true);
         return;
       }

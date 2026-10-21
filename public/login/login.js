@@ -3,6 +3,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const isSignup = new URLSearchParams(location.search).get('mode') === 'signup';
+  // Read this BEFORE showTab() rewrites the URL, otherwise it gets stripped.
+  const wasExpired = new URLSearchParams(location.search).get('expired') === '1';
 
   function showTab(mode) {
     const login = mode === 'login';
@@ -12,12 +14,21 @@
     $('form-signup').classList.toggle('hidden', login);
     // Keep the URL in sync so a refresh stays on the right tab.
     const url = login ? '/login' : '/login?mode=signup';
-    history.replaceState(null, '', url);
+    if (wasExpired) {
+      history.replaceState(null, '', url + (url.includes('?') ? '&' : '?') + 'expired=1');
+    } else {
+      history.replaceState(null, '', url);
+    }
   }
 
   $('tab-login').addEventListener('click', () => showTab('login'));
   $('tab-signup').addEventListener('click', () => showTab('signup'));
   showTab(isSignup ? 'signup' : 'login');
+
+  // If the user was bounced here because the session expired, say so.
+  if (wasExpired) {
+    TN.toast('Aapka session khatam ho gaya tha. Dobara login karein.', 'error');
+  }
 
   // Where each role should land after login.
   const HOME = { owner: '/admin', kitchen: '/kitchen', cashier: '/cashier' };

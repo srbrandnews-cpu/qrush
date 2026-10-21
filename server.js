@@ -30,10 +30,28 @@ app.use('/api/public', require('./src/routes/public.routes'));
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'TableNest' }));
 
 // --- Static assets (CSS/JS/service worker) ---
-app.use(express.static(path.join(__dirname, 'public')));
+// Code files are revalidated on every load (ETag -> cheap 304), so a browser
+// can never keep running an old version of admin.js / kitchen.js. Images and
+// icons are cached longer since they rarely change.
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  lastModified: true,
+  maxAge: 0,
+  setHeaders: (res, filePath) => {
+    if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // 1 week
+    } else {
+      // HTML / JS / CSS / JSON / sw.js — always revalidate.
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  },
+}));
 
 // --- HTML screens ---
-const page = (file) => (req, res) => res.sendFile(path.join(__dirname, 'public', file));
+const page = (file) => (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', file));
+};
 app.get('/', page('index.html'));
 app.get('/login', page(path.join('login', 'index.html')));
 app.get('/admin', page(path.join('admin', 'index.html')));

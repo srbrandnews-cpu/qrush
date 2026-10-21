@@ -173,7 +173,13 @@
 
   /* -------------------------------- socket ------------------------------- */
   function connect() {
-    const socket = io({ auth: { token: TN.getToken() } });
+    const token = TN.getToken();
+    if (!token) return; // not logged in — no point connecting
+    const socket = io({ auth: { token } });
+    socket.on('unauthorized', () => {
+      TN.toast('Session expire ho gaya — dobara login karein', 'error');
+      setTimeout(() => { window.location.href = '/login?expired=1'; }, 900);
+    });
     socket.on('connect', () => { $('conn').className = 'conn live'; refresh(); });
     socket.on('disconnect', () => { $('conn').className = 'conn off'; $('conn').innerHTML = '<span class="dot"></span> Offline'; });
     socket.on('order:update', () => { refresh(); loadStats(); });

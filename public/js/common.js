@@ -93,9 +93,22 @@ const TN = (() => {
   }
 
   /* --------------------------------- auth -------------------------------- */
+
+  /**
+   * Fetch the logged-in user. If the session is missing or expired we send the
+   * user to the login screen with a clear reason — never leave them staring
+   * at an empty dashboard wondering why nothing works.
+   */
   async function fetchMe() {
-    const data = await api('/api/auth/me', { noRedirect: true });
-    return data; // { user, tenant }
+    try {
+      return await api('/api/auth/me', { noRedirect: true });
+    } catch (err) {
+      if (err.status === 401) {
+        toast('Session khatam ho gaya — dobara login karein', 'error');
+        setTimeout(() => { window.location.href = '/login?expired=1'; }, 900);
+      }
+      throw err;
+    }
   }
 
   function logout() {
