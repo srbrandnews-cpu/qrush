@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — TableNest</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    .auth { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+    .auth-aside {
+      background: linear-gradient(160deg, var(--primary-700), var(--primary));
+      color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .auth-aside h2 { font-size: 30px; line-height: 1.2; max-width: 420px; }
+    .auth-aside p { color: rgba(255,255,255,.85); max-width: 420px; margin-top: 14px; font-size: 15px; }
+    .auth-aside ul { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; }
+    .auth-aside li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; }
+    .auth-aside .tick { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; flex: none; font-size: 12px; }
+    .auth-main { display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
+    .auth-card { width: 100%; max-width: 400px; }
+    .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 22px; }
+    .tab { flex: 1; text-align: center; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; background: transparent; color: var(--muted); }
+    .tab.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+    .demo-box { margin-top: 18px; background: var(--primary-50); border: 1px dashed var(--primary); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+    .demo-box code { background: #fff; padding: 1px 6px; border-radius: 5px; }
+    @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } .auth-aside { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="auth">
+    <aside class="auth-aside">
+      <div class="brand" style="color:#fff"><span class="logo" style="background:rgba(255,255,255,.2)">🍽️</span> TableNest</div>
+      <div>
+        <h2>Run your restaurant orders without paper chits.</h2>
+        <p>Customer QR scan kare, order place kare — kitchen aur cash counter par live. Ready hote hi phone par alert.</p>
+        <ul>
+          <li><span class="tick">✓</span> Table-wise QR code, print &amp; paste</li>
+          <li><span class="tick">✓</span> Kitchen display + sound alerts</li>
+          <li><span class="tick">✓</span> Cash counter billing with GST</li>
+          <li><span class="tick">✓</span> Customer ko ready par push notification</li>
+        </ul>
+      </div>
+      <p style="margin:0;font-size:13px;opacity:.75">Multi-tenant SaaS — apne har outlet ke liye alag account.</p>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card">
+        <div class="tabs">
+          <button class="tab active" id="tab-login" type="button">Login</button>
+          <button class="tab" id="tab-signup" type="button">New restaurant</button>
+        </div>
+
+        <!-- ---------------------------- LOGIN ---------------------------- -->
+        <form id="form-login">
+          <h1 style="font-size:24px;margin-bottom:6px">Welcome back</h1>
+          <p class="muted small" style="margin:0 0 20px">Apne staff account mein login karein.</p>
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input class="input" id="login-email" type="email" placeholder="you@restaurant.com" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input class="input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" id="login-submit" type="submit">Login</button>
+          <div class="demo-box">
+            <strong>Demo account:</strong> <code>owner@demo.com</code> • <code>kitchen@demo.com</code> • <code>cashier@demo.com</code>
+            — password <code>pass1234</code>
+          </div>
+        </form>
+
+        <!-- ---------------------------- SIGNUP --------------------------- -->
+        <form id="form-signup" class="hidden">
+          <h1 style="font-size:24px;margin-bottom:6px">Add your restaurant</h1>
+          <p class="muted small" style="margin:0 0 20px">30 second mein setup. Pehla account owner hoga.</p>
+          <div class="field">
+            <label for="su-restaurant">Restaurant name</label>
+            <input class="input" id="su-restaurant" placeholder="e.g. Spice Garden" required />
+          </div>
+          <div class="row">
+            <div class="field"><label for="su-name">Your name</label><input class="input" id="su-name" placeholder="Full name" required /></div>
+            <div class="field"><label for="su-phone">Phone (optional)</label><input class="input" id="su-phone" placeholder="+91..." /></div>
+          </div>
+          <div class="field"><label for="su-email">Email</label><input class="input" id="su-email" type="email" placeholder="you@restaurant.com" required /></div>
+          <div class="field"><label for="su-password">Password</label><input class="input" id="su-password" type="password" placeholder="Min 6 characters" required /></div>
+          <button class="btn btn-primary btn-block btn-lg" id="signup-submit" type="submit">Create account</button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/login/login.js"></script>
+</body>
+</html>

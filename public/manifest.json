@@ -1,0 +1,13 @@
+{
+  "name": "TableNest — Restaurant Table Ordering",
+  "short_name": "TableNest",
+  "description": "Scan the QR code on your table, order, and track it live. Orders go straight to the kitchen and cash counter.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0d9488",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

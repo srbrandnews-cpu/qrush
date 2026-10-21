@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────
+# Firebase App Hosting configuration
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+#
+# Secrets (DATABASE_URL, JWT_SECRET, VAPID_*) are NOT stored here — set them
+# in the App Hosting console under "Environment variables" so they stay secret.
+# ─────────────────────────────────────────────────────────────
+
+runConfig:
+  # Keep 1 instance warm so the first order of the day is not slow.
+  # (Costs a little more, but a restaurant's lunch rush is not the time to
+  #  wait for a cold start.) Set minInstances to 0 to save money.
+  minInstances: 1
+  maxInstances: 10
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+  env:
+    - variable: NODE_ENV
+      value: production
+
+    # PostgreSQL (Neon / Cloud SQL / Supabase) — SQLite does NOT work here
+    # because the filesystem is temporary.
+    - variable: DB_CLIENT
+      value: postgres
+    - variable: PGPOOL_MAX
+      value: 10
+
+    # Public URL used to build the QR codes. Change it to your own domain.
+    - variable: BASE_URL
+      value: https://YOUR-PROJECT.web.app
+
+    # Support address for web-push.
+    - variable: VAPID_SUBJECT
+      value: mailto:support@yourdomain.com
+
+# Optional: mount a Cloud Storage volume if you want a persistent filesystem.
+# (Not needed for TableNest — all persistent data lives in PostgreSQL.)
+# volumes:
+#   - name: data
+#     cloudStorage:
+#       bucket: YOUR-BUCKET

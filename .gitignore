@@ -1,0 +1,19 @@
+node_modules/
+data/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.vscode/
+.idea/
+*.bak
+
+# Firebase / platform local state
+.firebase/
+.firebaserc.local
+apphosting.local.yaml

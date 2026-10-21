@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0d9488" />
+  <title>Menu — TableNest</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/menu/menu.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Loading / error state -->
+    <div id="boot" class="boot">
+      <div class="spinner dark"></div>
+      <p id="boot-msg">Loading menu…</p>
+    </div>
+
+    <!-- ================================ MENU ================================ -->
+    <div id="view-menu" class="hidden">
+      <header class="m-header">
+        <div>
+          <h1 id="r-name">Restaurant</h1>
+          <div class="m-sub flex center gap8">
+            <span class="table-chip" id="t-name">Table</span>
+            <span class="tiny muted" id="r-addr"></span>
+          </div>
+        </div>
+        <button id="bell" class="bell" title="Enable order notifications">🔔</button>
+      </header>
+
+      <nav class="cats" id="cats"></nav>
+
+      <main class="menu-list" id="menu-list"></main>
+
+      <!-- Cart bar -->
+      <div id="cart-bar" class="cart-bar hidden">
+        <button class="cart-open" id="cart-open">
+          <span class="count" id="cart-count">0</span>
+          <span class="grow" style="text-align:left">View cart</span>
+          <span id="cart-total">₹0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================== STATUS ============================== -->
+    <div id="view-status" class="hidden">
+      <header class="m-header">
+        <div>
+          <h1 id="s-title">Order status</h1>
+          <div class="m-sub"><span class="table-chip" id="s-table">Table</span></div>
+        </div>
+        <button id="s-bell" class="bell" title="Enable notifications">🔔</button>
+      </header>
+      <div id="status-cards"></div>
+      <div class="status-actions">
+        <button class="btn btn-block" id="btn-back-menu">＋ Order more</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== CART SHEET ============================== -->
+  <div id="cart-sheet" class="sheet hidden">
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>Your order <span class="tiny muted" id="cs-table"></span></h3>
+        <button class="btn btn-ghost btn-sm" id="cart-close">✕</button>
+      </div>
+      <div class="sheet-body" id="cart-items"></div>
+      <div class="sheet-foot">
+        <div class="bill" id="cart-bill"></div>
+        <button class="btn btn-primary btn-block btn-lg" id="to-checkout">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ CHECKOUT SHEET ============================ -->
+  <div id="checkout-sheet" class="sheet hidden">
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>Confirm order</h3>
+        <button class="btn btn-ghost btn-sm" id="checkout-close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="field"><label>Your name (optional)</label><input class="input" id="co-name" placeholder="e.g. Rahul" /></div>
+        <div class="field"><label>Order notes (optional)</label><textarea class="input" id="co-notes" placeholder="e.g. less spicy, no onion…"></textarea></div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="co-notify" checked />
+            Order ready hone par phone par notification chahiye
+          </label>
+          <p class="tiny muted" style="margin:4px 0 0">Iske liye browser permission maangega. Order status isi screen par live dikhta rahega.</p>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <div class="bill" id="checkout-bill"></div>
+        <button class="btn btn-primary btn-block btn-lg" id="place-order">Place order</button>
+        <p class="tiny muted center-text" style="margin:10px 0 0">💳 Payment cash counter par — cash / UPI.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/menu/menu.js"></script>
+</body>
+</html>

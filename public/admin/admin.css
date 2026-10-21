@@ -1,0 +1,100 @@
+/* Owner admin dashboard. */
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.side-foot { border-top: 1px solid rgba(255,255,255,.1); padding-top: 12px; color: #94a3b8; }
+
+.live-orders { max-height: 420px; overflow-y: auto; }
+.live-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--line); }
+.live-row:last-child { border-bottom: none; }
+.live-row .no { font-weight: 800; min-width: 54px; }
+.live-row .tbl { background: var(--primary-50); color: var(--primary-700); padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.live-row .amt { margin-left: auto; font-weight: 700; }
+
+.top-item { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.top-item:last-child { border-bottom: none; }
+.top-item .rank { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-50); color: var(--primary-700); display: grid; place-items: center; font-weight: 800; font-size: 12px; flex: none; }
+.top-item .bar { height: 6px; border-radius: 4px; background: var(--primary-100); margin-top: 5px; }
+.top-item .qty { margin-left: auto; font-weight: 700; }
+
+/* ------------------------------ Menu editor ----------------------------- */
+.cat-block { margin-bottom: 18px; }
+.cat-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--line); }
+.cat-head h3 { font-size: 15px; }
+.cat-items { padding: 4px 16px; }
+.mi { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.mi:last-child { border-bottom: none; }
+.mi-body { flex: 1; min-width: 0; }
+.mi-name { font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.mi-desc { font-size: 12.5px; color: var(--muted); }
+.mi-price { font-weight: 700; min-width: 70px; text-align: right; }
+.veg-mark { width: 14px; height: 14px; border: 1.5px solid var(--green); border-radius: 3px; display: inline-grid; place-items: center; flex: none; }
+.veg-mark::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.veg-mark.nonveg { border-color: var(--red); } .veg-mark.nonveg::after { background: var(--red); }
+
+/* -------------------------------- QR grid ------------------------------- */
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.qr-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: var(--shadow); }
+.qr-card img { width: 100%; max-width: 170px; margin: 0 auto; }
+.qr-card .tname { font-weight: 800; font-size: 16px; margin-top: 10px; }
+.qr-card .rname { font-size: 12px; color: var(--muted); }
+.qr-card .hint { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+
+/* Print: only the QR stickers, cut along the edges. */
+@media print {
+  body { background: #fff; }
+  /* Hide everything, then reveal just the QR grid. */
+  body * { visibility: hidden !important; }
+  #qr-grid, #qr-grid * { visibility: visible !important; }
+  #qr-grid {
+    position: absolute; left: 0; top: 0; width: 100%;
+    display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .qr-card { border: 1px dashed #cbd5e1; box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* ------------------------------ Setup list ----------------------------- */
+.setup-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.setup-item:last-child { border-bottom: none; }
+.setup-check {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); flex: none;
+  display: grid; place-items: center; font-size: 12px; font-weight: 800; color: transparent; margin-top: 1px;
+}
+.setup-item.done .setup-check { background: var(--green); border-color: var(--green); color: #fff; }
+.setup-item.done .setup-label { color: var(--muted); text-decoration: line-through; }
+.setup-label { font-weight: 600; font-size: 14.5px; }
+.setup-hint { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.setup-go { margin-left: auto; flex: none; }
+
+.setup-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.setup-toggle .switch { transform: scale(.85); transform-origin: right center; }
+
+.setup-done {
+  display: flex; align-items: center; gap: 12px; padding: 14px; margin-bottom: 6px;
+  background: var(--green-bg); border: 1px solid #86efac; border-radius: 12px; color: #14532d;
+  font-weight: 600; font-size: 14px;
+}
+.setup-done .big { font-size: 26px; }
+
+/* ------------------------------ Channels -------------------------------- */
+.chan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.chan {
+  display: flex; gap: 11px; align-items: flex-start; padding: 14px; border: 1.5px solid var(--line);
+  border-radius: 12px; cursor: pointer; transition: .15s; background: #fff;
+}
+.chan:hover { border-color: #cbd5e1; }
+.chan:has(input:checked) { border-color: var(--primary); background: var(--primary-50); }
+.chan input { margin-top: 3px; flex: none; }
+.chan-ico { font-size: 20px; line-height: 1.2; }
+.chan-body { display: block; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.chan-body b { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+.chan-body small { display: block; }
+
+.role-pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: capitalize; }
+.role-pill.owner { background: var(--violet-bg); color: var(--violet); }
+.role-pill.kitchen { background: var(--amber-bg); color: var(--amber); }
+.role-pill.cashier { background: var(--blue-bg); color: var(--blue); }

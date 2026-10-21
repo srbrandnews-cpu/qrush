@@ -1,0 +1,87 @@
+/* Kitchen Display System — dark theme for glare-heavy kitchens. */
+
+body { background: #0f172a; color: #e2e8f0; }
+
+.kds-top { background: #0b1220; border-bottom: 1px solid #1e293b; }
+.kbtn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.kbtn:hover { background: #29364d; border-color: #475569; }
+.kbtn.muted-on { opacity: .5; }
+
+.conn { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #94a3b8; }
+.conn .dot { background: #f59e0b; }
+.conn.live .dot { background: #22c55e; animation: pulse 1.6s infinite; }
+.conn.off .dot { background: #ef4444; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.avatar { background: #14b8a6; color: #04211e; }
+
+/* -------------------------------- Board --------------------------------- */
+.board {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(300px, 1fr);
+  gap: 14px; padding: 16px; overflow-x: auto; align-items: start; height: calc(100vh - 60px);
+}
+.col {
+  background: #111c33; border: 1px solid #1e293b; border-radius: var(--radius);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.col-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
+  border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #111c33;
+  border-radius: var(--radius) var(--radius) 0 0; z-index: 2;
+}
+.col-head .count {
+  background: #1e293b; color: #fff; border-radius: 999px; min-width: 26px; text-align: center;
+  padding: 2px 8px; font-size: 13px; font-weight: 700;
+}
+.col-body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+/* -------------------------------- Cards --------------------------------- */
+.ocard {
+  background: #1c2942; border: 1px solid #2b3b5c; border-radius: 12px; padding: 13px; position: relative;
+}
+.ocard.fresh { animation: flash 1.2s ease 2; border-color: #22c55e; }
+@keyframes flash { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(34,197,94,.4); } }
+
+.ocard-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ocard-no { font-size: 17px; font-weight: 800; color: #fff; }
+.ocard-table {
+  background: #0d9488; color: #04211e; font-weight: 800; font-size: 12.5px;
+  padding: 3px 10px; border-radius: 999px;
+}
+.ocard-time { font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 5px; }
+.ocard-time.late { color: #fca5a5; font-weight: 700; }
+
+.ocard-items { margin: 8px 0; border-top: 1px dashed #2b3b5c; padding-top: 8px; }
+.oitem { display: flex; gap: 9px; padding: 3px 0; font-size: 15px; }
+.oitem .q { font-weight: 800; color: #5eead4; min-width: 26px; }
+.oitem .n { color: #f1f5f9; }
+.veg-mark { width: 13px; height: 13px; border: 1.5px solid #22c55e; border-radius: 3px; display: inline-grid; place-items: center; margin-top: 4px; flex: none; }
+.veg-mark::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+.veg-mark.nonveg { border-color: #ef4444; } .veg-mark.nonveg::after { background: #ef4444; }
+
+.ocard-notes {
+  background: #3b2f13; color: #fcd34d; border-radius: 8px; padding: 6px 9px; font-size: 13px; margin: 6px 0;
+}
+.ocard-cust { font-size: 12.5px; color: #94a3b8; margin-bottom: 6px; }
+
+.ocard-actions { display: flex; gap: 8px; margin-top: 10px; }
+.ocard-actions .btn { flex: 1; }
+.kact { border: none; font-weight: 700; padding: 11px; border-radius: 9px; cursor: pointer; font-size: 14px; }
+.kact.accept { background: #7c3aed; color: #fff; }
+.kact.accept:hover { background: #6d28d9; }
+.kact.start { background: #2563eb; color: #fff; }
+.kact.start:hover { background: #1d4ed8; }
+.kact.ready { background: #16a34a; color: #fff; }
+.kact.ready:hover { background: #15803d; }
+.kact.served { background: #0d9488; color: #fff; }
+.kact.ghost { background: transparent; color: #64748b; flex: none; }
+.kact.ghost:hover { color: #ef4444; }
+
+.col-empty { color: #475569; text-align: center; padding: 26px 10px; font-size: 13px; }
+
+#empty { color: #94a3b8; padding: 60px 20px; }
+#empty .icon { font-size: 46px; }
+
+@media (max-width: 720px) {
+  .board { grid-auto-columns: 82vw; }
+}

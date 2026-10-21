@@ -1,0 +1,46 @@
+{
+  "name": "tablenest",
+  "version": "1.0.0",
+  "description": "Multi-tenant restaurant QR table ordering system - customer scans QR, orders go to kitchen & cashier, live status + web push notifications.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "tunnel": "node scripts/start-tunnel.js",
+    "dev": "nodemon server.js",
+    "seed": "node src/db/seed.js",
+    "test": "node scripts/test-flow.js",
+    "test:encoding": "node scripts/test-encoding.js",
+    "test:csv": "node scripts/test-csv-import.js",
+    "test:notify": "node scripts/test-notifications.js",
+    "test:pg": "node scripts/test-postgres.js",
+    "pg:check": "node scripts/pg-check.js",
+    "reset:orders": "node scripts/reset-orders.js",
+    "icons": "node scripts/make-icon.js"
+  },
+  "keywords": [
+    "restaurant",
+    "qr-ordering",
+    "kds",
+    "saas",
+    "table-ordering"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "embedded-postgres": "^18.4.0-beta.17",
+    "nodemon": "^3.1.7"
+  }
+}

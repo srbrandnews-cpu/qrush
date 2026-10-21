@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TableNest — Restaurant QR Table Ordering</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    .hero { padding: 64px 20px 40px; text-align: center; background:
+      radial-gradient(1200px 500px at 50% -10%, var(--primary-100), transparent); }
+    .hero .pill {
+      display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--line);
+      padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--primary-700); margin-bottom: 20px;
+    }
+    .hero h1 { font-size: clamp(30px, 5vw, 50px); line-height: 1.08; max-width: 760px; margin: 0 auto; }
+    .hero h1 em { font-style: normal; color: var(--primary); }
+    .hero p.lead { font-size: 18px; color: var(--muted); max-width: 600px; margin: 18px auto 0; }
+    .hero .cta { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+
+    .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 1000px; margin: 48px auto 0; padding: 0 20px; }
+    .step { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; text-align: left; }
+    .step .n { width: 34px; height: 34px; border-radius: 9px; background: var(--primary-50); color: var(--primary-700);
+      display: grid; place-items: center; font-weight: 800; margin-bottom: 12px; }
+    .step h4 { font-size: 15px; margin-bottom: 6px; }
+    .step p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+    .panels { max-width: 1000px; margin: 48px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+    .panel .icon { font-size: 30px; margin-bottom: 12px; }
+    .panel h3 { font-size: 17px; margin-bottom: 6px; }
+    .panel p { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+    footer { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); margin-top: 20px; }
+    code.k { background: #f1f5f9; padding: 2px 7px; border-radius: 6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="logo">🍽️</span> TableNest</div>
+    <div class="topbar-right">
+      <a class="btn btn-sm" href="/login">Staff login</a>
+      <a class="btn btn-primary btn-sm" href="/login?mode=signup">Add your restaurant</a>
+    </div>
+  </div>
+
+  <section class="hero">
+    <span class="pill">● Live order tracking • Kitchen &amp; counter • Web push alerts</span>
+    <h1>Table par QR scan karo, <em>order karo</em>, aur status live dekho.</h1>
+    <p class="lead">
+      Aapka customer table par laga QR code scan karke apna order khud place karega.
+      Order seedha <strong>kitchen</strong> aur <strong>cash counter</strong> par pahunchega —
+      aur jaise hi ready hoga, phone par <strong>notification</strong> aa jayegi.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary btn-lg" href="/login?mode=signup">Start free setup</a>
+      <a class="btn btn-lg" href="#panels">See the screens</a>
+    </div>
+  </section>
+
+  <section class="flow">
+    <div class="step"><div class="n">1</div><h4>QR scan</h4><p>Customer table ke QR code ko phone se scan karta hai — menu turant khul jata hai. App install karne ki zaroorat nahi.</p></div>
+    <div class="step"><div class="n">2</div><h4>Order place</h4><p>Items cart mein add karke order confirm. Order number aur table auto-tag ho jata hai.</p></div>
+    <div class="step"><div class="n">3</div><h4>Kitchen &amp; counter</h4><p>Order live kitchen display aur cash counter dono par ek saath aa jata hai.</p></div>
+    <div class="step"><div class="n">4</div><h4>Ready alert</h4><p>Order ready hote hi customer ke phone par push notification — phir table par serve.</p></div>
+  </section>
+
+  <section class="panels" id="panels">
+    <div class="panel">
+      <div class="icon">📲</div>
+      <h3>Customer menu</h3>
+      <p>Mobile-first menu, cart, order notes, aur live status tracker with progress bar.</p>
+      <a class="btn btn-sm" href="/login">Open via QR</a>
+    </div>
+    <div class="panel">
+      <div class="icon">👨‍🍳</div>
+      <h3>Kitchen display</h3>
+      <p>Har new order ka pop + sound alert. Accepted → Preparing → Ready, ek tap mein.</p>
+      <a class="btn btn-sm" href="/kitchen">Kitchen screen</a>
+    </div>
+    <div class="panel">
+      <div class="icon">💰</div>
+      <h3>Cash counter</h3>
+      <p>Bill with GST, payment collect karo, aur "Served" mark karke table tak confirm karo.</p>
+      <a class="btn btn-sm" href="/cashier">Counter screen</a>
+    </div>
+    <div class="panel">
+      <div class="icon">⚙️</div>
+      <h3>Owner dashboard</h3>
+      <p>Menu, tables, QR code print, staff accounts, aur aaj ke orders ka full report.</p>
+      <a class="btn btn-primary btn-sm" href="/admin">Go to admin</a>
+    </div>
+  </section>
+
+  <footer>
+    TableNest • Multi-tenant restaurant QR ordering •
+    Demo login: <code class="k">owner@demo.com</code> / <code class="k">pass1234</code>
+  </footer>
+</body>
+</html>

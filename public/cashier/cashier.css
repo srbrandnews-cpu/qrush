@@ -1,0 +1,42 @@
+/* Cash counter screen. */
+
+.today { text-align: right; line-height: 1.25; padding-right: 6px; border-right: 1px solid var(--line); margin-right: 4px; }
+.today .bold { font-size: 17px; }
+
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.conn .dot { background: #f59e0b; }
+.conn.live .dot { background: var(--green); animation: pulse 1.6s infinite; }
+.conn.off .dot { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.tabs-bar { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.tab {
+  padding: 10px 16px; border: none; background: transparent; font-weight: 600; font-size: 14px;
+  color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab.active { color: var(--primary-700); border-bottom-color: var(--primary); }
+
+.order-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+
+.ccard { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.ccard-head { padding: 13px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.ccard-no { font-weight: 800; font-size: 16px; }
+.ccard-table { background: var(--primary-50); color: var(--primary-700); border: 1px solid var(--primary-100); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.ccard-body { padding: 12px 15px; }
+.ccard-meta { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; display: flex; gap: 10px; }
+
+.bill { font-size: 14px; }
+.bill .row-line { display: flex; justify-content: space-between; padding: 3px 0; color: var(--ink-2); }
+.bill .row-line.total { font-weight: 800; font-size: 16px; color: var(--ink); border-top: 1px dashed var(--line); margin-top: 5px; padding-top: 8px; }
+
+.ccard-actions { padding: 0 15px 15px; display: flex; gap: 8px; }
+.ccard-actions .btn { flex: 1; }
+
+.pay-methods { display: flex; gap: 8px; }
+.pm {
+  flex: 1; padding: 12px; border: 1.5px solid var(--line); background: #fff; border-radius: 10px;
+  font-weight: 600; cursor: pointer; font-size: 14px;
+}
+.pm.active { border-color: var(--primary); background: var(--primary-50); color: var(--primary-700); }
+
+.paid-tag { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-weight: 700; font-size: 14px; }
