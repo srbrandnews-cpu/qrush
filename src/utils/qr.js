@@ -31,4 +31,17 @@ async function menuQrDataUrl(tableToken, opts = {}) {
   });
 }
 
-module.exports = { baseUrl, menuUrl, menuQrDataUrl };
+/**
+ * QR for any URL (staff screens, sharing links, etc).
+ */
+async function qrDataUrl(url, opts = {}) {
+  return QRCode.toDataURL(url, {
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    scale: opts.scale || 6,
+    color: { dark: '#111827', light: '#ffffff' },
+    ...opts,
+  });
+}
+
+module.exports = { baseUrl, menuUrl, menuQrDataUrl, qrDataUrl };

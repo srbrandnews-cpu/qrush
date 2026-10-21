@@ -544,23 +544,63 @@
   async function loadStaff() {
     const data = await TN.api('/api/admin/staff');
     const body = $('staff-body');
-    if (!data.staff.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty">Koi staff nahi.</div></td></tr>'; return; }
-    body.innerHTML = '';
-    data.staff.forEach((u) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="bold">${esc(u.name)}</td>
-        <td class="muted">${esc(u.email)}</td>
-        <td><span class="role-pill ${u.role}">${u.role}</span></td>
-        <td><span class="badge ${u.is_active ? 'ready' : 'muted'}">${u.is_active ? 'active' : 'disabled'}</span></td>
-        <td style="text-align:right;white-space:nowrap">
-          <button class="btn btn-sm" data-act="edit">Edit</button>
-          <button class="btn btn-sm btn-ghost" data-act="del">🗑</button>
-        </td>`;
-      tr.querySelector('[data-act="edit"]').addEventListener('click', () => staffModal(u));
-      tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteStaff(u));
-      body.appendChild(tr);
-    });
+    if (!data.staff.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty">Koi staff nahi.</div></td></tr>'; }
+    else {
+      body.innerHTML = '';
+      data.staff.forEach((u) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="bold">${esc(u.name)}</td>
+          <td class="muted">${esc(u.email)}</td>
+          <td><span class="role-pill ${u.role}">${u.role}</span></td>
+          <td><span class="badge ${u.is_active ? 'ready' : 'muted'}">${u.is_active ? 'active' : 'disabled'}</span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm" data-act="edit">Edit</button>
+            <button class="btn btn-sm btn-ghost" data-act="del">🗑</button>
+          </td>`;
+        tr.querySelector('[data-act="edit"]').addEventListener('click', () => staffModal(u));
+        tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteStaff(u));
+        body.appendChild(tr);
+      });
+    }
+    await loadStaffScreens();
+  }
+
+  /**
+   * The kitchen / cash-counter screen links + QR codes, so the owner can
+   * share them with staff (or print a sticker for the tablet).
+   */
+  async function loadStaffScreens() {
+    const host = $('staff-screens');
+    try {
+      const data = await TN.api('/api/admin/staff-screens');
+      host.innerHTML = (data.screens || []).map((s) => `
+        <div class="staff-screen">
+          <img src="${s.qr}" alt="QR for ${esc(s.title)}" />
+          <div class="grow">
+            <div class="sc-title">${s.icon} ${esc(s.title)}</div>
+            <div class="sc-url">${esc(s.url)}</div>
+            <div class="flex gap8">
+              <a class="btn btn-sm" href="${s.url}" target="_blank">Open ↗</a>
+              <button class="btn btn-sm" data-copy="${esc(s.url)}">📋 Copy link</button>
+            </div>
+            <div class="sc-hint">Staff ko apna email + password do (neeche list mein). QR scan karte hi seedha yeh screen khul jayegi.</div>
+          </div>
+        </div>`).join('');
+
+      host.querySelectorAll('[data-copy]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          const text = b.dataset.copy;
+          try {
+            await navigator.clipboard.writeText(text);
+            TN.toast('Link copy ho gaya', 'success');
+          } catch (_) {
+            TN.toast('Copy nahi hua — link manually select karein', 'error');
+          }
+        }));
+    } catch (err) {
+      host.innerHTML = '<div class="empty">Links load nahi ho paye.</div>';
+    }
   }
 
   $('add-staff').addEventListener('click', () => staffModal(null));

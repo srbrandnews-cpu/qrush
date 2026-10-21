@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { query, get, run } = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { OPEN_STATUSES } = require('../utils/constants');
+const { baseUrl, qrDataUrl } = require('../utils/qr');
 const notify = require('../services/notify');
 
 const router = express.Router();
@@ -125,6 +126,27 @@ router.delete('/notifications', async (req, res, next) => {
   try {
     await run('DELETE FROM notifications WHERE tenant_id = ?', [req.user.tenant_id]);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/admin/staff-screens
+ * Links (and QR codes) for the kitchen and cash-counter screens, so the owner
+ * can share them with staff or print them for a tablet.
+ */
+router.get('/staff-screens', async (req, res, next) => {
+  try {
+    const base = baseUrl();
+    const kitchen = `${base}/kitchen`;
+    const cashier = `${base}/cashier`;
+    res.json({
+      screens: [
+        { key: 'kitchen', title: 'Kitchen Display', icon: '👨‍🍳', url: kitchen, qr: await qrDataUrl(kitchen, { scale: 4 }) },
+        { key: 'cashier', title: 'Cash Counter', icon: '💰', url: cashier, qr: await qrDataUrl(cashier, { scale: 4 }) },
+      ],
+    });
   } catch (err) {
     next(err);
   }
