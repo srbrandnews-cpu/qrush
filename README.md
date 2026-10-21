@@ -32,6 +32,7 @@ aur **web push notification bhi chalta hai** (HTTPS hone ki wajah se).
 
 | Guide | Kab padhein |
 |---|---|
+| **[`docs/FIREBASE-DEPLOY.md`](docs/FIREBASE-DEPLOY.md)** | **Online deploy karna hai** — Firebase App Hosting (10 min, no server) |
 | **[`docs/DOMAIN-SETUP.md`](docs/DOMAIN-SETUP.md)** | QR **permanent** banana hai (sirf ₹700–1200/saal) |
 
 ### 🏠 Local mode (sirf ghar par test karna hai)
@@ -255,6 +256,29 @@ sqlite3 data/tablenest.db .dump | psql $DATABASE_URL
 
 ---
 
+
+## 🚀 Online deploy
+
+**Sabse aasan tarika: Firebase App Hosting** (no server, auto-scale, free SSL).
+Poora step-by-step → **[`docs/FIREBASE-DEPLOY.md`](docs/FIREBASE-DEPLOY.md)**
+
+| | Firebase App Hosting | VPS (DigitalOcean/Vultr) |
+|---|---|---|
+| Setup time | ~10 min | ~30 min |
+| Server khareedna? | Nahi | Haan (~₹500-700/mo) |
+| Scaling | Automatic | Manual |
+| Custom domain + SSL | Free, automatic | Free (certbot) |
+| Database | Neon Postgres (free tier) | Same VPS par Postgres |
+
+**Deployment ke liye sab ready hai:**
+- `Dockerfile` — Firebase / Cloud Run / Render / Railway / VPS — sab ke liye
+- `apphosting.yaml` — App Hosting config (region `asia-south1` = Mumbai)
+- `firebase.json` — Firebase CLI config
+- `scripts/generate-vapid.js` — stable push keys generate karta hai
+- Server **boot par khud check karta hai** ki production config sahi hai ya nahi
+  (galat `DB_CLIENT`, missing VAPID keys, non-HTTPS `BASE_URL` → clear warning)
+
+---
 
 ## 🚀 Production / bechne ke liye (SaaS)
 

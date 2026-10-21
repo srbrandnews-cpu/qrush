@@ -48,4 +48,15 @@ try {
 } catch (err) {
   console.log('(.env update nahi hua: ' + err.message + ')');
 }
+
+// Keep the local data/vapid.json in sync, so the running dev server uses the
+// same keys (otherwise old subscriptions would silently stop working).
+try {
+  const dataDir = path.join(__dirname, '..', 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(path.join(dataDir, 'vapid.json'), JSON.stringify(keys), 'utf8');
+  console.log('(data/vapid.json bhi update kar diya — local server consistent rahega)');
+} catch (err) {
+  console.log('(data/vapid.json update nahi hua: ' + err.message + ')');
+}
 console.log('');
