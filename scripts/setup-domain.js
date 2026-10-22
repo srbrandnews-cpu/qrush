@@ -41,8 +41,25 @@ function fail(msg, extra) {
   process.exit(1);
 }
 
+/** Full path to the cloudflared executable (spawned directly, no shell). */
+function cloudflaredPath() {
+  const candidates = [
+    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe',
+    'C:\\Program Files\\cloudflared\\cloudflared.exe',
+    '/usr/local/bin/cloudflared',
+    '/opt/homebrew/bin/cloudflared',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  const finder = process.platform === 'win32' ? 'where' : 'which';
+  const r = spawnSync(finder, ['cloudflared'], { encoding: 'utf8' });
+  const found = (r.stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+  return found || 'cloudflared';
+}
+
 function cloudflared() {
-  const r = spawnSync('cloudflared', ['--version'], { encoding: 'utf8', shell: true });
+  const r = spawnSync(cloudflaredPath(), ['--version'], { encoding: 'utf8' });
   if (r.status !== 0) {
     fail('cloudflared nahi mila.',
       'Install karne ke liye:\n  winget install Cloudflare.cloudflared');
@@ -87,7 +104,7 @@ function main() {
   if (!fs.existsSync(certPath)) {
     say('Step 1/4  Cloudflare login (browser khul jayega)...');
     say('         Browser mein apna domain wala Cloudflare account choose karein.');
-    const r = spawnSync('cloudflared', ['tunnel', 'login'], { stdio: 'inherit', shell: true });
+    const r = spawnSync(cloudflaredPath(), ['tunnel', 'login'], { stdio: 'inherit' });
     if (r.status !== 0 || !fs.existsSync(certPath)) {
       fail('Cloudflare login complete nahi hua. Phir se try karein.');
     }
@@ -104,7 +121,7 @@ function main() {
   if (tunnelId) {
     say('         ✔ tunnel pehle se hai: ' + tunnelName + ' (' + tunnelId.id + ')\n');
   } else {
-    const r = spawnSync('cloudflared', ['tunnel', 'create', tunnelName], { encoding: 'utf8', shell: true });
+    const r = spawnSync(cloudflaredPath(), ['tunnel', 'create', tunnelName], { encoding: 'utf8' });
     const out = (r.stdout || '') + (r.stderr || '');
     const m = out.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
     if (!m) fail('Tunnel nahi ban paya.', out.slice(0, 500));
@@ -115,7 +132,7 @@ function main() {
   // --- 3. DNS route ---
   const hostname = 'order.' + domain;
   say('Step 3/4  DNS record bana rahe hain: ' + hostname + ' → tunnel');
-  const dns = spawnSync('cloudflared', ['tunnel', 'route', 'dns', tunnelName, hostname], { encoding: 'utf8', shell: true });
+  const dns = spawnSync(cloudflaredPath(), ['tunnel', 'route', 'dns', tunnelName, hostname], { encoding: 'utf8' });
   const dnsOut = ((dns.stdout || '') + (dns.stderr || '')).trim();
   if (dns.status !== 0 && !/already exists|record with that host already exists/i.test(dnsOut)) {
     fail('DNS record nahi bana.', dnsOut.slice(0, 500));
@@ -148,7 +165,7 @@ function main() {
 /** Ask Cloudflare for the list of existing tunnels (uses cert.pem). */
 function listTunnels() {
   try {
-    const out = execSync('cloudflared tunnel list --output json', { encoding: 'utf8', shell: true });
+    const out = execSync('"' + cloudflaredPath() + '" tunnel list --output json', { encoding: 'utf8' });
     const arr = JSON.parse(out);
     return arr.map((t) => ({ id: t.id, name: t.name }));
   } catch (_) {

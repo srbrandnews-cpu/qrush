@@ -36,10 +36,13 @@ function shutdown(code = 0) {
   for (const c of children) {
     try { c.kill(); } catch (_) { /* ignore */ }
   }
-  process.exit(code);
+  // Normalise: a force-killed child reports -1, which would show up as exit
+  // code 255 and look like a crash.
+  process.exit(code > 0 ? code : 0);
 }
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
+process.on('exit', () => { for (const c of children) { try { c.kill(); } catch (_) {} } });
 
 /* ----------------------------- .env helpers ----------------------------- */
 
@@ -66,11 +69,32 @@ function writeEnv(key, value) {
 
 /* -------------------------------- tunnel -------------------------------- */
 
+/**
+ * Full path to the cloudflared executable.
+ * We spawn it directly (no `shell: true`) so that .kill() actually stops the
+ * real process — with a shell wrapper, killing the wrapper leaves cloudflared
+ * running as an orphan.
+ */
+function cloudflaredPath() {
+  const candidates = [
+    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe',
+    'C:\\Program Files\\cloudflared\\cloudflared.exe',
+    '/usr/local/bin/cloudflared',
+    '/opt/homebrew/bin/cloudflared',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  const finder = process.platform === 'win32' ? 'where' : 'which';
+  const r = spawnSync(finder, ['cloudflared'], { encoding: 'utf8' });
+  const found = (r.stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+  return found || 'cloudflared';
+}
+
 function spawnCloudflared(args) {
-  return spawn('cloudflared', args, {
+  return spawn(cloudflaredPath(), args, {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
   });
 }
 
