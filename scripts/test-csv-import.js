@@ -39,9 +39,39 @@ function assert(cond, msg) {
 async function main() {
   console.log('\n=== CSV import test ===\n');
   const stamp = Date.now();
-
-  // 1. Create a throwaway restaurant.
   const email = `csvtest${stamp}@tablenest.test`;
+  const slug = `csv-test-diner-${stamp}`;
+
+  // Always clean up the throwaway restaurant, even if an assertion fails.
+  const cleanup = () => {
+    try {
+      const { DatabaseSync } = require('node:sqlite');
+      const db = new DatabaseSync('data/tablenest.db');
+      db.exec('PRAGMA foreign_keys = ON');
+      const row = db.prepare('SELECT id FROM tenants WHERE slug = ?').get(slug);
+      if (row) {
+        db.prepare('DELETE FROM tenants WHERE id = ?').run(row.id);
+        db.prepare('DELETE FROM users WHERE email = ?').run(email);
+        console.log('  ✓ throwaway tenant cleaned up');
+      }
+      db.close();
+    } catch (err) {
+      console.log('  (cleanup skipped: ' + err.message + ')');
+    }
+  };
+
+  try {
+    await runTest(stamp, email, slug);
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
+  cleanup();
+  console.log('\n✅ CSV import works perfectly.\n');
+}
+
+async function runTest(stamp, email, slug) {
+  // 1. Create a throwaway restaurant.
   const signup = await api('/api/auth/signup', {
     method: 'POST',
     body: { restaurant: 'CSV Test Diner ' + stamp, name: 'CSV Tester', email, password: 'pass1234' },
@@ -124,19 +154,7 @@ Prices,With Thousands,"1,200",Non-veg`;
   assert(bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf,
     'template has UTF-8 BOM (so Excel reads ₹ correctly)');
 
-  // 7. Cleanup: remove the throwaway tenant.
-  const { DatabaseSync } = require('node:sqlite');
-  const db = new DatabaseSync('data/tablenest.db');
-  db.exec('PRAGMA foreign_keys = ON');
-  const row = db.prepare('SELECT id FROM tenants WHERE slug LIKE ?').get('csv-test-diner-' + stamp);
-  if (row) {
-    db.prepare('DELETE FROM tenants WHERE id = ?').run(row.id);
-    db.prepare('DELETE FROM users WHERE email = ?').run(email);
-    console.log('  ✓ throwaway tenant cleaned up');
-  }
-  db.close();
-
-  console.log('\n✅ CSV import works perfectly.\n');
+  // (cleanup runs in main(), even if an assertion above failed)
 }
 
 main().catch((err) => {
