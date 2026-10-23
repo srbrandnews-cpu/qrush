@@ -29,7 +29,12 @@ const DIALECT = (process.env.DB_CLIENT || 'sqlite').toLowerCase();
 const als = new AsyncLocalStorage();
 
 const DB_DIR = process.env.DB_DIR || path.join(__dirname, '..', '..', 'data');
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+// Only the SQLite driver needs an on-disk folder. Production (Postgres) images
+// often run as a non-root user with a read-only app directory, so creating
+// `data/` there would crash the boot with EACCES.
+if (DIALECT !== 'postgres' && !fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
 
 /* ======================================================================== */
 /*  SQLite driver (node:sqlite)                                              */
