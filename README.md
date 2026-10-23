@@ -32,7 +32,8 @@ aur **web push notification bhi chalta hai** (HTTPS hone ki wajah se).
 
 | Guide | Kab padhein |
 |---|---|
-| **[`docs/FIREBASE-DEPLOY.md`](docs/FIREBASE-DEPLOY.md)** | **Online deploy karna hai** — Firebase App Hosting (10 min, no server) |
+| **[`docs/FREE-DEPLOY.md`](docs/FREE-DEPLOY.md)** | **Online + free chahiye (bina card)** — Render + Neon + GitHub, free subdomain |
+| **[`docs/FIREBASE-DEPLOY.md`](docs/FIREBASE-DEPLOY.md)** | Firebase App Hosting (Blaze plan / card chahiye) |
 | **[`docs/DOMAIN-SETUP.md`](docs/DOMAIN-SETUP.md)** | QR **permanent** banana hai (sirf ₹700–1200/saal) |
 
 ### 🏠 Local mode (sirf ghar par test karna hai)
