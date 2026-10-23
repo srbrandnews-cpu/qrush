@@ -17,12 +17,20 @@ karni hai. Sirf ek GitHub repo aur kuch environment variables.
 
 ## Step 1 — Firebase project banao
 
+> ⚠️ **App Hosting ke liye Blaze (pay-as-you-go) plan chahiye** — Google account par ek card
+> add karna padega. Free tier ka monthly credit lagta hai, isliye 1-2 restaurant ka
+> kharcha practically **₹0–200/month** aata hai. (Card nahi hai to neeche "VPS" wala
+> rasta dekhein.)
+
 1. https://console.firebase.google.com → **Add project**
    - Project name: `tablenest` (ya jo pasand ho)
    - Google Analytics: **off** rakhein (zaroorat nahi)
 2. Firebase console khula ho → left menu → **Build** → **App Hosting** → **Get started**
 3. App Hosting ka default backend ban jayega. Region **asia-south1 (Mumbai)** rakhein —
    India ke customers ke liye sabse fast.
+4. Runtime: **Node.js 22 ya 24** chunein (`package.json` mein `"engines": ">=22"` set hai —
+   in dono mein se koi bhi chalega).
+
 
 ---
 
@@ -75,12 +83,17 @@ App Hosting console → apna backend → **Environment variables** → **Add**:
 | `DB_CLIENT` | `postgres` | **zaroori** — SQLite yahan kaam nahi karega |
 | `DATABASE_URL` | Neon ka connection string | **zaroori** |
 | `JWT_SECRET` | 64+ character random | **zaroori** — neeche command hai |
-| `BASE_URL` | `https://<apna-project>.web.app` | QR codes isi se bante hain |
+| `BASE_URL` | *(khali chhod dein)* | optional — QR code khud current hostname se banta hai |
 | `VAPID_PUBLIC_KEY` | neeche generate karke | push notifications ke liye |
 | `VAPID_PRIVATE_KEY` | neeche generate karke | **dhyan se** — kho gaya to customers ko dobara allow karna padega |
 | `VAPID_SUBJECT` | `mailto:aapka@email.com` | support email |
-| `NODE_ENV` | `production` | |
-| `PGPOOL_MAX` | `10` | optional |
+| `NODE_ENV` | `production` | `apphosting.yaml` mein pehle se set hai |
+| `PGPOOL_MAX` | `10` | optional — `apphosting.yaml` mein set hai |
+
+> **`BASE_URL` kyun khali?** QR code ab request ke hostname se khud ban jaata hai.
+> Matlab default `*.hosted.app` URL par bhi sahi, aur baad mein custom domain lagane par bhi
+> sahi — dobara deploy karne ki zaroorat nahi. Sirf tab set karein jab aap **force** karna
+> chahte hain ki QR hamesha ek hi domain par jaye.
 
 **Random JWT_SECRET:**
 ```bash
@@ -133,11 +146,12 @@ Build 2-4 minute lagega. Logs mein dikhega:
    par Cloudflare use kar rahe ho to wahan bhi CNAME add karna padega
 4. SSL certificate Firebase khud manage karta hai — **kuch karne ki zaroorat nahi** ✅
 
-Ab `BASE_URL` environment variable update karein:
-```
-https://order.myhotel.in
-```
-→ **Rollout redeploy** karo → QR codes ab aapke domain par point karenge.
+Bas! QR codes automatically naye domain par point karenge — `BASE_URL` set karne ya
+redeploy karne ki zaroorat nahi. ✅
+
+> ⚠️ **QR stickers domain lagne ke BAAD print karein.** Pehle `*.hosted.app` URL par print
+> kiye gaye QR purane link par jayenge.
+
 
 > **Domain kahan se lo?** → `docs/DOMAIN-SETUP.md` (Cloudflare Registrar sabse sasta hai)
 
@@ -172,9 +186,10 @@ App Hosting **automatically** redeploy ho jayega (auto-deploy ON hai).
 | "Database connection failed" | `DATABASE_URL` check karein — **pooled** URL honi chahiye, `?sslmode=require` bhi |
 | App boot nahi hua | App Hosting → **Logs** dekhein — hamare production warnings exact bata denge |
 | Push notifications nahi aa rahe | `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` env mein hain ya nahi check karein |
-| QR codes galat link bana rahe | `BASE_URL` update karke redeploy karein |
-| Build fail | `npm ci` chahiye `package-lock.json` — woh repo mein hai ✅ |
-| WebSocket disconnect ho raha | `minInstances: 1` rakhein (`apphosting.yaml` mein set hai) — 0 karne se cold start me socket toot sakta hai |
+| QR codes galat link bana rahe | Normally automatic hai. Agar `BASE_URL` env set kiya hai to use hata dein — QR request ke host se banega |
+| Build fail | `npm ci` chahiye `package-lock.json` — woh repo mein hai ✅. Node runtime `engines` (`>=22`) se match karna chahiye |
+| Kitchen ko naya order nahi dikh raha | Instances 1 se zyada na hon — Socket.IO ka shared adapter nahi hai, isliye `apphosting.yaml` mein `maxInstances: 1` set hai. Ise na badhayein |
+| Pehla order 2-5 sec slow | Normal — idle hone par server scale-to-zero hota hai. Always-warm chahiye to `minInstances: 1` karein (par ~$50/month) |
 | 5xx errors traffic ke saath | `maxInstances` / `concurrency` badhaayein (`apphosting.yaml`) |
 
 ---
