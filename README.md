@@ -13,7 +13,24 @@ Multi-tenant hai — ek hi system par aap kayi restaurants chala sakte hain (bec
 > **Zaroori:** HTML files ko directly (double-click) mat kholein — browser mein blank dikhega kyunki
 > server chahiye. Hamesha neeche ka method use karein.
 
-### 🎯 Trial mode (recommended — 1-2 restaurant ke liye)
+### 🎯 Online mode (recommended — permanent URL, free)
+
+**`start-online.bat` par double-click karein.**
+
+Aapka permanent address ban jata hai:
+
+```
+https://tablenest.tail0010e0.ts.net
+```
+
+- URL **kabhi nahi badalta** → QR ek hi baar print karna hai
+- Free, koi card nahi
+- Staff login bhi persist karta hai
+
+> ⚠️ Laptop on rehna chahiye (app aapke laptop par chalta hai, internet par tunnel se
+> dikhta hai). Detail → [`docs/ONLINE-TAILSCALE.md`](docs/ONLINE-TAILSCALE.md)
+
+### 🔄 Temporary tunnel mode (sirf quick test)
 
 **`start-tunnel.bat` par double-click karein.** Yeh:
 
@@ -25,16 +42,16 @@ Isse customer **aapke ghar ke WiFi se bhi** (bina same network ke) QR scan karke
 aur **web push notification bhi chalta hai** (HTTPS hone ki wajah se).
 
 > ⚠️ Quick-tunnel ka URL har restart par badal jaata hai. **QR print karne se pehle yeh script dobara
-> chala lein** taaki QR sahi rahe. **Permanent URL** ke liye → `docs/DOMAIN-SETUP.md`
-> (domain + named tunnel, ₹700/saal, QR ek hi baar print).
+> chala lein** taaki QR sahi rahe. **Permanent URL** ke liye `start-online.bat` use karein.
 
 ### 📚 Setup guides
 
 | Guide | Kab padhein |
 |---|---|
-| **[`docs/FREE-DEPLOY.md`](docs/FREE-DEPLOY.md)** | **Online + free chahiye (bina card)** — Render + Neon + GitHub, free subdomain |
+| **[`docs/ONLINE-TAILSCALE.md`](docs/ONLINE-TAILSCALE.md)** | **Permanent free URL chahiye** — Tailscale Funnel (`start-online.bat`) |
+| **[`docs/FREE-DEPLOY.md`](docs/FREE-DEPLOY.md)** | **Cloud par deploy karna hai (bina card)** — Render + Neon + GitHub |
 | **[`docs/FIREBASE-DEPLOY.md`](docs/FIREBASE-DEPLOY.md)** | Firebase App Hosting (Blaze plan / card chahiye) |
-| **[`docs/DOMAIN-SETUP.md`](docs/DOMAIN-SETUP.md)** | QR **permanent** banana hai (sirf ₹700–1200/saal) |
+| **[`docs/DOMAIN-SETUP.md`](docs/DOMAIN-SETUP.md)** | Apna **professional domain** lagana hai (₹700–1200/saal) |
 
 ### 🏠 Local mode (sirf ghar par test karna hai)
 
