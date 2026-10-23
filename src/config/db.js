@@ -69,7 +69,7 @@ function initPostgres() {
   // returning an identical API shape.
   pgTypes.setTypeParser(20, (val) => parseInt(val, 10));
 
-  pool = new Pool({
+  const poolConfig = {
     connectionString: process.env.DATABASE_URL,
     host: process.env.PGHOST,
     port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
@@ -78,7 +78,17 @@ function initPostgres() {
     database: process.env.PGDATABASE,
     max: process.env.PGPOOL_MAX ? Number(process.env.PGPOOL_MAX) : 10,
     idleTimeoutMillis: 30000,
-  });
+  };
+
+  // SSL is normally driven by the connection string itself (Neon/Supabase use
+  // `?sslmode=require`). PGSSL is an escape hatch for hosts whose certificate
+  // Node does not trust:
+  //   PGSSL=no-verify  -> encrypt but skip certificate verification
+  //   PGSSL=false      -> no TLS at all (local Postgres)
+  if (process.env.PGSSL === 'no-verify') poolConfig.ssl = { rejectUnauthorized: false };
+  else if (process.env.PGSSL === 'false') poolConfig.ssl = false;
+
+  pool = new Pool(poolConfig);
   return pool;
 }
 

@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────
+# Render Blueprint — one-click free deployment.
+#
+# Dashboard: https://dashboard.render.com → "New" → "Blueprint" → pick this
+# repo. Render reads this file and creates the service with the right settings.
+#
+# Free plan notes:
+#   • no credit card required
+#   • spins down after 15 minutes without traffic (first request ~50s)
+#   • 750 instance hours / month
+#   • 512 MB RAM, 0.1 CPU
+# ─────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: tablenest
+    runtime: docker
+    plan: free
+    # Singapore is the closest free region to India.
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_CLIENT
+        value: postgres
+      # The free instance has 512 MB RAM — keep the pool small.
+      - key: PGPOOL_MAX
+        value: "5"
+      - key: VAPID_SUBJECT
+        value: mailto:support@tablenest.app
+
+      # ── Secrets: Render asks for these once, then stores them encrypted ──
+      # DATABASE_URL  = Neon pooled connection string (sslmode=require)
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
