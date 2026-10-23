@@ -19,6 +19,8 @@
     "pg:check": "node scripts/pg-check.js",
     "reset:orders": "node scripts/reset-orders.js",
     "cleanup:tenants": "node scripts/cleanup-test-tenants.js",
+    "db:migrate": "node scripts/sqlite-to-postgres.js",
+    "test:migrate": "node scripts/test-migrate.js",
     "icons": "node scripts/make-icon.js"
   },
   "keywords": [

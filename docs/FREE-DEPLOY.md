@@ -73,6 +73,27 @@ git push -u origin main
 
 ---
 
+## Step 2.5 — Purana data migrate karein (recommended)
+
+Agar local SQLite mein restaurants / staff / QR tables already hain aur **wahi cloud par
+chahiye** (same logins, same QR stickers), to Neon banne ke baad ye chalayein:
+
+```bash
+DATABASE_URL="postgresql://...-pooler...?sslmode=require" node scripts/sqlite-to-postgres.js
+```
+
+| Baat | Detail |
+|---|---|
+| IDs | Same rehte hain → staff logins aur QR tokens **nahi badalte** |
+| Target | Khali hona chahiye; dobara chalane par `--truncate` lagayein |
+| Test | `npm run test:migrate` (local embedded Postgres par verify) |
+| Dry run | `--dry-run` se sirf count dikhta hai, kuch change nahi hota |
+
+> Migration Render deploy se **pehle** ya **baad** — dono chalega. Pehle karein to pehla
+> page load hi aapka data dikhayega.
+
+---
+
 ## Step 3 — Render (app, free)
 
 1. https://render.com → **Get Started** → **GitHub se sign up** (card nahi chahiye)
