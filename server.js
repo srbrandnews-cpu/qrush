@@ -12,11 +12,19 @@ const { runMigrations } = require('./src/db/migrations');
 const push = require('./src/services/push');
 const { initSocket } = require('./src/realtime/socket');
 const { dialect } = require('./src/config/db');
+const { runWithOrigin } = require('./src/utils/request-context');
 
 const app = express();
 app.set('trust proxy', true);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+
+// Make the request's own origin visible to helpers that build absolute URLs
+// (QR codes). Means a deployment never needs a hard-coded BASE_URL.
+app.use((req, res, next) => {
+  const host = req.get('host');
+  runWithOrigin(host ? `${req.protocol}://${host}` : '', next);
+});
 
 // --- API routes ---
 app.use('/api/auth', require('./src/routes/auth.routes'));
@@ -105,10 +113,10 @@ function checkProductionConfig() {
       'notifications toot jayenge. `node scripts/generate-vapid.js` chala kar set karein.'
     );
   }
-  if (!/^https:\/\//.test(process.env.BASE_URL || '')) {
+  if (process.env.BASE_URL && !/^https:\/\//.test(process.env.BASE_URL)) {
     problems.push(
-      'BASE_URL https:// se start nahi ho raha — web push notifications HTTPS par hi ' +
-      'kaam karti hain, aur QR codes galat link bana dega.'
+      'BASE_URL https:// se start nahi ho raha — QR codes galat link bana denge. ' +
+      '(Base_URL khali chhod dein to QR code khud request ke host se banega.)'
     );
   }
   if (process.env.JWT_SECRET === 'change-me-to-a-long-random-string' || !process.env.JWT_SECRET) {

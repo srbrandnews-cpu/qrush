@@ -1,13 +1,28 @@
 'use strict';
 
 const QRCode = require('qrcode');
+const { currentOrigin } = require('./request-context');
 
 /**
- * Public base URL that a phone reaches this server on (set in .env, e.g.
- * https://order.myhotel.com or http://192.168.1.5:3000 for local LAN use).
+ * Public base URL that a phone reaches this server on.
+ *
+ * Priority:
+ *   1. BASE_URL from the environment (explicit intent: a fixed custom domain)
+ *   2. the origin of the request being served (no configuration needed — this
+ *      is what makes QR codes correct on any hostname automatically)
+ *   3. localhost, for calls outside a request (scripts, tests)
+ *
+ * Because of (2), a deployment no longer breaks its QR codes when the URL
+ * changes; BASE_URL is only needed if you want to force one specific domain.
  */
 function baseUrl() {
-  return (process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '');
+  const configured = (process.env.BASE_URL || '').trim();
+  if (configured) return configured.replace(/\/+$/, '');
+
+  const origin = currentOrigin();
+  if (origin) return origin.replace(/\/+$/, '');
+
+  return `http://localhost:${process.env.PORT || 3000}`;
 }
 
 /**

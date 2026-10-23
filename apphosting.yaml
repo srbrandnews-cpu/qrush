@@ -7,11 +7,20 @@
 # ─────────────────────────────────────────────────────────────
 
 runConfig:
-  # Keep 1 instance warm so the first order of the day is not slow.
-  # (Costs a little more, but a restaurant's lunch rush is not the time to
-  #  wait for a cold start.) Set minInstances to 0 to save money.
-  minInstances: 1
-  maxInstances: 10
+  # Scale to zero when nobody is using the app. A trial with 1-2 restaurants
+  # should not pay for an idle server; the first request of the day may take a
+  # couple of seconds longer (cold start).
+  #
+  # If you ever want an always-warm server, set minInstances: 1 — but note that
+  # a single always-on instance costs roughly $50/month on Cloud Run.
+  minInstances: 0
+
+  # ⚠️ Keep this at 1 unless you add a shared adapter for Socket.IO
+  # (e.g. @socket.io/redis-adapter). With 2+ instances, a customer's order can
+  # land on instance A while the kitchen screen is connected to instance B, and
+  # the live update would be lost. One instance is plenty for a small trial.
+  maxInstances: 1
+
   concurrency: 80
   cpu: 1
   memoryMiB: 512
@@ -27,13 +36,14 @@ runConfig:
     - variable: PGPOOL_MAX
       value: 10
 
-    # Public URL used to build the QR codes. Change it to your own domain.
-    - variable: BASE_URL
-      value: https://YOUR-PROJECT.web.app
-
-    # Support address for web-push.
+    # Support address used by web-push. Change it to your own email.
     - variable: VAPID_SUBJECT
       value: mailto:support@yourdomain.com
+
+    # NOTE: BASE_URL is intentionally not set.
+    # QR codes automatically use the hostname the request arrived on, so they
+    # stay correct on the default *.hosted.app URL and on any custom domain.
+    # Only set BASE_URL if you want to force one specific domain.
 
 # Optional: mount a Cloud Storage volume if you want a persistent filesystem.
 # (Not needed for TableNest — all persistent data lives in PostgreSQL.)

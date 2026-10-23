@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
+    "build": "node -e \"process.exit(0)\"",
     "tunnel": "node scripts/start-tunnel.js",
     "setup:domain": "node scripts/setup-domain.js",
     "dev": "nodemon server.js",
@@ -29,6 +30,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
