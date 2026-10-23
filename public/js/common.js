@@ -3,13 +3,43 @@
    ========================================================================== */
 
 const TN = (() => {
-  const TOKEN_KEY = 'tn_token';
+  const LEGACY_KEY = 'tn_token';
   const DEVICE_KEY = 'tn_device';
 
+  // One token per staff role, so owner/kitchen/cashier can stay logged in at
+  // the same time on one browser (very handy while testing on a laptop).
+  const ROLE_TOKEN_KEYS = {
+    owner: 'tn_token_owner',
+    kitchen: 'tn_token_kitchen',
+    cashier: 'tn_token_cashier',
+  };
+
+  /** Which staff screen is this? Login and the customer menu have no role. */
+  function pageRole() {
+    const p = location.pathname.replace(/\/+$/, '') || '/';
+    if (p === '/admin' || p.startsWith('/admin/')) return 'owner';
+    if (p === '/kitchen' || p.startsWith('/kitchen/')) return 'kitchen';
+    if (p === '/cashier' || p.startsWith('/cashier/')) return 'cashier';
+    return null;
+  }
+
   /* ------------------------------- storage ------------------------------- */
-  const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
-  const setToken = (t) => localStorage.setItem(TOKEN_KEY, t || '');
-  const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+  const getToken = () => {
+    const role = pageRole();
+    const key = role ? ROLE_TOKEN_KEYS[role] : LEGACY_KEY;
+    return localStorage.getItem(key) || '';
+  };
+
+  const setToken = (t, role) => {
+    const key = ROLE_TOKEN_KEYS[role || pageRole()] || LEGACY_KEY;
+    localStorage.setItem(key, t || '');
+  };
+
+  const clearToken = () => {
+    const role = pageRole();
+    if (role) localStorage.removeItem(ROLE_TOKEN_KEYS[role]);
+    localStorage.removeItem(LEGACY_KEY);
+  };
 
   /**
    * A stable anonymous id for this phone/browser. Lets the server target a

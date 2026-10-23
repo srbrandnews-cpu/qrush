@@ -90,7 +90,7 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     const token = signToken(user);
-    res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', maxAge: 12 * 60 * 60 * 1000 });
+    // The client keeps the token per role in localStorage; no shared cookie.
     res.json({ token, user: publicUser(user), tenant: await getTenant(user.tenant_id) });
   } catch (err) {
     next(err);

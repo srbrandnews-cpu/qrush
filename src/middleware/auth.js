@@ -22,11 +22,12 @@ function verifyToken(token) {
   }
 }
 
-// Pull token from `Authorization: Bearer ...` or the auth cookie.
+// Pull token from `Authorization: Bearer ...`. The cookie is deliberately not
+// used: it is shared by every screen on the browser, so it would leak one
+// role's session into another role's tab.
 function extractToken(req) {
   const header = req.headers.authorization || '';
   if (header.startsWith('Bearer ')) return header.slice(7);
-  if (req.cookies && req.cookies[COOKIE_NAME]) return req.cookies[COOKIE_NAME];
   return null;
 }
 

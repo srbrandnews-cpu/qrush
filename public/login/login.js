@@ -34,7 +34,8 @@
   const HOME = { owner: '/admin', kitchen: '/kitchen', cashier: '/cashier' };
 
   async function afterAuth(data) {
-    TN.setToken(data.token);
+    // Store under the role's own slot so other screens stay logged in.
+    TN.setToken(data.token, data.user.role);
     TN.toast('Welcome, ' + data.user.name, 'success');
     window.location.href = HOME[data.user.role] || '/admin';
   }
