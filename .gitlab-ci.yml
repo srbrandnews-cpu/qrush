@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────
+# TableNest · GitLab CI
+#
+# Two small jobs, both free on GitLab.com for public projects:
+#
+#   1. render-deploy  → on every push to `main`, asks Render to rebuild.
+#                       (Render cannot auto-deploy from a plain public
+#                       repo URL, so this acts as the webhook.)
+#
+#   2. keepalive      → on the 10-minute pipeline schedule, pings the
+#                       app so Render's free instance never sleeps.
+#                       Render free spins down after 15 min of no traffic.
+#
+# Required CI/CD variables (Settings → CI/CD → Variables):
+#   RENDER_API_KEY      Render API key   (masked)
+#   RENDER_SERVICE_ID   srv-…            (masked)
+# ─────────────────────────────────────────────────────────────
+
+stages:
+  - deploy
+  - keepalive
+
+render-deploy:
+  stage: deploy
+  image: alpine:3.20
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - apk add --no-cache curl >/dev/null
+  script:
+    - >
+      curl -fsS -X POST
+      "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys"
+      -H "Authorization: Bearer ${RENDER_API_KEY}"
+      -H "Content-Type: application/json"
+      -d '{"clearCache":"do_not_clear"}'
+  timeout: 5m
+
+keepalive:
+  stage: keepalive
+  image: curlimages/curl:8.10.1
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - curl -fsS --max-time 60 --retry 3 --retry-delay 10 https://tablenest.onrender.com/api/health
+  timeout: 5m
