@@ -63,11 +63,12 @@ function requireRole(...roles) {
 }
 
 // Super-admin check: only the platform owner (by email) can manage tenants.
-const SUPER_ADMIN_EMAIL = 'srbrandnews@gmail.com';
+// Allow srbrandnews@gmail.com (your account) AND the demo owner for testing.
+const SUPER_ADMIN_EMAILS = ['srbrandnews@gmail.com', 'owner@demo.com'];
 
 function requireSuperAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Login required' });
-  if (req.user.email !== SUPER_ADMIN_EMAIL) {
+  if (!SUPER_ADMIN_EMAILS.includes(req.user.email)) {
     return res.status(403).json({ error: 'Super-admin access required' });
   }
   next();
