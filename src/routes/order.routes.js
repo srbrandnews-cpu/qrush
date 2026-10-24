@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { listOrders, transitionOrder, getOrderWithItems } = require('../services/orders');
+const { listOrders, transitionOrder, getOrderWithItems, getOrdersGroupedByTableAndPhone } = require('../services/orders');
 const { get, query, utcToday } = require('../config/db');
 const { OPEN_STATUSES, ORDER_STATUS } = require('../utils/constants');
 
@@ -29,6 +29,8 @@ router.get('/', async (req, res, next) => {
     next(err);
   }
 });
+
+module.exports = router;
 
 /**
  * GET /api/orders/stats -> today's numbers for the owner dashboard.
@@ -64,6 +66,8 @@ router.get('/stats', async (req, res, next) => {
   }
 });
 
+module.exports = router;
+
 async function queryByStatus(tenantId, today) {
   return query(
     `SELECT status, COUNT(*) AS count FROM orders
@@ -97,6 +101,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+module.exports = router;
+
 /**
  * POST /api/orders/:id/transition  { to: 'accepted'|'preparing'|'ready'|'served'|'paid'|'cancelled' }
  */
@@ -119,6 +125,28 @@ router.post('/:id/transition', async (req, res, next) => {
     res.json({ order });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+/**
+ * GET /api/orders/grouped-by-table-phone
+ * Returns orders grouped by table + customer_phone for separate bills view.
+ * Each group gets a display_name: "Table 1", "Table 1A", "Table 1B"...
+ */
+router.get('/grouped-by-table-phone', async (req, res, next) => {
+  try {
+    const board = req.query.board || 'open';
+    let statuses = null;
+    if (board === 'open') statuses = OPEN_STATUSES;
+    else if (board === 'closed') statuses = [ORDER_STATUS.SERVED, ORDER_STATUS.PAID, ORDER_STATUS.CANCELLED];
+
+    const groups = await getOrdersGroupedByTableAndPhone(req.user.tenant_id, {
+      statuses,
+      limit: Math.min(500, parseInt(req.query.limit, 10) || 100),
+    });
+    res.json({ groups });
+  } catch (err) {
     next(err);
   }
 });

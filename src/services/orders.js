@@ -204,6 +204,93 @@ async function getCustomerOrder(tableToken, orderId) {
   return decorateForCustomer(order);
 }
 
+/**
+ * Get orders grouped by table + customer_phone (for "separate bills per phone").
+ * Returns array of { table_id, table_name, phone, display_name, orders: [...] }
+ * display_name = "Table 1" or "Table 1A" / "Table 1B" when multiple phones on same table.
+ */
+async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, limit = 100 } = {}) {
+  const where = ['o.tenant_id = ?'];
+  const params = [tenantId];
+
+  if (statuses && statuses.length) {
+    where.push(`o.status IN (${statuses.map(() => '?').join(',')})`);
+    params.push(...statuses);
+  }
+
+  // Get all relevant orders with table info and customer_phone
+  const rows = await query(
+    `SELECT o.*, t.name AS table_name, t.qr_token AS table_token
+       FROM orders o
+       JOIN tables t ON t.id = o.table_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY o.table_id, o.customer_phone, o.id DESC
+      LIMIT ?`,
+    [...params, limit]
+  );
+
+  // Attach items
+  if (rows.length) {
+    const ids = rows.map((r) => r.id);
+    const itemRows = await query(
+      `SELECT order_id, id, item_id, name, price, qty, is_veg, notes
+         FROM order_items WHERE order_id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
+      ids
+    );
+    const byOrder = new Map();
+    for (const it of itemRows) {
+      it.line_total = round2(it.price * it.qty);
+      if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []);
+      byOrder.get(it.order_id).push(it);
+    }
+    for (const r of rows) r.items = byOrder.get(r.id) || [];
+  }
+
+  // Group by table_id + customer_phone
+  const groups = new Map();
+  for (const o of rows) {
+    const key = `${o.table_id}|${o.customer_phone || 'unknown'}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        table_id: o.table_id,
+        table_name: o.table_name,
+        table_token: o.table_token,
+        phone: o.customer_phone || null,
+        orders: []
+      });
+    }
+    groups.get(key).orders.push(o);
+  }
+
+  // Assign display names: Table 1, Table 1A, Table 1B...
+  const tablePhoneCount = new Map();
+  for (const g of groups.values()) {
+    const base = g.table_name;
+    const phoneKey = g.phone || 'unknown';
+    const count = tablePhoneCount.get(base) || 0;
+    tablePhoneCount.set(base, count + 1);
+    if (count === 0) {
+      g.display_name = base; // First phone on this table = "Table 1"
+    } else {
+      const suffix = String.fromCharCode(65 + count); // A, B, C...
+      g.display_name = `${base}${suffix}`; // "Table 1A", "Table 1B"
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
+module.exports = {
+  createOrder,
+  transitionOrder,
+  getOrderWithItems,
+  getCustomerOrder,
+  getOrdersGroupedByTableAndPhone,
+  decorateForCustomer,
+  listOrders,
+  httpError,
+};
+
 /** Add the customer-facing progress helper (which step they are on). */
 function decorateForCustomer(order) {
   const stepIndex = CUSTOMER_FLOW.indexOf(order.status);
