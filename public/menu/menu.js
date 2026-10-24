@@ -42,7 +42,6 @@
       if (saved.phone) $('co-phone').value = saved.phone;
 
       showView('menu');
-      greet();
       connectSocket();
       restorePushState();
 
@@ -54,6 +53,10 @@
           showView('status');
         }
       }
+
+      // Greet only on the menu screen — someone checking their order status
+      // should not get a name popup on top of it.
+      greet(!$('view-menu').classList.contains('hidden'));
     } catch (err) {
       fail(err.message, 'Menu unavailable');
     }
@@ -179,13 +182,13 @@
   }
 
   /** Greet the guest; ask for the name only when we do not know it yet. */
-  function greet() {
+  function greet(allowAskName = true) {
     const saved = savedCustomer();
     if (saved.name) {
       TN.toast(`Welcome, ${saved.name}! 👋`, 'success');
       return;
     }
-    if (sessionStorage.getItem('tn_welcome_skipped')) {
+    if (!allowAskName || sessionStorage.getItem('tn_welcome_skipped')) {
       TN.toast(`Welcome to ${state.restaurant.name}! 👋`, 'success');
       return;
     }
@@ -420,7 +423,10 @@
     });
   }
 
-  $('btn-back-menu').addEventListener('click', () => showView('menu'));
+  $('btn-back-menu').addEventListener('click', () => {
+    showView('menu');
+    if (!savedCustomer().name) greet();
+  });
 
   /* ============================== SOCKET ================================ */
 
