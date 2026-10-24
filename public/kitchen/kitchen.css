@@ -85,3 +85,11 @@ body { background: #0f172a; color: #e2e8f0; }
 @media (max-width: 720px) {
   .board { grid-auto-columns: 82vw; }
 }
+
+/* New-order alert sound picker */
+.sound-pick {
+  background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+  border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600;
+  cursor: pointer; max-width: 150px;
+}
+.sound-pick:focus { outline: 2px solid #38bdf8; outline-offset: 1px; }

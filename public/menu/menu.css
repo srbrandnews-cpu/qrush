@@ -154,3 +154,20 @@ body { background: #fff; overscroll-behavior-y: contain; }
 .celebrate h2 { font-size: 30px; margin-top: 12px; }
 .celebrate p { font-size: 16px; opacity: .9; margin-top: 8px; }
 .celebrate button { margin-top: 26px; background: #fff; color: var(--green); border: none; padding: 13px 28px; border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer; }
+
+/* ------------------------------- Welcome -------------------------------- */
+.welcome {
+  position: fixed; inset: 0; z-index: 80; display: flex; align-items: center;
+  justify-content: center; padding: 20px; background: rgba(15,23,42,.55);
+}
+.welcome-card {
+  width: 100%; max-width: 360px; background: #fff; border-radius: 20px;
+  padding: 26px 22px 18px; text-align: center;
+  box-shadow: 0 24px 60px rgba(15,23,42,.28);
+  animation: welcome-pop .22s ease-out;
+}
+@keyframes welcome-pop { from { transform: scale(.94); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.welcome-emoji { font-size: 44px; line-height: 1; }
+.welcome-card h2 { margin: 12px 0 4px; font-size: 22px; }
+.welcome-card .input { margin: 16px 0 10px; text-align: center; font-size: 17px; }
+.welcome-card .btn { margin-bottom: 6px; }

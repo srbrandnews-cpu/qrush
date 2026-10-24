@@ -42,6 +42,7 @@
       if (saved.phone) $('co-phone').value = saved.phone;
 
       showView('menu');
+      greet();
       connectSocket();
       restorePushState();
 
@@ -172,8 +173,45 @@
   }
 
   function rememberCustomer(name, phone) {
-    try { localStorage.setItem(CUST_KEY, JSON.stringify({ name, phone })); } catch (_) { /* private mode */ }
+    const prev = savedCustomer();
+    const next = { name: name || prev.name || '', phone: phone || prev.phone || '' };
+    try { localStorage.setItem(CUST_KEY, JSON.stringify(next)); } catch (_) { /* private mode */ }
   }
+
+  /** Greet the guest; ask for the name only when we do not know it yet. */
+  function greet() {
+    const saved = savedCustomer();
+    if (saved.name) {
+      TN.toast(`Welcome, ${saved.name}! 👋`, 'success');
+      return;
+    }
+    if (sessionStorage.getItem('tn_welcome_skipped')) {
+      TN.toast(`Welcome to ${state.restaurant.name}! 👋`, 'success');
+      return;
+    }
+    $('w-title').textContent = `Welcome to ${state.restaurant.name}!`;
+    $('welcome').classList.remove('hidden');
+    setTimeout(() => $('w-name').focus(), 250);
+  }
+
+  function closeWelcome() { $('welcome').classList.add('hidden'); }
+
+  $('w-go').addEventListener('click', () => {
+    const name = $('w-name').value.trim();
+    if (!name) { $('w-name').focus(); TN.toast('Apna naam likhein', 'error'); return; }
+    rememberCustomer(name);
+    $('co-name').value = name;
+    closeWelcome();
+    TN.toast(`Welcome, ${name}! 👋`, 'success');
+  });
+
+  $('w-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('w-go').click(); });
+
+  $('w-skip').addEventListener('click', () => {
+    sessionStorage.setItem('tn_welcome_skipped', '1');
+    closeWelcome();
+    TN.toast(`Welcome to ${state.restaurant.name}! 👋`, 'success');
+  });
 
   function digitsOnly(value) {
     return String(value || '').replace(/\D/g, '');
@@ -299,7 +337,7 @@
       await refreshOrders();
       renderStatus();
       showView('status');
-      TN.toast(`Order #${res.order.order_no} placed!`, 'success');
+      TN.toast('Order placed! Kitchen ko bhej diya ✅', 'success');
     } catch (err) {
       TN.toast(err.message, 'error');
     } finally {
@@ -358,7 +396,7 @@
 
       card.innerHTML = `
         <div class="order-card-head ${isReady ? 'ready-flash' : ''}">
-          <span class="no">Order #${order.order_no}</span>
+          <span class="no">Aapka order</span>
           <span class="badge ${order.status}">${order.status_label || order.status}</span>
         </div>
         <div class="big-status">
@@ -412,7 +450,7 @@
     el.className = 'celebrate';
     el.innerHTML = `
       <div class="big">🎉🍽️</div>
-      <h2>Order #${order.order_no} ready hai!</h2>
+      <h2>Aapka order ready hai! 🎉</h2>
       <p>Table ${order.table_name} par serve ke liye taiyar. Server aa raha hai.</p>
       <button>Thik hai</button>`;
     el.querySelector('button').addEventListener('click', () => el.remove());

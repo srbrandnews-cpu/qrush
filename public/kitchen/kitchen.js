@@ -17,6 +17,24 @@
   let audioCtx = null;
 
   /* ----------------------------- audio alert ----------------------------- */
+  /* Every kitchen can pick the alert that cuts through its own noise level.
+     All sounds are synthesised with Web Audio, so no files to download. */
+  const SOUNDS = {
+    classic:    { label: 'Classic',       type: 'sine',     notes: [{ f: 880, t: 0, d: .16 }, { f: 1320, t: .18, d: .16 }] },
+    chime:      { label: 'Chime',         type: 'sine',     notes: [{ f: 523, t: 0, d: .14 }, { f: 659, t: .16, d: .14 }, { f: 784, t: .32, d: .26 }] },
+    doorbell:   { label: 'Doorbell',      type: 'sine',     notes: [{ f: 659, t: 0, d: .30 }, { f: 523, t: .34, d: .42 }] },
+    triple:     { label: 'Triple beep',   type: 'square',   notes: [{ f: 1000, t: 0, d: .07 }, { f: 1000, t: .12, d: .07 }, { f: 1000, t: .24, d: .07 }] },
+    urgent:     { label: 'Urgent',        type: 'square',   notes: [{ f: 1200, t: 0, d: .08 }, { f: 1200, t: .12, d: .08 }, { f: 1200, t: .24, d: .08 }, { f: 1200, t: .36, d: .14 }] },
+    dingdong:   { label: 'Ding dong',     type: 'triangle', notes: [{ f: 988, t: 0, d: .26 }, { f: 784, t: .30, d: .36 }] },
+    bell:       { label: 'Bell',          type: 'sine',     notes: [{ f: 1046, t: 0, d: .42 }, { f: 1568, t: .03, d: .50 }] },
+    buzz:       { label: 'Buzz',          type: 'sawtooth', notes: [{ f: 170, t: 0, d: .28 }, { f: 170, t: .34, d: .28 }], volume: .22 },
+    sweep:      { label: 'Rising sweep',  type: 'sine',     notes: [{ f: 420, t: 0, d: .40, to: 1200 }, { f: 1200, t: .42, d: .18 }] },
+    train:      { label: 'Train whistle', type: 'triangle', notes: [{ f: 740, t: 0, d: .32 }, { f: 740, t: .44, d: .32 }] },
+  };
+  const SOUND_KEY = 'tn_kitchen_sound';
+  let soundName = localStorage.getItem(SOUND_KEY) || 'classic';
+  if (!SOUNDS[soundName]) soundName = 'classic';
+
   function ensureAudio() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -25,25 +43,47 @@
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   }
 
-  function beep() {
-    if (!soundOn) return;
+  function playSound(name) {
+    const profile = SOUNDS[name] || SOUNDS.classic;
     ensureAudio();
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
-    // Two rising notes = "new order".
-    [[880, 0], [1320, 0.18]].forEach(([freq, t]) => {
+    const volume = profile.volume || 0.35;
+
+    profile.notes.forEach((n) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, now + t);
-      gain.gain.exponentialRampToValueAtTime(0.35, now + t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.16);
+      osc.type = profile.type || 'sine';
+      osc.frequency.setValueAtTime(n.f, now + n.t);
+      if (n.to) osc.frequency.exponentialRampToValueAtTime(n.to, now + n.t + n.d);
+      gain.gain.setValueAtTime(0.0001, now + n.t);
+      gain.gain.exponentialRampToValueAtTime(volume, now + n.t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
       osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(now + t); osc.stop(now + t + 0.2);
+      osc.start(now + n.t); osc.stop(now + n.t + n.d + 0.02);
     });
   }
+
+  function beep() {
+    if (!soundOn) return;
+    playSound(soundName);
+  }
   document.addEventListener('click', ensureAudio, { once: true });
+
+  /** Fill the sound dropdown and remember the kitchen's choice. */
+  function initSoundPicker() {
+    const sel = $('sound-pick');
+    if (!sel) return;
+    sel.innerHTML = Object.entries(SOUNDS)
+      .map(([key, s]) => `<option value="${key}">${s.label}</option>`).join('');
+    sel.value = soundName;
+    sel.addEventListener('change', () => {
+      soundName = sel.value;
+      try { localStorage.setItem(SOUND_KEY, soundName); } catch (_) { /* private mode */ }
+      if (!soundOn) toggleSound(true);
+      playSound(soundName); // instant preview
+    });
+  }
 
   /* ------------------------------- loading ------------------------------- */
   async function load() {
@@ -52,6 +92,7 @@
     if (role === 'cashier') { window.location.href = '/cashier'; return; }
     $('r-name').textContent = data.tenant ? data.tenant.name : '';
     $('me').textContent = (data.user.name || 'K').charAt(0).toUpperCase();
+    initSoundPicker();
     await refresh();
     connect();
     setInterval(tickTimers, 20000);
@@ -183,12 +224,14 @@
   }
 
   /* --------------------------------- misc -------------------------------- */
-  $('sound').addEventListener('click', () => {
-    soundOn = !soundOn;
+  function toggleSound(on) {
+    soundOn = typeof on === 'boolean' ? on : !soundOn;
     $('sound').textContent = soundOn ? '🔔 Sound' : '🔕 Muted';
     $('sound').classList.toggle('muted-on', !soundOn);
     if (soundOn) { ensureAudio(); beep(); }
-  });
+  }
+
+  $('sound').addEventListener('click', () => toggleSound());
   $('logout').addEventListener('click', () => TN.logout());
 
   // Poll as a safety net (covers missed socket events / sleeping tabs).
