@@ -30,50 +30,13 @@ function publicUser(user) {
 
 /**
  * POST /api/auth/signup
- * Creates a restaurant (tenant) + its owner account in one step.
+ * DISABLED for public. Only super-admin can create tenants via /api/admin/tenants.
+ * Keep the route to return a clear error (avoids 404 confusion for old clients).
  */
-router.post('/signup', async (req, res, next) => {
-  try {
-    const { restaurant, name, email, password, phone } = req.body || {};
-    if (!restaurant || !name || !email || !password) {
-      return res.status(400).json({ error: 'Restaurant name, your name, email and password are required' });
-    }
-    if (String(password).length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) {
-      return res.status(400).json({ error: 'Enter a valid email address' });
-    }
-    if (await get('SELECT id FROM users WHERE email = ?', [String(email).toLowerCase()])) {
-      return res.status(409).json({ error: 'An account with this email already exists' });
-    }
-
-    const slug = await uniqueSlug(slugify(restaurant));
-    const hash = bcrypt.hashSync(String(password), 10);
-
-    const result = await transaction(async () => {
-      const t = await run(
-        'INSERT INTO tenants (name, slug, phone) VALUES (?, ?, ?)',
-        [String(restaurant).trim(), slug, phone ? String(phone).trim() : null]
-      );
-      const tenantId = t.lastInsertRowid;
-      const u = await run(
-        'INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
-        [tenantId, String(name).trim(), String(email).toLowerCase(), hash, 'owner']
-      );
-      return { tenantId, userId: u.lastInsertRowid };
-    });
-
-    const user = await get('SELECT id, tenant_id, name, email, role FROM users WHERE id = ?', [result.userId]);
-    const token = signToken(user);
-    res.status(201).json({
-      token,
-      user: publicUser(user),
-      tenant: await getTenant(result.tenantId),
-    });
-  } catch (err) {
-    next(err);
-  }
+router.post('/signup', async (req, res) => {
+  res.status(403).json({
+    error: 'Self-registration is disabled. Contact the platform administrator to onboard a new restaurant.'
+  });
 });
 
 /**

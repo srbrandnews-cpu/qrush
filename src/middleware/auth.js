@@ -62,4 +62,15 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { signToken, verifyToken, requireAuth, requireRole, COOKIE_NAME, SECRET };
+// Super-admin check: only the platform owner (by email) can manage tenants.
+const SUPER_ADMIN_EMAIL = 'srbrandnews@gmail.com';
+
+function requireSuperAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Login required' });
+  if (req.user.email !== SUPER_ADMIN_EMAIL) {
+    return res.status(403).json({ error: 'Super-admin access required' });
+  }
+  next();
+}
+
+module.exports = { signToken, verifyToken, requireAuth, requireRole, requireSuperAdmin, COOKIE_NAME, SECRET };
