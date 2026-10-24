@@ -32,7 +32,6 @@ app.use('/api/menu', require('./src/routes/menu.routes'));
 app.use('/api/tables', require('./src/routes/table.routes'));
 app.use('/api/orders', require('./src/routes/order.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
-app.use('/api/super-admin', require('./src/routes/admin.tenants.routes')); // super-admin only
 app.use('/api/push', require('./src/routes/push.routes'));
 app.use('/api/public', require('./src/routes/public.routes'));
 
