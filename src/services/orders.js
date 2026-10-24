@@ -210,6 +210,10 @@ async function getCustomerOrder(tableToken, orderId) {
  * display_name = "Table 1" or "Table 1A" / "Table 1B" when multiple phones on same table.
  */
 async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, limit = 100 } = {}) {
+  // Ensure limit is a valid integer
+  const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 100;
+  const finalLimit = Math.min(500, safeLimit);
+
   const where = ['o.tenant_id = ?'];
   const params = [tenantId];
 
@@ -226,7 +230,7 @@ async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, limi
       WHERE ${where.join(' AND ')}
       ORDER BY o.table_id, o.customer_phone, o.id DESC
       LIMIT ?`,
-    [...params, limit]
+    [...params, finalLimit]
   );
 
   // Attach items
