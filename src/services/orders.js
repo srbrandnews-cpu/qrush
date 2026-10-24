@@ -210,9 +210,16 @@ async function getCustomerOrder(tableToken, orderId) {
  * display_name = "Table 1" or "Table 1A" / "Table 1B" when multiple phones on same table.
  */
 async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, limit = 100 } = {}) {
-  // Ensure limit is a valid integer
-  const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 100;
-  const finalLimit = Math.min(500, safeLimit);
+  // Robust limit validation - handle all edge cases
+  let finalLimit = 100;
+  try {
+    const parsed = parseInt(limit, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      finalLimit = Math.min(500, parsed);
+    }
+  } catch (_) {
+    finalLimit = 100;
+  }
 
   const where = ['o.tenant_id = ?'];
   const params = [tenantId];
