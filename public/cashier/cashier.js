@@ -1,14 +1,14 @@
-/* Cash counter — serve orders and collect payments. */
+/* Cash counter — one bill per table + customer phone, serve and collect. */
 
 (() => {
   const $ = (id) => document.getElementById(id);
-  const STATUS = ['placed', 'accepted', 'preparing', 'ready', 'served', 'paid', 'cancelled'];
+  const CLOSED = ['paid', 'cancelled'];
 
   let orders = [];
   let currency = '₹';
   let tab = 'active';
   let role = 'cashier';
-  let paying = null;   // order currently in the payment modal
+  let paying = null;   // bill currently in the payment modal
   let method = 'cash';
 
   /* --------------------------------- load -------------------------------- */
@@ -53,63 +53,113 @@
     return sql && sql.slice(0, 10) === new Date().toISOString().slice(0, 10);
   }
 
-  /* -------------------------------- render ------------------------------- */
-  function visible() {
-    if (tab === 'active') return orders.filter((o) => o.status === 'ready' || o.status === 'served');
-    if (tab === 'paid') return orders.filter((o) => o.status === 'paid');
-    return orders;
+  /* -------------------------------- bills -------------------------------- */
+  /* Orders from the same table AND same phone make one bill. A second phone
+     on the same table is a separate bill ("Table 1" vs "Table 1A"). */
+
+  function buildBills(list) {
+    const map = new Map();
+    for (const o of list) {
+      const key = `${o.table_id}|${o.bill_key || 'order:' + o.id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          table_name: o.table_name,
+          label: o.bill_label || o.table_name,
+          phone: o.customer_phone || null,
+          name: o.customer_name || null,
+          orders: [],
+          total: 0,
+          latestId: o.id,
+        });
+      }
+      const bill = map.get(key);
+      bill.orders.push(o);
+      bill.total = Math.round((bill.total + Number(o.total || 0)) * 100) / 100;
+      if (!bill.phone && o.customer_phone) bill.phone = o.customer_phone;
+      if (!bill.name && o.customer_name) bill.name = o.customer_name;
+      if (o.id > bill.latestId) bill.latestId = o.id;
+    }
+    return [...map.values()];
   }
 
+  function billsForTab() {
+    const bills = buildBills(orders);
+    if (tab === 'active') {
+      return bills.filter((b) => b.orders.some((o) => o.status === 'ready' || o.status === 'served'));
+    }
+    if (tab === 'paid') {
+      return bills.filter((b) =>
+        b.orders.some((o) => o.status === 'paid') && b.orders.every((o) => CLOSED.includes(o.status)));
+    }
+    return bills;
+  }
+
+  /* -------------------------------- render ------------------------------- */
   function render() {
     const host = $('list');
     host.innerHTML = '';
-    const list = visible().sort((a, b) => b.id - a.id);
+    const bills = billsForTab().sort((a, b) => b.latestId - a.latestId);
 
-    list.forEach((o) => host.appendChild(card(o)));
-    $('empty').classList.toggle('hidden', list.length > 0);
+    bills.forEach((bill) => host.appendChild(card(bill)));
+    $('empty').classList.toggle('hidden', bills.length > 0);
   }
 
-  function card(o) {
+  function card(bill) {
     const el = document.createElement('div');
     el.className = 'ccard';
-    const mins = TN.minutesSince(o.created_at);
+
+    const inBill = bill.orders.slice().sort((a, b) => a.id - b.id);
+    const ready = inBill.filter((o) => o.status === 'ready');
+    const served = inBill.filter((o) => o.status === 'served');
+    const mins = TN.minutesSince(inBill[0].created_at);
 
     let actions = '';
-    if (o.status === 'ready' && role !== 'kitchen') {
-      actions = `<button class="btn btn-primary" data-act="served">🍽️ Mark served</button>`;
-    } else if (o.status === 'served') {
-      actions = `<button class="btn btn-success" data-act="pay">💰 Collect ${TN.fmtMoney(o.total, currency)}</button>`;
+    if (ready.length) {
+      actions += `<button class="btn btn-primary" data-act="serve">🍽️ Mark served</button>`;
+    }
+    if (served.length) {
+      const due = Math.round(served.reduce((s, o) => s + Number(o.total || 0), 0) * 100) / 100;
+      actions += `<button class="btn btn-success" data-act="pay">💰 Collect ${TN.fmtMoney(due, currency)}</button>`;
     }
 
-    let billRows = o.items.map((it) =>
-      `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`).join('');
-    billRows += `<div class="row-line total"><span>Total</span><span>${TN.fmtMoney(o.total, currency)}</span></div>`;
+    const billRows = inBill.map((o) => {
+      const items = o.items.map((it) =>
+        `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`).join('');
+      return `<div class="bill-order">
+          <div class="row-line tiny muted"><span>#${o.order_no} • ${o.status}</span><span></span></div>
+          ${items}
+        </div>`;
+    }).join('');
+
+    const badges = [...new Set(inBill.map((o) => o.status))]
+      .map((s) => `<span class="badge ${s}">${s}</span>`).join('');
 
     el.innerHTML = `
       <div class="ccard-head">
-        <span class="ccard-no">#${o.order_no}</span>
-        <span style="display:flex;gap:8px;align-items:center">
-          <span class="ccard-table">${TN.escapeHtml(o.table_name)}</span>
-          <span class="badge ${o.status}">${o.status}</span>
-        </span>
+        <span class="ccard-no">${TN.escapeHtml(bill.label)}</span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${badges}</span>
       </div>
       <div class="ccard-body">
         <div class="ccard-meta">
           <span>⏱ ${mins} min</span>
-          ${o.customer_name ? `<span>👤 ${TN.escapeHtml(o.customer_name)}</span>` : ''}
-          ${o.payment_status === 'paid' && o.payment_method ? `<span class="paid-tag">✓ ${o.payment_method.toUpperCase()}</span>` : ''}
+          ${bill.name ? `<span>👤 ${TN.escapeHtml(bill.name)}</span>` : ''}
+          <span>📞 ${bill.phone ? TN.escapeHtml(bill.phone) : '—'}</span>
+          ${inBill.some((o) => o.payment_status === 'paid' && o.payment_method)
+            ? `<span class="paid-tag">✓ ${inBill.filter((o) => o.payment_method).pop().payment_method.toUpperCase()}</span>` : ''}
         </div>
-        <div class="bill">${billRows}</div>
+        <div class="bill">${billRows}
+          <div class="row-line total"><span>Bill total</span><span>${TN.fmtMoney(bill.total, currency)}</span></div>
+        </div>
       </div>
       ${actions ? `<div class="ccard-actions">${actions}</div>` : ''}`;
 
-    const actBtn = el.querySelector('[data-act]');
-    if (actBtn) {
-      actBtn.addEventListener('click', () => {
-        if (actBtn.dataset.act === 'served') advance(o.id, 'served');
-        else openPay(o);
-      });
-    }
+    const serveBtn = el.querySelector('[data-act="serve"]');
+    if (serveBtn) serveBtn.addEventListener('click', () => serveAll(ready, serveBtn));
+
+    const payBtn = el.querySelector('[data-act="pay"]');
+    if (payBtn) payBtn.addEventListener('click', () => openPay(bill));
+
     return el;
   }
 
@@ -124,14 +174,30 @@
     }
   }
 
+  /** Mark every ready order in the bill as served. */
+  async function serveAll(readyOrders, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Serving…';
+    for (const o of readyOrders) await advance(o.id, 'served');
+    TN.toast('Bill served ✅', 'success');
+    btn.disabled = false;
+    btn.textContent = '🍽️ Mark served';
+  }
+
   /* ------------------------------ payment modal -------------------------- */
-  function openPay(o) {
-    paying = o;
+  function openPay(bill) {
+    paying = bill;
     method = 'cash';
-    $('pm-order').textContent = `#${o.order_no} • ${o.table_name}`;
-    $('pm-bill').innerHTML = o.items.map((it) =>
-      `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`).join('')
-      + `<div class="row-line total"><span>Amount due</span><span>${TN.fmtMoney(o.total, currency)}</span></div>`;
+
+    const due = bill.orders.filter((o) => o.status === 'served');
+    const amount = Math.round(due.reduce((s, o) => s + Number(o.total || 0), 0) * 100) / 100;
+    const lines = due.flatMap((o) => o.items.map((it) =>
+      `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`
+    )).join('');
+
+    $('pm-order').textContent = `${bill.label} • ${bill.phone || 'no phone'}`;
+    $('pm-bill').innerHTML = lines
+      + `<div class="row-line total"><span>Amount due</span><span>${TN.fmtMoney(amount, currency)}</span></div>`;
     document.querySelectorAll('.pm').forEach((b) => b.classList.toggle('active', b.dataset.m === 'cash'));
     $('pay-modal').classList.remove('hidden');
   }
@@ -150,16 +216,27 @@
 
   $('pm-confirm').addEventListener('click', async () => {
     if (!paying) return;
-    const id = paying.id;
+    const due = paying.orders.filter((o) => o.status === 'served');
+    if (!due.length) return closePay();
+
     const btn = $('pm-confirm');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Saving…';
     try {
-      await advance(id, 'paid', { payment_method: method });
+      // One bill may hold several orders — settle them together.
+      for (const o of due) {
+        await TN.api(`/api/orders/${o.id}/transition`, { body: { to: 'paid', payment_method: method } });
+      }
+      await refresh();
+      await loadStats();
       closePay();
       TN.toast('Payment collected ✅', 'success');
-    } catch (_) { /* toast shown in advance */ }
-    finally { btn.disabled = false; btn.textContent = 'Confirm payment'; }
+    } catch (err) {
+      TN.toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirm payment';
+    }
   });
 
   /* --------------------------------- tabs -------------------------------- */

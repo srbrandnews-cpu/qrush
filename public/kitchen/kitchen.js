@@ -114,10 +114,11 @@
     el.innerHTML = `
       <div class="ocard-head">
         <span class="ocard-no">#${o.order_no}</span>
-        <span class="ocard-table">${TN.escapeHtml(o.table_name)}</span>
+        <span class="ocard-table">${TN.escapeHtml(o.bill_label || o.table_name)}</span>
       </div>
       <div class="ocard-time ${late ? 'late' : ''}">⏱ <span data-timer="${o.created_at}">${mins} min ago</span></div>
       ${o.customer_name ? `<div class="ocard-cust">👤 ${TN.escapeHtml(o.customer_name)}</div>` : ''}
+      ${o.customer_phone ? `<div class="ocard-cust">📞 ${TN.escapeHtml(o.customer_phone)}</div>` : ''}
       <div class="ocard-items">
         ${o.items.map((it) => `
           <div class="oitem">

@@ -35,6 +35,12 @@
 
       renderCats();
       renderMenu();
+
+      // Returning customer: keep their name/number handy (one less typing).
+      const saved = savedCustomer();
+      if (saved.name) $('co-name').value = saved.name;
+      if (saved.phone) $('co-phone').value = saved.phone;
+
       showView('menu');
       connectSocket();
       restorePushState();
@@ -157,6 +163,22 @@
   function cartList() { return [...state.cart.values()]; }
   function cartCount() { return cartList().reduce((s, l) => s + l.qty, 0); }
 
+  /* --------------------------- customer details -------------------------- */
+
+  const CUST_KEY = 'tn_customer';
+
+  function savedCustomer() {
+    try { return JSON.parse(localStorage.getItem(CUST_KEY) || '{}') || {}; } catch (_) { return {}; }
+  }
+
+  function rememberCustomer(name, phone) {
+    try { localStorage.setItem(CUST_KEY, JSON.stringify({ name, phone })); } catch (_) { /* private mode */ }
+  }
+
+  function digitsOnly(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+
   function subtotal() {
     return cartList().reduce((s, l) => s + l.item.price * l.qty, 0);
   }
@@ -240,6 +262,15 @@
 
   $('place-order').addEventListener('click', async () => {
     if (!state.cart.size) return;
+
+    const name = $('co-name').value.trim();
+    const phone = digitsOnly($('co-phone').value);
+    if (phone.length < 10) {
+      TN.toast('Mobile number daalein — isi number se bill banega', 'error');
+      $('co-phone').focus();
+      return;
+    }
+
     const btn = $('place-order');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Placing order…';
@@ -253,12 +284,14 @@
       const payload = {
         table: tableToken,
         deviceId: TN.deviceId(),
-        customerName: $('co-name').value.trim() || null,
+        customerName: name || null,
+        customerPhone: phone,
         notes: $('co-notes').value.trim() || null,
         items: cartList().map(({ item, qty }) => ({ item_id: item.id, qty })),
       };
       const res = await TN.api('/api/public/orders', { body: payload, noRedirect: true });
 
+      rememberCustomer(name, phone);
       state.cart.clear();
       updateCartBar();
       $('checkout-sheet').classList.add('hidden');

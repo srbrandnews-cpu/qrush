@@ -112,7 +112,9 @@
     $('live-orders').innerHTML = orders.length
       ? orders.map((o) => `<div class="live-row">
           <span class="no">#${o.order_no}</span>
-          <span class="tbl">${esc(o.table_name)}</span>
+          <span class="tbl">${esc(o.bill_label || o.table_name)}</span>
+          ${o.customer_phone ? `<span class="tiny muted">📞 ${esc(o.customer_phone)}</span>` : ''}
+          ${o.customer_name ? `<span class="tiny muted">👤 ${esc(o.customer_name)}</span>` : ''}
           <span class="badge ${o.status}">${o.status}</span>
           <span class="amt">${TN.fmtMoney(o.total, currency)}</span>
         </div>`).join('')

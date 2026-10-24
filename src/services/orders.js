@@ -1,7 +1,7 @@
 'use strict';
 
 const { query, get, run, transaction, utcNow } = require('../config/db');
-const { ORDER_STATUS, TRANSITIONS, TRANSITION_ROLE, CUSTOMER_FLOW, STATUS_LABEL } = require('../utils/constants');
+const { ORDER_STATUS, OPEN_STATUSES, TRANSITIONS, TRANSITION_ROLE, CUSTOMER_FLOW, STATUS_LABEL } = require('../utils/constants');
 const { emitOrderUpdate } = require('../realtime/socket');
 const notify = require('./notify');
 
@@ -31,6 +31,84 @@ function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 }
 
+/* ---------------------------------------------------------------------------
+ * Bills. One bill = one table + one customer phone. Two different phones on
+ * the same table are two separate bills, shown as "Table 1", "Table 1A",
+ * "Table 1B" ... (the letter marks the 2nd, 3rd ... open bill on that table).
+ * ------------------------------------------------------------------------- */
+
+// A bill stays open while any of its orders is active (served = still unpaid).
+const BILL_ACTIVE_STATUSES = [...OPEN_STATUSES, ORDER_STATUS.SERVED];
+
+/** Stable identity for a bill: the phone if we have one, else the device. */
+function billKey(order) {
+  if (order.customer_phone) return `phone:${order.customer_phone}`;
+  if (order.device_id) return `device:${order.device_id}`;
+  return `order:${order.id}`;
+}
+
+/** 0 -> "", 1 -> "A", 26 -> "Z", 27 -> "AA" (Excel-style suffixes). */
+function billSuffix(index) {
+  let n = index;
+  let s = '';
+  while (n > 0) {
+    n -= 1;
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
+}
+
+/** Canonical phone shape so "98765 43210" and "9876543210" match. */
+function cleanPhone(value) {
+  if (value === null || value === undefined) return null;
+  const cleaned = String(value).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+  return cleaned || null;
+}
+
+/**
+ * Labels for every bill still open in this restaurant. Recomputed from live
+ * orders, so a label is free again once its bill is paid and closed.
+ */
+async function getActiveBillLabels(tenantId) {
+  const rows = await query(
+    `SELECT o.id, o.table_id, o.customer_phone, o.device_id, t.name AS table_name
+       FROM orders o
+       JOIN tables t ON t.id = o.table_id
+      WHERE o.tenant_id = ?
+        AND o.status IN (${BILL_ACTIVE_STATUSES.map(() => '?').join(',')})
+      ORDER BY o.id ASC`,
+    [tenantId, ...BILL_ACTIVE_STATUSES]
+  );
+
+  const tables = new Map(); // table_id -> Map(bill key -> { key, firstId, table_name })
+  for (const row of rows) {
+    if (!tables.has(row.table_id)) tables.set(row.table_id, new Map());
+    const bills = tables.get(row.table_id);
+    const key = billKey(row);
+    if (!bills.has(key)) bills.set(key, { key, firstId: row.id, table_name: row.table_name });
+  }
+
+  const labels = new Map(); // `${table_id}|${bill key}` -> "Table 1A"
+  for (const [tableId, bills] of tables) {
+    const ordered = [...bills.values()].sort((a, b) => a.firstId - b.firstId);
+    ordered.forEach((bill, index) => {
+      labels.set(`${tableId}|${bill.key}`, `${bill.table_name}${billSuffix(index)}`);
+    });
+  }
+  return labels;
+}
+
+/** Attach `bill_key` + `bill_label` to orders (table name when no open bill). */
+function applyBillLabels(orders, labels) {
+  for (const order of orders) {
+    const key = billKey(order);
+    order.bill_key = key;
+    order.bill_label = labels.get(`${order.table_id}|${key}`) || order.table_name || 'Table';
+  }
+  return orders;
+}
+
 /** Next order number for a restaurant (1, 2, 3 ...). */
 async function nextOrderNo(tenantId) {
   const row = await get('SELECT MAX(order_no) AS max_no FROM orders WHERE tenant_id = ?', [tenantId]);
@@ -51,6 +129,12 @@ async function createOrder(payload) {
 
   if (!Array.isArray(items) || items.length === 0) {
     throw httpError(400, 'Cart is empty');
+  }
+
+  // The phone identifies the bill, so keep it clean and sane.
+  const phone = cleanPhone(customerPhone);
+  if (phone && phone.replace(/\D/g, '').length < 7) {
+    throw httpError(400, 'Please enter a valid phone number');
   }
 
   // Fetch + validate each menu item in one pass.
@@ -95,7 +179,7 @@ async function createOrder(payload) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tenantId, tableId, orderNo,
-        customerName || null, customerPhone || null, deviceId || null,
+        customerName || null, phone, deviceId || null,
         ORDER_STATUS.PLACED, itemCount, subtotal, gstAmount, total,
         notes ? notes.toString().slice(0, 300) : null,
       ]
@@ -205,102 +289,47 @@ async function getCustomerOrder(tableToken, orderId) {
 }
 
 /**
- * Get orders grouped by table + customer_phone (for "separate bills per phone").
- * Returns array of { table_id, table_name, phone, display_name, orders: [...] }
- * display_name = "Table 1" or "Table 1A" / "Table 1B" when multiple phones on same table.
+ * Orders grouped into bills: one bill = one table + one customer phone.
+ * Returns [{ table_id, table_name, display_name, phone, orders, total, ... }]
+ * where display_name is "Table 1" / "Table 1A" / "Table 1B" ...
  */
-async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, limit = 100 } = {}) {
-  // Robust limit validation - handle all edge cases
-  let finalLimit = 100;
-  try {
-    const parsed = parseInt(limit, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      finalLimit = Math.min(500, parsed);
-    }
-  } catch (_) {
-    finalLimit = 100;
-  }
+async function getOrdersGroupedByTableAndPhone(tenantId, { statuses = null, tableId = null, limit = 100 } = {}) {
+  const parsedLimit = parseInt(limit, 10);
+  const rows = await listOrders(tenantId, {
+    statuses,
+    tableId,
+    limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(500, parsedLimit) : 100,
+  });
 
-  const where = ['o.tenant_id = ?'];
-  const params = [tenantId];
-
-  if (statuses && statuses.length) {
-    where.push(`o.status IN (${statuses.map(() => '?').join(',')})`);
-    params.push(...statuses);
-  }
-
-  // Get all relevant orders with table info and customer_phone
-  const rows = await query(
-    `SELECT o.*, t.name AS table_name, t.qr_token AS table_token
-       FROM orders o
-       JOIN tables t ON t.id = o.table_id
-      WHERE ${where.join(' AND ')}
-      ORDER BY o.table_id, o.customer_phone, o.id DESC
-      LIMIT ?`,
-    [...params, finalLimit]
-  );
-
-  // Attach items
-  if (rows.length) {
-    const ids = rows.map((r) => r.id);
-    const itemRows = await query(
-      `SELECT order_id, id, item_id, name, price, qty, is_veg, notes
-         FROM order_items WHERE order_id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
-      ids
-    );
-    const byOrder = new Map();
-    for (const it of itemRows) {
-      it.line_total = round2(it.price * it.qty);
-      if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []);
-      byOrder.get(it.order_id).push(it);
-    }
-    for (const r of rows) r.items = byOrder.get(r.id) || [];
-  }
-
-  // Group by table_id + customer_phone
   const groups = new Map();
-  for (const o of rows) {
-    const key = `${o.table_id}|${o.customer_phone || 'unknown'}`;
+  for (const order of rows) {
+    const key = `${order.table_id}|${order.bill_key}`;
     if (!groups.has(key)) {
       groups.set(key, {
-        table_id: o.table_id,
-        table_name: o.table_name,
-        table_token: o.table_token,
-        phone: o.customer_phone || null,
-        orders: []
+        table_id: order.table_id,
+        table_name: order.table_name,
+        table_token: order.table_token,
+        bill_key: order.bill_key,
+        display_name: order.bill_label,
+        phone: order.customer_phone || null,
+        customer_name: order.customer_name || null,
+        orders: [],
+        total: 0,
+        item_count: 0,
       });
     }
-    groups.get(key).orders.push(o);
+    const group = groups.get(key);
+    group.orders.push(order);
+    group.total = round2(group.total + Number(order.total || 0));
+    group.item_count += Number(order.item_count || 0);
+    if (!group.phone && order.customer_phone) group.phone = order.customer_phone;
+    if (!group.customer_name && order.customer_name) group.customer_name = order.customer_name;
   }
 
-  // Assign display names: Table 1, Table 1A, Table 1B...
-  const tablePhoneCount = new Map();
-  for (const g of groups.values()) {
-    const base = g.table_name;
-    const phoneKey = g.phone || 'unknown';
-    const count = tablePhoneCount.get(base) || 0;
-    tablePhoneCount.set(base, count + 1);
-    if (count === 0) {
-      g.display_name = base; // First phone on this table = "Table 1"
-    } else {
-      const suffix = String.fromCharCode(65 + count); // A, B, C...
-      g.display_name = `${base}${suffix}`; // "Table 1A", "Table 1B"
-    }
-  }
-
-  return Array.from(groups.values());
+  return [...groups.values()].sort((a, b) =>
+    String(a.display_name).localeCompare(String(b.display_name), undefined, { numeric: true })
+  );
 }
-
-module.exports = {
-  createOrder,
-  transitionOrder,
-  getOrderWithItems,
-  getCustomerOrder,
-  getOrdersGroupedByTableAndPhone,
-  decorateForCustomer,
-  listOrders,
-  httpError,
-};
 
 /** Add the customer-facing progress helper (which step they are on). */
 function decorateForCustomer(order) {
@@ -362,6 +391,8 @@ async function listOrders(tenantId, { statuses = null, tableId = null, limit = 1
     }
     for (const r of rows) r.items = byOrder.get(r.id) || [];
   }
+
+  applyBillLabels(rows, await getActiveBillLabels(tenantId));
   return rows;
 }
 
@@ -376,6 +407,11 @@ module.exports = {
   transitionOrder,
   getOrderWithItems,
   getCustomerOrder,
+  getOrdersGroupedByTableAndPhone,
+  getActiveBillLabels,
+  applyBillLabels,
+  billKey,
+  cleanPhone,
   decorateForCustomer,
   listOrders,
   httpError,
