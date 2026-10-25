@@ -1,5 +1,5 @@
 /* ==========================================================================
-   TableNest — shared client helpers (used by every screen)
+   QRush — shared client helpers (used by every screen)
    ========================================================================== */
 
 const TN = (() => {

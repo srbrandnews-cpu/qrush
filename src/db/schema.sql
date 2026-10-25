@@ -1,4 +1,4 @@
--- TableNest schema (multi-tenant restaurant QR ordering)
+-- QRush schema (multi-tenant restaurant QR ordering)
 -- All business tables carry tenant_id so one DB can host many restaurants.
 
 PRAGMA foreign_keys = ON;

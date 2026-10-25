@@ -33,7 +33,7 @@ function ensureVapidKeys() {
   }
 
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:support@tablenest.app',
+    process.env.VAPID_SUBJECT || 'mailto:support@qrush.in',
     publicKey,
     privateKey
   );

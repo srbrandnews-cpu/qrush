@@ -30,7 +30,7 @@ services:
       - key: PGPOOL_MAX
         value: "5"
       - key: VAPID_SUBJECT
-        value: mailto:support@tablenest.app
+        value: mailto:support@qrush.in
 
       # ── Secrets: Render asks for these once, then stores them encrypted ──
       # DATABASE_URL  = Neon pooled connection string (sslmode=require)

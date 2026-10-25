@@ -35,7 +35,7 @@ app.use('/api/admin', require('./src/routes/admin.routes'));
 app.use('/api/push', require('./src/routes/push.routes'));
 app.use('/api/public', require('./src/routes/public.routes'));
 
-app.get('/api/health', (req, res) => res.json({ ok: true, name: 'TableNest' }));
+app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));
 
 // --- Static assets (CSS/JS/service worker) ---
 // Code files are revalidated on every load (ETag -> cheap 304), so a browser
@@ -139,7 +139,7 @@ async function boot() {
 
     server.listen(PORT, () => {
       const db = dialect() === 'postgres' ? 'PostgreSQL' : 'SQLite';
-      console.log(`\n🚀 TableNest running  (database: ${db})`);
+      console.log(`\n🚀 QRush running  (database: ${db})`);
       console.log(`   Home      http://localhost:${PORT}/`);
       console.log(`   Admin     http://localhost:${PORT}/admin`);
       console.log(`   Kitchen   http://localhost:${PORT}/kitchen`);
@@ -147,7 +147,7 @@ async function boot() {
       console.log(`   QR codes  Admin panel -> Tables & QR tab\n`);
     });
   } catch (err) {
-    console.error('\n❌ Failed to start TableNest:\n', err);
+    console.error('\n❌ Failed to start QRush:\n', err);
     process.exit(1);
   }
 }

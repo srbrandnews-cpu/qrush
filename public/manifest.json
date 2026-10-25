@@ -1,6 +1,6 @@
 {
-  "name": "TableNest — Restaurant Table Ordering",
-  "short_name": "TableNest",
+  "name": "QRush — Restaurant Table Ordering",
+  "short_name": "QRush",
   "description": "Scan the QR code on your table, order, and track it live. Orders go straight to the kitchen and cash counter.",
   "start_url": "/",
   "display": "standalone",

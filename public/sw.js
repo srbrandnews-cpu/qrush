@@ -1,10 +1,10 @@
-/* TableNest service worker — receives web push notifications. */
+/* QRush service worker — receives web push notifications. */
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'TableNest', body: 'Aapka order update aa gaya.', url: '/' };
+  let data = { title: 'QRush', body: 'Aapka order update aa gaya.', url: '/' };
   try {
     if (event.data) data = Object.assign(data, event.data.json());
   } catch (_) {
@@ -15,13 +15,13 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     icon: data.icon || '/img/icon-192.png',
     badge: '/img/icon-192.png',
-    tag: data.tag || 'tablenest',
+    tag: data.tag || 'qrush',
     renotify: true,
     vibrate: [200, 100, 200],
     data: { url: data.url || '/' },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title || 'TableNest', options));
+  event.waitUntil(self.registration.showNotification(data.title || 'QRush', options));
 });
 
 self.addEventListener('notificationclick', (event) => {

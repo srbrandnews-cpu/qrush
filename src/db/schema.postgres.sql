@@ -1,4 +1,4 @@
--- TableNest schema — PostgreSQL version.
+-- QRush schema — PostgreSQL version.
 -- Mirrors schema.sql exactly; timestamps are stored as UTC text in the same
 -- "YYYY-MM-DD HH:MI:SS" format SQLite's datetime('now') produces, so the app
 -- and frontend behave identically on both drivers.

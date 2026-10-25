@@ -1,4 +1,4 @@
-# TableNest — Restaurant QR Table Ordering (SaaS)
+# QRush — Restaurant QR Table Ordering (SaaS)
 
 Customer table par laga **QR code scan** karta hai → apna **order** khud place karta hai →
 order seedha **kitchen** aur **cash counter** par live pahunchta hai → jaise hi order **ready**

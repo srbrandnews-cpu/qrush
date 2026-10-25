@@ -206,7 +206,7 @@ router.get('/template.csv', (req, res) => {
   ].join('\n');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="tablenest-menu-template.csv"');
+  res.setHeader('Content-Disposition', 'attachment; filename="qrush-menu-template.csv"');
   res.send('\uFEFF' + sample); // BOM so Excel opens UTF-8 (₹ etc.) correctly
 });
 
