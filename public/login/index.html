@@ -8,30 +8,74 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    .auth { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+    body { background: #f6f8fb; }
+    .auth { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
     .auth-aside {
-      background: linear-gradient(160deg, var(--primary-700), var(--primary));
-      color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden; color: #fff; padding: 52px;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
+      background:
+        radial-gradient(620px 420px at 18% 8%, rgba(45, 212, 191, .30), transparent 62%),
+        radial-gradient(520px 380px at 100% 100%, rgba(13, 148, 136, .45), transparent 60%),
+        linear-gradient(160deg, #08101f 0%, #0d2b28 48%, #0f766e 100%);
     }
-    .auth-aside h2 { font-size: 30px; line-height: 1.2; max-width: 420px; }
-    .auth-aside p { color: rgba(255,255,255,.85); max-width: 420px; margin-top: 14px; font-size: 15px; }
-    .auth-aside ul { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; }
-    .auth-aside li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; }
-    .auth-aside .tick { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; flex: none; font-size: 12px; }
-    .auth-main { display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
-    .auth-card { width: 100%; max-width: 400px; }
-    .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 22px; }
-    .tab { flex: 1; text-align: center; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; background: transparent; color: var(--muted); }
-    .tab.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
-    .demo-box { margin-top: 18px; background: var(--primary-50); border: 1px dashed var(--primary); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
-    .demo-box code { background: #fff; padding: 1px 6px; border-radius: 5px; }
-    @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } .auth-aside { display: none; } }
+    .auth-aside::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .30;
+      background-image: radial-gradient(rgba(255, 255, 255, .16) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    .auth-aside > * { position: relative; z-index: 1; }
+    .auth-aside .brand { font-size: 19px; }
+    .auth-aside .brand img { width: 38px; height: 38px; border-radius: 11px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.6); }
+    .auth-aside h2 { color: #fff; font-size: clamp(26px, 3vw, 36px); line-height: 1.14; max-width: 470px; letter-spacing: -.035em; }
+    .auth-aside p { color: rgba(255, 255, 255, .84); max-width: 440px; margin: 14px 0 0; font-size: 15px; }
+    .auth-aside ul { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 12px; }
+    .auth-aside li { display: flex; gap: 11px; align-items: center; font-size: 14.5px; color: rgba(255, 255, 255, .93); }
+    .auth-aside .tick {
+      width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, .14);
+      border: 1px solid rgba(255, 255, 255, .26); display: grid; place-items: center; flex: none;
+      font-size: 12px; font-weight: 800;
+    }
+    .auth-aside .aside-note { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: rgba(255,255,255,.7); }
+    .auth-aside .aside-note span.dot { width: 6px; height: 6px; border-radius: 50%; background: #2dd4bf; box-shadow: 0 0 0 4px rgba(45,212,191,.18); }
+
+    .auth-main {
+      display: flex; align-items: center; justify-content: center; padding: 40px 22px;
+      background: radial-gradient(700px 400px at 100% 0%, rgba(20, 184, 166, .09), transparent 60%);
+    }
+    .auth-card { width: 100%; max-width: 424px; }
+    .auth-card .secure {
+      display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700;
+      color: var(--primary-700); background: var(--primary-50); border: 1px solid var(--primary-100);
+      padding: 5px 10px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .02em;
+    }
+    .auth-card .secure svg { width: 13px; height: 13px; }
+    .auth-panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 26px;
+      box-shadow: 0 30px 70px -34px rgba(15, 23, 42, .35), 0 2px 6px rgba(15, 23, 42, .04);
+    }
+    .tabs { display: flex; background: #f1f5f9; padding: 5px; border-radius: 12px; margin-bottom: 22px; gap: 4px; }
+    .tab {
+      flex: 1; text-align: center; padding: 9px; border-radius: 9px; font-weight: 600; font-size: 13.5px;
+      cursor: pointer; border: none; background: transparent; color: var(--muted); transition: .15s;
+    }
+    .tab:hover { color: var(--ink-2); }
+    .tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 14px -10px rgba(16,24,40,.25); }
+    .demo-box {
+      margin-top: 18px; background: linear-gradient(180deg, #f0fdfa, #fff); border: 1px dashed var(--primary);
+      border-radius: 12px; padding: 12px 14px; font-size: 12.5px; line-height: 1.8; color: var(--ink-2);
+    }
+    .demo-box code { background: #fff; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); font-size: 12px; }
+    @media (max-width: 900px) {
+      .auth { grid-template-columns: 1fr; }
+      .auth-aside { display: none; }
+      .auth-main { padding: 26px 16px; }
+    }
   </style>
 </head>
 <body>
   <div class="auth">
     <aside class="auth-aside">
-      <div class="brand" style="color:#fff"><span class="logo" style="background:rgba(255,255,255,.2)">🍽️</span> QRush</div>
+      <div class="brand" style="color:#fff"><img class="brand-mark" src="/img/logo-white.svg" alt="" /> QRush</div>
       <div>
         <h2>Run your restaurant orders without paper chits.</h2>
         <p>Customer QR scan kare, order place kare — kitchen aur cash counter par live. Ready hote hi phone par alert.</p>
@@ -42,11 +86,16 @@
           <li><span class="tick">✓</span> Customer ko ready par push notification</li>
         </ul>
       </div>
-      <p style="margin:0;font-size:13px;opacity:.75">Multi-tenant SaaS — apne har outlet ke liye alag account.</p>
+      <div class="aside-note"><span class="dot"></span> Multi-tenant SaaS — har outlet ka apna account, menu aur QR.</div>
     </aside>
 
     <main class="auth-main">
       <div class="auth-card">
+        <div class="secure">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          Secure staff access
+        </div>
+        <div class="auth-panel">
         <div class="tabs">
           <button class="tab active" id="tab-login" type="button">Login</button>
           <button class="tab" id="tab-signup" type="button">New restaurant</button>
@@ -87,6 +136,8 @@
           <div class="field"><label for="su-password">Password</label><input class="input" id="su-password" type="password" placeholder="Min 6 characters" required /></div>
           <button class="btn btn-primary btn-block btn-lg" id="signup-submit" type="submit">Create account</button>
         </form>
+        </div><!-- /auth-panel -->
+        <p class="tiny muted center-text" style="margin:16px 0 0">QRush · Restaurant QR ordering</p>
       </div>
     </main>
   </div>

@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Generates the TableNest icon set (a teal rounded square with a food cloche)
- * as real PNG files — no image tools or dependencies required.
+ * Generates the QRush icon set — a teal squircle with a white "Q" ring and a
+ * lightning-bolt tail (Q + rush). Pure Node, no image libraries.
  *
  * Run:  node scripts/make-icon.js
  */
@@ -49,86 +49,90 @@ function encodePNG(size, rgba) {
   ihdr[11] = 0;  // adaptive filtering
   ihdr[12] = 0;  // no interlace
 
-  // Each scanline is prefixed with filter type 0.
-  const raw = Buffer.alloc(size * (size * 4 + 1));
+  const stride = size * 4 + 1;
+  const raw = Buffer.alloc(size * stride);
   for (let y = 0; y < size; y++) {
-    raw[y * (size * 4 + 1)] = 0;
-    rgba.copy(raw, y * (size * 4 + 1) + 1, y * size * 4, (y + 1) * size * 4);
+    raw[y * stride] = 0;
+    rgba.copy(raw, y * stride + 1, y * size * 4, (y + 1) * size * 4);
   }
   const idat = zlib.deflateSync(raw, { level: 9 });
 
   return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
 }
 
-/* --------------------------------- draw --------------------------------- */
+/* --------------------------------- shape --------------------------------- */
+// Everything is designed on a 192 x 192 grid, then scaled to any size.
+
+const RING = { cx: 88, cy: 84, r: 44, w: 20 };
+const BOLT = [
+  [116, 100], [152, 100], [128, 130], [145, 130],
+  [106, 170], [116, 138], [99, 138],
+];
+
+function inRoundedRect(x, y, size, r) {
+  if (x < 0 || y < 0 || x > size || y > size) return false;
+  const cx = Math.min(Math.max(x, r), size - r);
+  const cy = Math.min(Math.max(y, r), size - r);
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+}
+
+function inPolygon(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function gradientAt(t) {
+  // teal 500 -> teal 700/800
+  return [
+    Math.round(20 + (13 - 20) * t),
+    Math.round(184 + (116 - 184) * t),
+    Math.round(166 + (105 - 166) * t),
+  ];
+}
 
 function drawIcon(size) {
   const rgba = Buffer.alloc(size * size * 4);
-  const s = size / 192; // design on a 192 grid, scale up
-  const cx = 96, cy = 96;
+  const SS = 4;                     // 4x4 supersampling for smooth edges
+  const scale = 192 / size;         // pixel -> design grid
+  const corner = 44;
+  const white = [255, 255, 255];
 
-  const TEAL = [13, 148, 136, 255];
-  const DARK = [17, 94, 89, 255];
-  const WHITE = [255, 255, 255, 255];
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let bgHits = 0, markHits = 0;
 
-  const set = (x, y, col) => {
-    if (x < 0 || y < 0 || x >= size || y >= size) return;
-    const i = (Math.floor(y) * size + Math.floor(x)) * 4;
-    rgba[i] = col[0]; rgba[i + 1] = col[1]; rgba[i + 2] = col[2]; rgba[i + 3] = col[3];
-  };
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const x = (px + (sx + 0.5) / SS) * scale;
+          const y = (py + (sy + 0.5) / SS) * scale;
 
-  const inRoundedRect = (x, y, r) => {
-    const minX = r, maxX = size - r, minY = r, maxY = size - r;
-    if (x < minX && y < minY) return (minX - x) ** 2 + (minY - y) ** 2 <= r * r;
-    if (x > maxX && y < minY) return (x - maxX) ** 2 + (minY - y) ** 2 <= r * r;
-    if (x < minX && y > maxY) return (minX - x) ** 2 + (y - maxY) ** 2 <= r * r;
-    if (x > maxX && y > maxY) return (x - maxX) ** 2 + (y - maxY) ** 2 <= r * r;
-    return x >= minX && x <= maxX && y >= minY && y <= maxY;
-  };
+          if (!inRoundedRect(x, y, 192, corner)) continue;
+          bgHits++;
 
-  // Soft vertical gradient background inside a rounded square.
-  const corner = 44 * s;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (!inRoundedRect(x, y, corner)) continue; // stays transparent
-      const t = y / size;
-      set(x, y, [
-        Math.round(13 + (17 - 13) * t),
-        Math.round(148 + (94 - 148) * t),
-        Math.round(136 + (89 - 136) * t),
-        255,
-      ]);
-    }
-  }
-
-  // --- Food cloche (dome + knob + base plate), all white ---
-  const plateY = 126 * s, plateH = 15 * s, plateW = 116 * s;
-  const domeR = 58 * s, domeBaseY = plateY - 4 * s;
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const dx = x - cx * s, dy = y - domeBaseY;
-
-      // Dome: upper half of a circle.
-      if (dy <= 0 && dx * dx + dy * dy <= domeR * domeR) set(x, y, WHITE);
-
-      // Base plate: rounded horizontal bar.
-      const px = x - (cx * s - plateW / 2);
-      const py = y - plateY;
-      if (px >= 0 && px <= plateW && py >= 0 && py <= plateH) {
-        const rr = plateH / 2;
-        const leftEdge = rr, rightEdge = plateW - rr;
-        let inside = px >= leftEdge && px <= rightEdge;
-        if (!inside) {
-          const ex = px < leftEdge ? leftEdge : rightEdge;
-          inside = (px - ex) ** 2 + (py - plateH / 2) ** 2 <= rr * rr;
+          const dx = x - RING.cx, dy = y - RING.cy;
+          const d = Math.hypot(dx, dy);
+          const inRing = d >= RING.r - RING.w / 2 && d <= RING.r + RING.w / 2;
+          if (inRing || inPolygon(x, y, BOLT)) markHits++;
         }
-        if (inside) set(x, y, WHITE);
       }
 
-      // Knob on top of the dome.
-      const kx = x - cx * s, ky = y - (domeBaseY - domeR - 4 * s);
-      if (kx * kx + ky * ky <= (9 * s) * (9 * s)) set(x, y, WHITE);
+      const total = SS * SS;
+      if (!bgHits) continue; // transparent outside the squircle
+
+      const i = (py * size + px) * 4;
+      const alpha = Math.round((bgHits / total) * 255);
+      const mark = markHits / Math.max(bgHits, 1);
+      const bg = gradientAt(py / size);
+
+      rgba[i] = Math.round(bg[0] * (1 - mark) + white[0] * mark);
+      rgba[i + 1] = Math.round(bg[1] * (1 - mark) + white[1] * mark);
+      rgba[i + 2] = Math.round(bg[2] * (1 - mark) + white[2] * mark);
+      rgba[i + 3] = alpha;
     }
   }
 

@@ -2,9 +2,12 @@
 
 body { background: #0f172a; color: #e2e8f0; }
 
-.kds-top { background: #0b1220; border-bottom: 1px solid #1e293b; }
-.kbtn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-.kbtn:hover { background: #29364d; border-color: #475569; }
+.kds-top {
+  background: rgba(11, 18, 32, .92); backdrop-filter: blur(10px) saturate(140%);
+  border-bottom: 1px solid #1e293b;
+}
+.kbtn { background: #1a2740; border-color: #2a3a58; color: #e2e8f0; box-shadow: none; }
+.kbtn:hover { background: #223252; border-color: #3b4f73; color: #fff; }
 .kbtn.muted-on { opacity: .5; }
 
 .conn { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #94a3b8; }
@@ -18,27 +21,31 @@ body { background: #0f172a; color: #e2e8f0; }
 /* -------------------------------- Board --------------------------------- */
 .board {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(300px, 1fr);
-  gap: 14px; padding: 16px; overflow-x: auto; align-items: start; height: calc(100vh - 60px);
+  gap: 16px; padding: 18px; overflow-x: auto; align-items: start; height: calc(100vh - 62px);
 }
 .col {
-  background: #111c33; border: 1px solid #1e293b; border-radius: var(--radius);
-  display: flex; flex-direction: column; min-height: 0;
+  background: linear-gradient(180deg, #101c33, #0e1930); border: 1px solid #1e2b44; border-radius: 16px;
+  display: flex; flex-direction: column; min-height: 0; box-shadow: 0 20px 45px -34px #000;
 }
 .col-head {
   display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
-  border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #111c33;
-  border-radius: var(--radius) var(--radius) 0 0; z-index: 2;
+  border-bottom: 1px solid #1e2b44; position: sticky; top: 0;
+  background: linear-gradient(180deg, #14233d, #101c33);
+  border-radius: 16px 16px 0 0; z-index: 2;
 }
 .col-head .count {
-  background: #1e293b; color: #fff; border-radius: 999px; min-width: 26px; text-align: center;
-  padding: 2px 8px; font-size: 13px; font-weight: 700;
+  background: #1c2b46; color: #fff; border-radius: 999px; min-width: 26px; text-align: center;
+  padding: 2px 8px; font-size: 13px; font-weight: 700; border: 1px solid #2a3a58;
 }
 .col-body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 
 /* -------------------------------- Cards --------------------------------- */
 .ocard {
-  background: #1c2942; border: 1px solid #2b3b5c; border-radius: 12px; padding: 13px; position: relative;
+  background: linear-gradient(180deg, #1b2942, #182338); border: 1px solid #2b3b5c; border-radius: 14px;
+  padding: 13px; position: relative; transition: transform .12s, border-color .12s;
+  box-shadow: 0 14px 30px -26px #000;
 }
+.ocard:hover { transform: translateY(-1px); border-color: #3a4d72; }
 .ocard.fresh { animation: flash 1.2s ease 2; border-color: #22c55e; }
 @keyframes flash { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(34,197,94,.4); } }
 
@@ -66,7 +73,9 @@ body { background: #0f172a; color: #e2e8f0; }
 
 .ocard-actions { display: flex; gap: 8px; margin-top: 10px; }
 .ocard-actions .btn { flex: 1; }
-.kact { border: none; font-weight: 700; padding: 11px; border-radius: 9px; cursor: pointer; font-size: 14px; }
+.kact { border: none; font-weight: 700; padding: 11px; border-radius: 10px; cursor: pointer; font-size: 14px; transition: filter .12s, transform .06s; }
+.kact:hover { filter: brightness(1.08); }
+.kact:active { transform: translateY(1px); }
 .kact.accept { background: #7c3aed; color: #fff; }
 .kact.accept:hover { background: #6d28d9; }
 .kact.start { background: #2563eb; color: #fff; }
@@ -79,8 +88,16 @@ body { background: #0f172a; color: #e2e8f0; }
 
 .col-empty { color: #475569; text-align: center; padding: 26px 10px; font-size: 13px; }
 
-#empty { color: #94a3b8; padding: 60px 20px; }
-#empty .icon { font-size: 46px; }
+#empty {
+  color: #94a3b8; padding: 46px 24px; text-align: center; max-width: 560px; margin: 44px auto;
+  background: transparent; border: 1px dashed #26344f; border-radius: 18px;
+}
+#empty .icon {
+  font-size: 34px; width: 62px; height: 62px; margin: 0 auto 14px; border-radius: 18px;
+  display: grid; place-items: center; background: #13203a; border: 1px solid #26344f;
+}
+#empty h3 { color: #e2e8f0; font-size: 17px; margin-bottom: 6px; }
+#empty p { margin: 0; font-size: 13.5px; }
 
 @media (max-width: 720px) {
   .board { grid-auto-columns: 82vw; }
