@@ -66,41 +66,99 @@
     .phone-top img { width: 34px; height: 34px; border-radius: 10px; }
     .phone-top b { display: block; font-size: 13.5px; letter-spacing: -.02em; }
     .phone-top span { display: block; font-size: 11px; color: var(--muted); }
-    .ph-chip {
-      display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700;
-      color: var(--primary-700); background: var(--primary-50); border: 1px solid var(--primary-100);
-      border-radius: 999px; padding: 3px 8px; margin: 10px 6px 4px;
+    .ph-hello {
+      display: flex; align-items: center; gap: 10px; margin: 11px 2px 4px; padding: 10px 11px;
+      border-radius: 13px; border: 1px solid var(--primary-100);
+      background: linear-gradient(135deg, #f0fdfa, #ffffff);
     }
-    .ph-item { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-bottom: 1px dashed var(--line); }
-    .ph-item:last-of-type { border-bottom: none; }
-    .ph-thumb { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #ccfbf1, #f0fdfa); display: grid; place-items: center; font-size: 16px; flex: none; }
-    .ph-item b { font-size: 12.5px; display: block; letter-spacing: -.01em; }
-    .ph-item span { font-size: 11px; color: var(--muted); }
-    .ph-item .price { margin-left: auto; font-weight: 800; font-size: 12.5px; }
-    .phone-cart {
-      margin-top: 10px; background: var(--brand-grad); color: #fff; border-radius: 14px; padding: 11px 13px;
-      display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600;
-      box-shadow: 0 14px 24px -16px rgba(13, 148, 136, .9);
+    .ph-hello .e {
+      width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+      background: #fff; border: 1px solid var(--primary-100); font-size: 15px; flex: none;
     }
-    .phone-cart b { margin-left: auto; font-size: 14px; }
-    .ticket {
-      position: relative; width: 232px; align-self: flex-end; margin-right: 4px; background: #fff;
+    .ph-hello b { display: block; font-size: 12.5px; letter-spacing: -.01em; }
+    .ph-hello span { display: block; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+
+    /* Live order timeline (no prices anywhere) */
+    .ph-track { display: flex; padding: 15px 2px 6px; }
+    .ph-step {
+      flex: 1; text-align: center; position: relative; font-size: 8.5px; font-weight: 700;
+      color: var(--muted-2); letter-spacing: .01em;
+    }
+    .ph-step i {
+      width: 15px; height: 15px; margin: 0 auto 5px; border-radius: 50%; display: grid; place-items: center;
+      background: #f1f5f9; border: 1px solid var(--line-strong); color: #fff; font-size: 7px;
+      font-style: normal; position: relative; z-index: 1;
+    }
+    .ph-step::before {
+      content: ''; position: absolute; top: 7px; left: -50%; width: 100%; height: 2px; background: var(--line);
+    }
+    .ph-step:first-child::before { display: none; }
+    .ph-step.done i { background: var(--primary); border-color: var(--primary); }
+    .ph-step.done::before { background: var(--primary); }
+    .ph-step.now { color: var(--primary-700); }
+    .ph-step.now i {
+      background: #fff; border: 2px solid var(--primary);
+      animation: stepPulse 1.7s infinite;
+    }
+    .ph-step.now::before { background: var(--primary); }
+    @keyframes stepPulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(13, 148, 136, .16); }
+      50% { box-shadow: 0 0 0 6px rgba(13, 148, 136, .04); }
+    }
+
+    .ph-orders { border-top: 1px solid var(--line); margin-top: 4px; padding: 2px 2px 4px; }
+    .ph-orders .ph-h {
+      display: flex; align-items: center; justify-content: space-between; padding: 7px 2px 3px;
+      font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .02em;
+    }
+    .ph-orders .ph-h .tag {
+      background: var(--primary-50); color: var(--primary-700); border: 1px solid var(--primary-100);
+      padding: 1px 7px; border-radius: 999px; font-size: 9px;
+    }
+    .ph-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; font-size: 11.5px; }
+    .ph-row .ph-thumb {
+      width: 30px; height: 30px; border-radius: 9px; font-size: 14px;
+      background: linear-gradient(135deg, #ccfbf1, #f0fdfa); display: grid; place-items: center; flex: none;
+    }
+    .ph-row b { font-weight: 700; color: var(--ink); }
+    .ph-row .q { margin-left: auto; color: var(--muted); font-size: 10.5px; }
+
+    .phone-status {
+      margin-top: 9px; border-radius: 12px; padding: 9px 11px; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; color: var(--primary-700);
+      background: linear-gradient(135deg, #f0fdfa, #f7fffd); border: 1px solid var(--primary-100);
+    }
+    .phone-status .dot { background: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, .16); animation: pulse 1.6s infinite; }
+    .phone-status .go { margin-left: auto; font-size: 10.5px; color: var(--primary-600); }
+
+    /* Floating "order ready" push alert */
+    .notif {
+      position: relative; width: 244px; align-self: flex-end; margin-right: 2px; background: #fff;
       border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px;
       box-shadow: var(--shadow-md); transform: rotate(-2deg);
     }
-    .ticket::after {
+    .notif::after {
       content: ''; position: absolute; inset: auto 0 -1px 0; height: 3px; border-radius: 0 0 16px 16px;
-      background: var(--brand-grad); opacity: .8;
+      background: linear-gradient(90deg, #22c55e, #0d9488); opacity: .85;
     }
-    .ticket-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .ticket-head b { font-size: 14px; letter-spacing: -.02em; }
-    .ticket-row { font-size: 12px; color: var(--ink-2); padding: 2px 0; }
-    .ticket-row b { color: var(--primary-700); }
-    .ticket-foot { font-size: 10.5px; color: var(--muted); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 7px; }
+    .notif-top { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .notif-ico {
+      width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+      background: var(--green-bg); color: var(--green); font-size: 13px; flex: none;
+    }
+    .notif-top b { font-size: 12px; letter-spacing: -.01em; }
+    .notif-top .now { margin-left: auto; font-size: 10px; color: var(--muted-2); }
+    .notif h4 { font-size: 13.5px; margin-bottom: 3px; }
+    .notif p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+    .notif-foot {
+      display: flex; align-items: center; gap: 6px; margin-top: 9px; padding-top: 8px;
+      border-top: 1px dashed var(--line); font-size: 10.5px; color: var(--muted);
+    }
+    .notif-foot .dot { width: 6px; height: 6px; background: var(--green); }
     @media (max-width: 960px) {
       .hero-grid { grid-template-columns: 1fr; gap: 40px; }
       .mock { padding-bottom: 8px; }
-      .ticket { margin-right: 0; }
+      .notif { margin-right: 0; }
     }
 
     /* ------------------------------ Sections ------------------------------- */
@@ -192,19 +250,37 @@
             <img src="/img/logo.svg" alt="" />
             <div><b>Spice Garden</b><span>Table 4 · Digital menu</span></div>
           </div>
-          <div class="ph-chip">● Veg · Non-veg · Bestsellers</div>
-          <div class="ph-item"><div class="ph-thumb">🍢</div><div><b>Paneer Tikka</b><span>Char-grilled · 6 pcs</span></div><div class="price">₹260</div></div>
-          <div class="ph-item"><div class="ph-thumb">🍛</div><div><b>Dal Makhani</b><span>Slow cooked · creamy</span></div><div class="price">₹220</div></div>
-          <div class="ph-item"><div class="ph-thumb">🫓</div><div><b>Butter Naan</b><span>Fresh from tandoor</span></div><div class="price">₹60</div></div>
-          <div class="phone-cart"><span>3 items</span><b>₹540</b><span style="opacity:.85">View cart →</span></div>
+
+          <div class="ph-hello">
+            <div class="e">🙏</div>
+            <div><b>Namaste, Rahul!</b><span>Aapka order kitchen mein hai</span></div>
+          </div>
+
+          <div class="ph-track">
+            <div class="ph-step done"><i>✓</i>Placed</div>
+            <div class="ph-step done"><i>✓</i>Accepted</div>
+            <div class="ph-step now"><i></i>Preparing</div>
+            <div class="ph-step"><i></i>Ready</div>
+          </div>
+
+          <div class="ph-orders">
+            <div class="ph-h"><span>AAPKA ORDER</span><span class="tag">3 items</span></div>
+            <div class="ph-row"><div class="ph-thumb">🍢</div><b>Paneer Tikka</b><span class="q">×2</span></div>
+            <div class="ph-row"><div class="ph-thumb">🍛</div><b>Dal Makhani</b><span class="q">×1</span></div>
+            <div class="ph-row"><div class="ph-thumb">🫓</div><b>Butter Naan</b><span class="q">×3</span></div>
+          </div>
+
+          <div class="phone-status"><span class="dot"></span> Live status <span class="go">Track →</span></div>
         </div>
 
-        <div class="ticket">
-          <div class="ticket-head"><span class="badge preparing">preparing</span><b>#1042</b></div>
-          <div class="ticket-row"><b>2×</b> Paneer Tikka</div>
-          <div class="ticket-row"><b>1×</b> Dal Makhani</div>
-          <div class="ticket-row"><b>3×</b> Butter Naan</div>
-          <div class="ticket-foot">Table 4 · 2 min ago · ₹540</div>
+        <div class="notif">
+          <div class="notif-top">
+            <span class="notif-ico">🔔</span>
+            <b>Push alert</b><span class="now">now</span>
+          </div>
+          <h4>Order ready!</h4>
+          <p>Table 4 · Rahul — khana ready hai, table par serve karein.</p>
+          <div class="notif-foot"><span class="dot"></span> Customer ke phone par alert</div>
         </div>
       </div>
     </div>
