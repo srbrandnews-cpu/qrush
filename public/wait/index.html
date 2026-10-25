@@ -35,6 +35,11 @@
       background: var(--brand-grad); color: #fff; font-weight: 800; font-size: 26px;
       box-shadow: 0 14px 30px -16px rgba(13, 148, 166, .9); position: relative;
     }
+    .live-logo { animation: logoBreathe 4.5s ease-in-out infinite; }
+    @keyframes logoBreathe {
+      0%, 100% { box-shadow: 0 14px 30px -16px rgba(13, 148, 166, .9); transform: translateY(0); }
+      50% { box-shadow: 0 20px 40px -16px rgba(13, 148, 166, 1); transform: translateY(-2px); }
+    }
     .live-card h1 { font-size: 23px; letter-spacing: -.03em; position: relative; }
     .live-sub { color: var(--muted); font-size: 13px; margin-top: 5px; position: relative; }
     .eta {

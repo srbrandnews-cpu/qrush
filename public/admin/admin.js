@@ -495,7 +495,27 @@
     loadQrGrid();
   }
 
+  function renderFloorMap() {
+    const map = $('floor-map');
+    if (!map) return;
+    map.innerHTML = tablesData.length
+      ? tablesData.map((t) => {
+          const busy = Number(t.open_orders) > 0;
+          const cls = !t.is_active ? 'off' : busy ? 'busy' : 'free';
+          return `<div class="floor-tile ${cls}">
+            <b>${esc(t.name)}</b>
+            <span>${!t.is_active ? 'inactive' : busy ? `${t.open_orders} open` : 'free'}</span>
+            ${busy ? `<div class="amt">${TN.fmtMoney(t.open_total, currency)}</div>` : ''}
+          </div>`;
+        }).join('')
+      : '<div class="empty" style="grid-column:1/-1">Abhi koi table nahi.</div>';
+    const free = tablesData.filter((t) => t.is_active && !Number(t.open_orders)).length;
+    const busy = tablesData.filter((t) => Number(t.open_orders) > 0).length;
+    $('floor-summary').textContent = `${free} free · ${busy} busy`;
+  }
+
   function renderTables() {
+    renderFloorMap();
     const body = $('tables-body');
     if (!tablesData.length) {
       body.innerHTML = '<tr><td colspan="5"><div class="empty">Koi table nahi. "Add table" se shuru karein.</div></td></tr>';

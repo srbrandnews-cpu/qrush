@@ -222,6 +222,11 @@ table.data tbody tr:hover { background: #f8fbfd; }
 .brand .brand-mark {
   width: 33px; height: 33px; display: block; flex: none; border-radius: 10px;
   box-shadow: 0 6px 14px -8px rgba(13, 148, 136, .8);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s;
+}
+.brand:hover .brand-mark {
+  transform: translateY(-1px) rotate(-6deg) scale(1.05);
+  box-shadow: 0 12px 24px -10px rgba(13, 148, 136, .95);
 }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 

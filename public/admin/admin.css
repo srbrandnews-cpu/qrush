@@ -177,6 +177,20 @@
 .floor-pill.due { background: var(--green-bg); border-color: rgba(22, 163, 74, .3); color: var(--green); }
 .floor-pill.free { background: var(--primary-50); border-color: var(--primary-100); color: var(--primary-700); }
 
+/* Floor map — one tile per table, coloured by live occupancy */
+.floor-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; }
+.floor-tile {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px;
+  background: var(--card); transition: .15s;
+}
+.floor-tile b { display: block; font-size: 13px; letter-spacing: -.01em; }
+.floor-tile span { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+.floor-tile .amt { font-size: 12px; font-weight: 800; margin-top: 3px; color: var(--ink); }
+.floor-tile.free { background: var(--primary-50); border-color: var(--primary-100); }
+.floor-tile.busy { background: var(--amber-bg); border-color: rgba(245, 158, 11, .38); }
+.floor-tile.busy b { color: var(--amber); }
+.floor-tile.off { opacity: .55; }
+
 /* Branded table tent (print) */
 .tent-brand { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; letter-spacing: -.02em; }
 .tent-brand img { width: 20px; height: 20px; }
