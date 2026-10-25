@@ -136,7 +136,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # JWT
 Render dashboard → apni service → **Logs**. Build 2–4 min lega. Aisa dikhna chahiye:
 
 ```
-🚀 TableNest running  (database: PostgreSQL)
+🚀 QRush running  (database: PostgreSQL)
 ```
 
 Phir check karein:
@@ -144,7 +144,7 @@ Phir check karein:
 | Check | Kahan |
 |---|---|
 | App khula? | `https://tablenest-xxxx.onrender.com` |
-| Health | `.../api/health` → `{"ok":true,"name":"TableNest"}` |
+| Health | `.../api/health` → `{"ok":true,"name":"QRush"}` |
 | DB | Logs mein `database: PostgreSQL` (SQLite nahi) |
 | Signup | App par naya restaurant banayein |
 | QR | Admin → Tables → QR — link **onrender.com** ka hona chahiye |

@@ -5,7 +5,7 @@
  *
  * 1. Boots a throwaway embedded PostgreSQL server
  * 2. Creates a fresh database
- * 3. Starts TableNest against it (DB_CLIENT=postgres) on port 3001
+ * 3. Starts QRush against it (DB_CLIENT=postgres) on port 3001
  * 4. Seeds demo data and runs the whole order-flow test suite
  * 5. Tears everything down
  *
@@ -66,7 +66,7 @@ async function main() {
   // Fresh cluster every run.
   if (fs.existsSync(DATA_DIR)) fs.rmSync(DATA_DIR, { recursive: true, force: true });
 
-  log('=== TableNest · PostgreSQL end-to-end test ===\n');
+  log('=== QRush · PostgreSQL end-to-end test ===\n');
 
   const pg = new EmbeddedPostgres({
     databaseDir: DATA_DIR,
@@ -116,7 +116,7 @@ async function main() {
     });
     log('     Seeded ✓\n');
 
-    log('3/6  Starting TableNest against PostgreSQL...');
+    log('3/6  Starting QRush against PostgreSQL...');
     server = spawn(process.execPath, ['server.js'], {
       cwd: ROOT,
       env: Object.assign({}, process.env, {
@@ -135,7 +135,7 @@ async function main() {
     const up = await waitForHttp(`http://localhost:${APP_PORT}/api/health`);
     if (!up) {
       console.error('Server did not start. Output:\n' + serverLog);
-      throw new Error('TableNest failed to boot on PostgreSQL');
+      throw new Error('QRush failed to boot on PostgreSQL');
     }
     if (!/database: PostgreSQL/.test(serverLog)) {
       console.error('Server log:\n' + serverLog);

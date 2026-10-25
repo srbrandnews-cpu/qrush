@@ -29,7 +29,7 @@ function assert(cond, msg) {
 }
 
 async function main() {
-  console.log('\n=== TableNest flow test ===\n');
+  console.log('\n=== QRush flow test ===\n');
 
   // 1. Staff logins
   const owner = await call('/api/auth/login', { method: 'POST', body: { email: 'owner@demo.com', password: 'pass1234' } });

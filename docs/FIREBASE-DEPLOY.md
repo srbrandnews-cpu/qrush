@@ -118,7 +118,7 @@ App Hosting console → **Build** → **Create a rollout** → **Deploy**.
 
 Build 2-4 minute lagega. Logs mein dikhega:
 ```
-🚀 TableNest running  (database: PostgreSQL)
+🚀 QRush running  (database: PostgreSQL)
 ```
 
 **Agar warning dikhe** to app shuru hote hi console mein likh deta hai

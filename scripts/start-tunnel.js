@@ -184,7 +184,7 @@ async function main() {
   const token = env.TUNNEL_TOKEN || '';
   const hostname = (env.PUBLIC_HOSTNAME || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
-  console.log('\n=== TableNest · Launcher ===\n');
+  console.log('\n=== QRush · Launcher ===\n');
 
   let tunnel;
   if (token && hostname) {

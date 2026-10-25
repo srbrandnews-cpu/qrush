@@ -95,7 +95,7 @@ function main() {
   if (!domain.includes('.')) fail('Sahi domain daalein (jaise myhotel.in)');
 
   cloudflared();
-  say('\n=== TableNest · Permanent domain setup ===\n');
+  say('\n=== QRush · Permanent domain setup ===\n');
   say('Domain : ' + domain);
   say('Tunnel : ' + tunnelName + '\n');
 

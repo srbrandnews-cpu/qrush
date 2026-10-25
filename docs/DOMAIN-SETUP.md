@@ -82,7 +82,7 @@ Phir bas `npm run tunnel` chalao — URL permanent ho jayega.
 
 ---
 
-## Step 4 — TableNest ko batao (2 line)
+## Step 4 — QRush ko batao (2 line)
 
 Project ke `.env` file mein yeh do lines bhar dein:
 

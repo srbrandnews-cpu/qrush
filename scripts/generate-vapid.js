@@ -23,7 +23,7 @@ const path = require('path');
 
 const keys = webpush.generateVAPIDKeys();
 
-console.log('\n=== TableNest · VAPID keys (web push) ===\n');
+console.log('\n=== QRush · VAPID keys (web push) ===\n');
 console.log('Copy these into your environment variables:\n');
 console.log('VAPID_PUBLIC_KEY=' + keys.publicKey);
 console.log('VAPID_PRIVATE_KEY=' + keys.privateKey);

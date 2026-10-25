@@ -46,7 +46,7 @@ runConfig:
     # Only set BASE_URL if you want to force one specific domain.
 
 # Optional: mount a Cloud Storage volume if you want a persistent filesystem.
-# (Not needed for TableNest — all persistent data lives in PostgreSQL.)
+# (Not needed for QRush — all persistent data lives in PostgreSQL.)
 # volumes:
 #   - name: data
 #     cloudStorage:

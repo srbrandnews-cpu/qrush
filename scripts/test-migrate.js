@@ -79,7 +79,7 @@ function runMigrate(extraArgs = []) {
 async function main() {
   if (!fs.existsSync(SQLITE_FILE)) throw new Error('No local SQLite DB at ' + SQLITE_FILE);
 
-  console.log('=== TableNest · migration script test ===\n');
+  console.log('=== QRush · migration script test ===\n');
   if (fs.existsSync(DATA_DIR)) fs.rmSync(DATA_DIR, { recursive: true, force: true });
   await killStrayPostgres();
 

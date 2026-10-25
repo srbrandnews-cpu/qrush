@@ -135,7 +135,7 @@ async function main() {
   const truncate = args.includes('--truncate');
   const dryRun = args.includes('--dry-run');
 
-  console.log('\n=== TableNest · SQLite → PostgreSQL ===\n');
+  console.log('\n=== QRush · SQLite → PostgreSQL ===\n');
   console.log('  Source : ' + SOURCE_FILE);
   console.log('  Target : ' + (process.env.DATABASE_URL ? '(DATABASE_URL)' : (process.env.PGHOST || 'localhost')));
   console.log('  Mode   : ' + (dryRun ? 'dry run (no changes)' : truncate ? 'replace target data' : 'copy into empty target') + '\n');
