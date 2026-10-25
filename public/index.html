@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#0d9488" />
   <meta name="description" content="QRush — restaurant QR table ordering. Customer scans the QR, orders from the table, kitchen and cash counter get it live." />
   <title>QRush — Restaurant QR Table Ordering</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg" />
   <link rel="icon" type="image/png" href="/img/favicon.png" />
@@ -209,6 +216,22 @@
     footer.site-foot { padding: 28px 0 34px; border-top: 1px solid var(--line); margin-top: 40px; }
     footer.site-foot .wrap { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
     footer.site-foot .tiny a { color: var(--muted); font-weight: 600; }
+
+    /* ------------------------------ Dark theme ----------------------------- */
+    [data-theme="dark"] .site-top { background: rgba(8, 15, 27, .84); }
+    [data-theme="dark"] .pill { background: var(--card); }
+    [data-theme="dark"] .phone,
+    [data-theme="dark"] .notif { background: var(--card); }
+    [data-theme="dark"] .ph-hello { background: linear-gradient(135deg, rgba(20,184,166,.12), var(--card)); }
+    [data-theme="dark"] .ph-hello .e { background: #111d30; }
+    [data-theme="dark"] .ph-step i { background: #24344e; }
+    [data-theme="dark"] .ph-step.now i { background: var(--card); }
+    [data-theme="dark"] .ph-row .ph-thumb { background: rgba(20, 184, 166, .12); }
+    [data-theme="dark"] .phone-status { background: linear-gradient(135deg, rgba(20,184,166,.1), var(--card)); }
+    [data-theme="dark"] .step,
+    [data-theme="dark"] .screen-card { background: var(--card); }
+    [data-theme="dark"] .screen-card .ico { background: rgba(20, 184, 166, .12); }
+    [data-theme="dark"] .cta-band .btn { background: #fff; color: #0b1220; }
   </style>
 </head>
 <body>
@@ -217,7 +240,9 @@
       <a class="brand" href="/"><img class="brand-mark" src="/img/logo.svg" alt="" /> QRush</a>
       <nav class="site-nav">
         <a class="link" href="#how">How it works</a>
+        <a class="link" href="#unique">Why QRush</a>
         <a class="link" href="#screens">Screens</a>
+        <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
         <a class="btn btn-sm" href="/login">Staff login</a>
         <a class="btn btn-primary btn-sm" href="/login?mode=signup">Get started</a>
       </nav>
@@ -302,6 +327,48 @@
     </div>
   </section>
 
+  <section class="band" id="unique" style="padding-top: 10px">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Why QRush</div>
+        <h2>Sirf QR menu nahi — poora table service.</h2>
+        <p>Woh chhoti cheezein jo rush hour mein farak laati hain, sab built-in.</p>
+      </div>
+      <div class="screens">
+        <div class="screen-card">
+          <div class="ico">🙋</div>
+          <h3>One-tap table requests</h3>
+          <p>Customer ke phone se water, spoon, bill, AC ya waiter — kitchen aur counter par turant chip.</p>
+        </div>
+        <div class="screen-card">
+          <div class="ico">⏱</div>
+          <h3>Live queue &amp; ETA</h3>
+          <p>Customer ko dikhta hai: "Queue #2 · ~8 min". Guesswork khatam, repeat poochhna khatam.</p>
+        </div>
+        <div class="screen-card">
+          <div class="ico">🔊</div>
+          <h3>Kitchen voice callout</h3>
+          <p>Naya order kitchen mein bol kar announce hota hai — English ya Hindi, 10 alert sounds ke saath.</p>
+        </div>
+        <div class="screen-card">
+          <div class="ico">📱</div>
+          <h3>UPI on the phone</h3>
+          <p>Bill ready hote hi UPI link — full ya ÷2/÷3/÷4 split. Koi payment gateway fee nahi.</p>
+        </div>
+        <div class="screen-card">
+          <div class="ico">⚡</div>
+          <h3>Rush mode &amp; score</h3>
+          <p>Peak hours mein sirf quick items. Owner ko speed score, hourly heatmap aur prep time.</p>
+        </div>
+        <div class="screen-card">
+          <div class="ico">🌙</div>
+          <h3>Dark mode + branded tents</h3>
+          <p>Har screen par light/dark. QR ke saath printable table tent — venue name, WiFi aur UPI.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="band" id="screens" style="padding-top: 10px">
     <div class="wrap">
       <div class="section-head">
@@ -319,7 +386,7 @@
         <div class="screen-card">
           <div class="ico">👨‍🍳</div>
           <h3>Kitchen display</h3>
-          <p>Har naye order par pop + 10 alert sounds. Accept → Preparing → Ready.</p>
+          <p>Har naye order par pop + 10 alert sounds + Hindi/English voice callout. Accept → Preparing → Ready.</p>
           <a class="go" href="/kitchen">Kitchen screen →</a>
         </div>
         <div class="screen-card">
@@ -331,7 +398,7 @@
         <div class="screen-card">
           <div class="ico">⚙️</div>
           <h3>Owner dashboard</h3>
-          <p>Menu, tables, QR print, staff accounts aur aaj ka full revenue report.</p>
+          <p>Menu, tables, branded QR tents, staff, QRush score, rush heatmap aur guest feedback.</p>
           <a class="go" href="/admin">Go to admin →</a>
         </div>
       </div>
@@ -359,5 +426,7 @@
       <div class="tiny muted">Multi-tenant restaurant QR ordering · owner@demo.com / pass1234</div>
     </div>
   </footer>
+
+  <script src="/js/common.js"></script>
 </body>
 </html>

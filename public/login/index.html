@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
   <link rel="icon" type="image/png" href="/img/favicon.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
@@ -70,9 +77,23 @@
       .auth-aside { display: none; }
       .auth-main { padding: 26px 16px; }
     }
+
+    [data-theme="dark"] body { background: var(--bg); }
+    [data-theme="dark"] .auth-main {
+      background: radial-gradient(700px 420px at 100% 0%, rgba(20, 184, 166, .12), transparent 62%);
+    }
+    [data-theme="dark"] .auth-panel { background: var(--card); }
+    [data-theme="dark"] .tabs { background: rgba(255, 255, 255, .06); }
+    [data-theme="dark"] .tab.active { background: #16243a; }
+    [data-theme="dark"] .demo-box { background: linear-gradient(180deg, rgba(20, 184, 166, .1), var(--card)); }
+    [data-theme="dark"] .demo-box code { background: #0b1524; }
+    [data-theme="dark"] .auth-card .secure { color: #5eead4; background: rgba(20, 184, 166, .12); border-color: rgba(20, 184, 166, .3); }
   </style>
 </head>
 <body>
+  <button class="theme-toggle" data-theme-toggle title="Dark mode" style="position:fixed;top:16px;right:16px;z-index:50">
+    <span data-theme-icon>☾</span>
+  </button>
   <div class="auth">
     <aside class="auth-aside">
       <div class="brand" style="color:#fff"><img class="brand-mark" src="/img/logo-white.svg" alt="" /> QRush</div>

@@ -120,7 +120,73 @@
         </div>`).join('')
       : '<div class="empty">Koi active order nahi.</div>';
 
+    renderRush(stats);
+    renderFeedback(stats);
     await renderSetup(ov, stats);
+  }
+
+  const RATING_EMOJI = { 5: '🤩', 4: '🙂', 3: '😐', 2: '🙁', 1: '😞' };
+
+  /** Speed score + hourly heatmap + live requests. */
+  function renderRush(stats) {
+    const score = stats.speedScore;
+    $('d-score').textContent = score == null ? '—' : score;
+    $('d-score-ring').style.setProperty('--score', score == null ? 0 : Math.max(0, Math.min(100, score)));
+    $('d-score-badge').textContent = score == null ? 'No data' : score >= 80 ? 'On fire' : score >= 60 ? 'Good' : 'Slow';
+    $('d-score-badge').className = 'badge ' + (score == null ? 'muted' : score >= 60 ? 'ready' : 'preparing');
+    $('d-prep').textContent = stats.avgPrepMinutes == null ? '—' : stats.avgPrepMinutes + ' min';
+    $('d-target').textContent = stats.prepTarget || 15;
+    $('d-rush-line').textContent = `This hour: ${stats.lastHourOrders || 0} orders`;
+    $('d-requests-line').textContent = `${stats.openRequests || 0} open table requests`;
+    $('d-requests-line').style.color = stats.openRequests ? 'var(--amber)' : 'var(--muted)';
+
+    // Server buckets are UTC; show them in the restaurant's local timezone.
+    const buckets = Array.from({ length: 24 }, () => 0);
+    (stats.hourly || []).forEach((row) => {
+      const utc = parseInt(row.hour, 10);
+      if (!Number.isFinite(utc)) return;
+      const local = new Date(Date.UTC(2026, 0, 1, utc)).getHours();
+      buckets[local] += Number(row.count) || 0;
+    });
+    const max = Math.max(1, ...buckets);
+    $('d-heat').innerHTML = buckets.map((count, h) => {
+      const h12 = h % 12 || 12;
+      const label = h % 3 === 0 ? `${h12}${h < 12 ? 'a' : 'p'}` : '';
+      return `<div class="col" title="${h12}${h < 12 ? 'am' : 'pm'} · ${count} orders">
+        ${count ? `<span class="n">${count}</span>` : ''}
+        <div class="bar ${count ? '' : 'zero'}" style="height:${Math.max(3, (count / max) * 100)}%"></div>
+        <span class="h">${label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  /** Average rating + latest guest feedback. */
+  function renderFeedback(stats) {
+    const rating = stats.rating || { avg: 0, count: 0 };
+    $('d-ratings').textContent = `${rating.count} rating${rating.count === 1 ? '' : 's'}`;
+    const fb = stats.recentFeedback || [];
+    if (!fb.length) {
+      $('d-feedback').innerHTML = '<div class="empty">Abhi tak koi feedback nahi. Order serve hone par customer 1-tap rating de sakta hai.</div>';
+      return;
+    }
+    const rounded = Math.round(rating.avg || 0);
+    const stars = '★'.repeat(rounded) + '☆'.repeat(Math.max(0, 5 - rounded));
+    $('d-feedback').innerHTML = `
+      <div class="card-pad" style="padding-bottom:2px">
+        <div class="avg-big">
+          <span class="n">${rating.avg || '—'}</span>
+          <div><div class="stars">${stars}</div><div class="tiny muted">average rating</div></div>
+        </div>
+      </div>
+      ${fb.map((row) => `
+        <div class="fb-row">
+          <span class="fb-emoji">${RATING_EMOJI[row.rating] || '⭐'}</span>
+          <div class="fb-body">
+            <div class="who">${esc(row.table_name)}${row.customer_name ? ' · ' + esc(row.customer_name) : ''}</div>
+            <div class="note">${row.feedback ? '“' + esc(row.feedback) + '”' : 'Rated ' + row.rating + '/5'}</div>
+            <div class="when">${TN.fmtTime(row.updated_at)}</div>
+          </div>
+        </div>`).join('')}`;
   }
 
   /**
@@ -252,7 +318,7 @@
         row.innerHTML = `
           <span class="veg-mark ${it.is_veg ? '' : 'nonveg'}"></span>
           <div class="mi-body">
-            <div class="mi-name">${esc(it.name)} ${it.is_available ? '' : '<span class="badge muted">unavailable</span>'}</div>
+            <div class="mi-name">${esc(it.name)} ${it.is_quick ? '<span class="badge preparing" style="font-size:10px">⚡ quick</span>' : ''} ${it.is_available ? '' : '<span class="badge muted">unavailable</span>'}</div>
             ${it.description ? `<div class="mi-desc">${esc(it.description)}</div>` : ''}
           </div>
           <span class="mi-price">${currency}${Number(it.price).toLocaleString('en-IN')}</span>
@@ -374,6 +440,12 @@
           Available (customers can order)
         </label>
       </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:10px">
+          <span class="switch"><input type="checkbox" id="m-item-quick" ${item && item.is_quick ? 'checked' : ''}><span class="slider"></span></span>
+          Quick item (shown in Rush mode)
+        </label>
+      </div>
     `, [
       { label: 'Cancel', onClick: () => { closeModal(); } },
       {
@@ -388,6 +460,7 @@
             name, description: val('m-item-desc'),
             price, is_veg: val('m-item-veg') === '1',
             is_available: $('m-item-avail').checked,
+            is_quick: $('m-item-quick').checked,
           };
           if (item) await TN.api(`/api/menu/items/${item.id}`, { method: 'PUT', body });
           else await TN.api('/api/menu/items', { method: 'POST', body });
@@ -430,11 +503,16 @@
     }
     body.innerHTML = '';
     tablesData.forEach((t) => {
+      const floor = !t.is_active
+        ? '<span class="badge muted">inactive</span>'
+        : (Number(t.open_orders) > 0
+          ? `<span class="floor-pill busy">Occupied · ${TN.fmtMoney(t.open_total, currency)}</span>`
+          : '<span class="floor-pill free">Free</span>');
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="bold">${esc(t.name)}</td>
         <td>${t.seats}</td>
-        <td><span class="badge ${t.is_active ? 'ready' : 'muted'}">${t.is_active ? 'active' : 'inactive'}</span></td>
+        <td>${floor}</td>
         <td><a href="${t.menu_url}" target="_blank" class="tiny">${esc(t.menu_url.replace(/^https?:\/\//, ''))}</a></td>
         <td style="text-align:right;white-space:nowrap">
           <button class="btn btn-sm" data-act="qr">QR</button>
@@ -448,31 +526,40 @@
     });
   }
 
+  /** Branded, printable table tent: venue name, QR, table, WiFi & UPI. */
+  function tentHtml(t, qr, rest) {
+    const wifi = rest && rest.wifi_name
+      ? `📶 ${esc(rest.wifi_name)}${rest.wifi_password ? ' · ' + esc(rest.wifi_password) : ''}`
+      : '';
+    const upi = rest && rest.upi_id ? `📱 UPI: ${esc(rest.upi_id)}` : '';
+    return `
+      <div class="qr-card">
+        <div class="tent-brand"><img src="/img/logo.svg" alt="" /> QRush</div>
+        <div class="tent-venue">${esc(rest ? rest.name : '')}</div>
+        <img src="${qr}" alt="QR for ${esc(t.name)}" />
+        <div class="tname">${esc(t.name)}</div>
+        <div class="hint">Scan to open menu &amp; order</div>
+        ${wifi ? `<div class="tent-meta">${wifi}</div>` : ''}
+        ${upi ? `<div class="tent-meta">${upi}</div>` : ''}
+      </div>`;
+  }
+
   async function loadQrGrid() {
     try {
       qrSheet = await TN.api('/api/tables/qr-sheet');
       const grid = $('qr-grid');
       grid.innerHTML = qrSheet.tables.length
-        ? qrSheet.tables.map((t) => `
-          <div class="qr-card">
-            <img src="${t.qr}" alt="QR for ${esc(t.name)}" />
-            <div class="tname">${esc(t.name)}</div>
-            <div class="rname">${esc(qrSheet.restaurant.name)}</div>
-            <div class="hint">Scan to open menu &amp; order</div>
-          </div>`).join('')
+        ? qrSheet.tables.map((t) => tentHtml(t, t.qr, qrSheet.restaurant)).join('')
         : '<div class="empty">QR codes ke liye pehle tables add karein.</div>';
     } catch (err) { console.error(err); }
   }
 
   async function showQr(t) {
+    if (!qrSheet) await loadQrGrid();
     const data = await TN.api(`/api/tables/${t.id}/qr`);
-    openModal(`QR — ${t.name}`, `
-      <div class="qr-card" style="box-shadow:none;border:none">
-        <img src="${data.qr}" alt="QR" />
-        <div class="tname">${esc(t.name)}</div>
-        <div class="rname">${esc(t.menu_url)}</div>
-        <div class="hint">Print karke table par lagayein. Customer scan karke seedha yahi table ka menu kholega.</div>
-      </div>`, [
+    openModal(`Table tent — ${t.name}`, `
+      ${tentHtml(t, data.qr, qrSheet && qrSheet.restaurant)}
+      <div class="hint" style="margin-top:8px">Print karke table par rakh dein. Customer scan karke seedha isi table ka menu kholega.</div>`, [
       { label: 'Close', onClick: () => { closeModal(); } },
       { label: 'Print', class: 'btn-primary', onClick: () => { window.print(); } },
     ]);
@@ -663,6 +750,11 @@
     $('s-currency').value = r.currency || '₹';
     $('s-address').value = r.address || '';
     $('s-gst').value = r.gst_percent || 0;
+    $('s-wifi-name').value = r.wifi_name || '';
+    $('s-wifi-pass').value = r.wifi_password || '';
+    $('s-upi').value = r.upi_id || '';
+    $('s-prep').value = r.prep_minutes || 15;
+    $('s-rush').checked = !!Number(r.rush_mode);
   }
 
   $('save-settings').addEventListener('click', async () => {
@@ -672,6 +764,9 @@
         body: {
           name: val('s-name'), phone: val('s-phone'), currency: val('s-currency') || '₹',
           address: val('s-address'), gst_percent: Number(val('s-gst')) || 0,
+          wifi_name: val('s-wifi-name'), wifi_password: val('s-wifi-pass'),
+          upi_id: val('s-upi'), prep_minutes: Number(val('s-prep')) || 15,
+          rush_mode: $('s-rush').checked,
         },
       });
       currency = data.restaurant.currency || '₹';

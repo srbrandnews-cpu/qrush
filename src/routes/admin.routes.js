@@ -177,14 +177,26 @@ router.put('/restaurant', async (req, res, next) => {
     if (!Number.isFinite(gst) || gst < 0 || gst > 100) {
       return res.status(400).json({ error: 'GST percent must be between 0 and 100' });
     }
+    const prep = b.prep_minutes !== undefined ? Number(b.prep_minutes) : (t.prep_minutes || 15);
+    if (!Number.isFinite(prep) || prep < 1 || prep > 120) {
+      return res.status(400).json({ error: 'Typical prep time must be between 1 and 120 minutes' });
+    }
     await run(
-      'UPDATE tenants SET name = ?, phone = ?, address = ?, currency = ?, gst_percent = ? WHERE id = ?',
+      `UPDATE tenants SET
+         name = ?, phone = ?, address = ?, currency = ?, gst_percent = ?,
+         wifi_name = ?, wifi_password = ?, upi_id = ?, rush_mode = ?, prep_minutes = ?
+       WHERE id = ?`,
       [
         b.name != null ? String(b.name).trim() : t.name,
         b.phone !== undefined ? (b.phone ? String(b.phone).trim() : null) : t.phone,
         b.address !== undefined ? (b.address ? String(b.address).trim() : null) : t.address,
         b.currency != null ? String(b.currency).trim() : t.currency,
         gst,
+        b.wifi_name !== undefined ? (b.wifi_name ? String(b.wifi_name).trim() : null) : t.wifi_name,
+        b.wifi_password !== undefined ? (b.wifi_password ? String(b.wifi_password).trim() : null) : t.wifi_password,
+        b.upi_id !== undefined ? (b.upi_id ? String(b.upi_id).trim() : null) : t.upi_id,
+        b.rush_mode != null ? (b.rush_mode ? 1 : 0) : t.rush_mode,
+        prep,
         t.id,
       ]
     );
@@ -250,6 +262,37 @@ router.delete('/notifications', async (req, res, next) => {
   try {
     await run('DELETE FROM notifications WHERE tenant_id = ?', [req.user.tenant_id]);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/admin/feedback -> customer ratings (emoji feedback) with summary.
+ */
+router.get('/feedback', async (req, res, next) => {
+  try {
+    const limit = Math.min(100, parseInt(req.query.limit, 10) || 20);
+    const feedback = await query(
+      `SELECT o.id, o.order_no, o.rating, o.feedback, o.customer_name, o.updated_at,
+              t.name AS table_name
+         FROM orders o JOIN tables t ON t.id = o.table_id
+        WHERE o.tenant_id = ? AND o.rating IS NOT NULL
+        ORDER BY o.id DESC LIMIT ?`,
+      [req.user.tenant_id, limit]
+    );
+    const summary = await get(
+      `SELECT COALESCE(AVG(rating), 0) AS avg_rating, COUNT(rating) AS count
+         FROM orders WHERE tenant_id = ? AND rating IS NOT NULL`,
+      [req.user.tenant_id]
+    );
+    res.json({
+      feedback,
+      summary: {
+        avg: Math.round(Number(summary.avg_rating || 0) * 10) / 10,
+        count: Number(summary.count) || 0,
+      },
+    });
   } catch (err) {
     next(err);
   }

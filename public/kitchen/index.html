@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0f172a" />
   <title>Kitchen — QRush</title>
+  <script>
+    try {
+      document.documentElement.dataset.themeLocked = 'dark';
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.style.colorScheme = 'dark';
+    } catch (e) {}
+  </script>
   <link rel="icon" type="image/png" href="/img/favicon.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
@@ -21,11 +28,21 @@
     <div class="topbar-right">
       <span class="conn" id="conn"><span class="dot"></span> Connecting…</span>
       <select id="sound-pick" class="sound-pick" title="New order alert sound" aria-label="New order alert sound"></select>
+      <select id="voice-pick" class="sound-pick voice-pick" title="Order voice callout" aria-label="Order voice callout">
+        <option value="en">🔊 English</option>
+        <option value="hi">🔊 हिंदी</option>
+        <option value="off">🔇 Voice off</option>
+      </select>
       <button class="btn btn-sm kbtn" id="sound" title="Sound on/off">🔔 Sound</button>
       <span class="avatar" id="me">K</span>
       <button class="btn btn-sm kbtn" id="logout">Logout</button>
     </div>
   </header>
+
+  <div class="req-strip-kds hidden" id="req-strip">
+    <span class="lead">Table requests</span>
+    <div id="req-list" style="display:flex;gap:8px"></div>
+  </div>
 
   <div class="board" id="board">
     <section class="col" data-status="placed">

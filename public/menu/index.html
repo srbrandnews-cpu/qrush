@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <meta name="theme-color" content="#0d9488" />
   <title>Menu — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" href="/img/favicon.png" />
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
@@ -31,8 +38,20 @@
               <span class="tiny muted" id="r-addr"></span>
             </div>
           </div>
-          <button id="bell" class="bell" title="Enable order notifications">🔔</button>
+          <div class="m-actions">
+            <button id="m-info" class="bell" title="WiFi, UPI & venue info">ℹ</button>
+            <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
+            <button id="bell" class="bell" title="Enable order notifications">🔔</button>
+          </div>
         </header>
+
+        <div class="req-wrap" id="req-wrap" style="display:none">
+          <div class="req-head">
+            <span class="t">Need something?</span>
+            <span class="tiny muted" id="req-status">One tap — staff ko turant dikhega</span>
+          </div>
+          <div class="req-row" id="req-row"></div>
+        </div>
 
         <nav class="cats" id="cats"></nav>
       </div>
@@ -60,7 +79,10 @@
           <h1 id="s-title">Order status</h1>
           <div class="m-sub"><span class="table-chip" id="s-table">Table</span></div>
         </div>
-        <button id="s-bell" class="bell" title="Enable notifications">🔔</button>
+        <div class="m-actions">
+          <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
+          <button id="s-bell" class="bell" title="Enable notifications">🔔</button>
+        </div>
       </header>
       <div id="status-cards"></div>
       <div class="status-actions">
@@ -123,6 +145,22 @@
         <div class="bill" id="checkout-bill"></div>
         <button class="btn btn-primary btn-block btn-lg" id="place-order">Place order</button>
         <p class="tiny muted center-text" style="margin:10px 0 0">💳 Payment cash counter par — cash / UPI.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= INFO SHEET ============================= -->
+  <div id="info-sheet" class="sheet hidden">
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>Venue info</h3>
+        <button class="btn btn-ghost btn-sm" id="info-close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="info-list" id="info-list"></div>
+      </div>
+      <div class="sheet-foot" style="border-top:none">
+        <p class="tiny muted center-text" style="margin:0">Scan · Order · Relax — <b>QRush</b></p>
       </div>
     </div>
   </div>

@@ -14,6 +14,8 @@
     socket: null,
     pushOn: false,
     booted: false,
+    fullMenu: false,
+    reqBusy: new Set(),
   };
 
   /* ============================== BOOT ================================== */
@@ -25,6 +27,7 @@
       state.restaurant = data.restaurant;
       state.table = data.table;
       state.menu = data.menu.filter((c) => c.items && c.items.length);
+      state.fullMenu = sessionStorage.getItem('tn_full_menu') === '1';
 
       $('r-name').textContent = data.restaurant.name;
       $('t-name').textContent = data.table.name;
@@ -35,6 +38,8 @@
 
       renderCats();
       renderMenu();
+      renderQuickRequests();
+      renderInfo();
 
       // Returning customer: keep their name/number handy (one less typing).
       const saved = savedCustomer();
@@ -79,10 +84,23 @@
 
   /* ============================== MENU ================================== */
 
+  /**
+   * Rush mode: during peak hours only quick items are shown, with a one-tap
+   * switch back to the full menu. Falls back to the full menu if no item is
+   * marked quick, so a venue can never end up with an empty menu.
+   */
+  function visibleMenu() {
+    if (!state.restaurant || !Number(state.restaurant.rush_mode) || state.fullMenu) return state.menu;
+    const quick = state.menu
+      .map((c) => ({ ...c, items: c.items.filter((i) => Number(i.is_quick)) }))
+      .filter((c) => c.items.length);
+    return quick.length ? quick : state.menu;
+  }
+
   function renderCats() {
     const nav = $('cats');
     nav.innerHTML = '';
-    state.menu.forEach((cat, i) => {
+    visibleMenu().forEach((cat, i) => {
       const btn = document.createElement('button');
       btn.className = 'cat' + (i === 0 ? ' active' : '');
       btn.textContent = cat.name;
@@ -106,7 +124,23 @@
     }
     const currency = state.restaurant.currency || '₹';
 
-    state.menu.forEach((cat, i) => {
+    if (Number(state.restaurant.rush_mode)) {
+      const banner = document.createElement('div');
+      banner.className = 'rush-banner';
+      banner.innerHTML = `
+        <div><b>⚡ Rush menu</b><br><span class="tiny muted">Quick items only — kitchen is busy</span></div>
+        <button>${state.fullMenu ? 'Rush menu' : 'Full menu'}</button>`;
+      banner.querySelector('button').addEventListener('click', () => {
+        state.fullMenu = !state.fullMenu;
+        sessionStorage.setItem('tn_full_menu', state.fullMenu ? '1' : '0');
+        renderCats();
+        renderMenu();
+        renderRepeatBar();
+      });
+      host.appendChild(banner);
+    }
+
+    visibleMenu().forEach((cat, i) => {
       const sec = document.createElement('section');
       sec.className = 'menu-section';
       sec.id = 'sec-' + i;
@@ -114,6 +148,8 @@
       cat.items.forEach((item) => sec.appendChild(renderItem(item, currency)));
       host.appendChild(sec);
     });
+
+    renderRepeatBar();
   }
 
   function renderItem(item, currency) {
@@ -166,6 +202,165 @@
 
   function cartList() { return [...state.cart.values()]; }
   function cartCount() { return cartList().reduce((s, l) => s + l.qty, 0); }
+
+  /* --------------------------- my usual (repeat) ------------------------- */
+
+  function menuItemById(id) {
+    for (const cat of state.menu) {
+      const item = cat.items.find((i) => i.id === Number(id));
+      if (item) return item;
+    }
+    return null;
+  }
+
+  function lastOrderKey() { return 'tn_last_' + tableToken; }
+
+  function lastOrder() {
+    try { return JSON.parse(localStorage.getItem(lastOrderKey()) || 'null'); } catch (_) { return null; }
+  }
+
+  function saveLastOrder(items) {
+    try {
+      localStorage.setItem(lastOrderKey(), JSON.stringify({ items, at: Date.now() }));
+    } catch (_) { /* private mode */ }
+  }
+
+  function renderRepeatBar() {
+    document.querySelectorAll('.repeat-bar').forEach((el) => el.remove());
+    const last = lastOrder();
+    if (!last || !Array.isArray(last.items) || !last.items.length) return;
+    const host = $('menu-list');
+    if (!host) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'repeat-bar';
+    const qtyTotal = last.items.reduce((sum, line) => sum + (Number(line.qty) || 1), 0);
+    bar.innerHTML = `
+      <div><b>My usual</b><span class="tiny muted"> · ${qtyTotal} item${qtyTotal > 1 ? 's' : ''} from last time</span></div>
+      <button type="button">＋ Add again</button>`;
+    bar.querySelector('button').addEventListener('click', () => {
+      let added = 0;
+      let skipped = 0;
+      for (const line of last.items) {
+        const item = menuItemById(line.item_id);
+        if (item && item.is_available) {
+          state.cart.set(item.id, { item, qty: Math.min(20, Number(line.qty) || 1) });
+          added += 1;
+        } else {
+          skipped += 1;
+        }
+      }
+      if (!added) { TN.toast('Last order ke items abhi available nahi hain', 'error'); return; }
+      renderMenu();
+      updateCartBar();
+      TN.toast(skipped ? `${added} items added (${skipped} unavailable)` : 'Last order cart mein add ho gaya ✅', 'success');
+    });
+    const rushBanner = host.querySelector('.rush-banner');
+    if (rushBanner) rushBanner.after(bar);
+    else host.insertBefore(bar, host.firstChild);
+  }
+
+  /* --------------------------- quick requests ---------------------------- */
+
+  const REQ_META = {
+    water: { icon: '💧', label: 'Water' },
+    spoon: { icon: '🍴', label: 'Spoon / tissue' },
+    bill: { icon: '🧾', label: 'Bill' },
+    ac: { icon: '❄️', label: 'AC' },
+    waiter: { icon: '🙋', label: 'Waiter' },
+  };
+  const REQ_ORDER = ['water', 'spoon', 'bill', 'ac', 'waiter'];
+
+  function renderQuickRequests() {
+    if (!state.restaurant) return;
+    $('req-wrap').style.display = '';
+    const row = $('req-row');
+    row.innerHTML = '';
+    REQ_ORDER.forEach((type) => {
+      const meta = REQ_META[type];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'req-chip';
+      btn.dataset.type = type;
+      btn.innerHTML = `<span class="ico">${meta.icon}</span><span class="lbl">${meta.label}</span>`;
+      btn.addEventListener('click', () => sendQuickRequest(type, btn));
+      row.appendChild(btn);
+    });
+  }
+
+  async function sendQuickRequest(type, btn) {
+    if (state.reqBusy.has(type)) return;
+    state.reqBusy.add(type);
+    btn.disabled = true;
+    try {
+      await TN.api('/api/public/requests', {
+        body: { table: tableToken, type },
+        noRedirect: true,
+      });
+      btn.classList.add('sent');
+      btn.querySelector('.lbl').textContent = 'Sent ✓';
+      $('req-status').textContent = 'Staff ko request chali gayi ✅';
+      TN.toast('Request sent — staff ko turant dikh gaya ✅', 'success');
+      if (navigator.vibrate) navigator.vibrate(80);
+      setTimeout(() => {
+        btn.classList.remove('sent');
+        btn.disabled = false;
+        btn.querySelector('.lbl').textContent = REQ_META[type].label;
+        state.reqBusy.delete(type);
+        $('req-status').textContent = 'One tap — staff ko turant dikhega';
+      }, 20000);
+    } catch (err) {
+      btn.disabled = false;
+      state.reqBusy.delete(type);
+      TN.toast(err.message, 'error');
+    }
+  }
+
+  /* ------------------------------- venue info ---------------------------- */
+
+  function renderInfo() {
+    const r = state.restaurant || {};
+    const rows = [];
+    if (state.table) rows.push({ k: 'You are at', v: state.table.name });
+    if (r.wifi_name) {
+      rows.push({
+        k: 'WiFi',
+        v: r.wifi_name + (r.wifi_password ? ' · ' + r.wifi_password : ''),
+        copy: r.wifi_password || r.wifi_name,
+      });
+    }
+    if (r.upi_id) rows.push({ k: 'Pay via UPI', v: r.upi_id, copy: r.upi_id });
+    if (r.address) rows.push({ k: 'Address', v: r.address });
+    if (r.phone) rows.push({ k: 'Call restaurant', v: r.phone, href: 'tel:' + String(r.phone).replace(/\s/g, '') });
+    if (r.slug) rows.push({ k: 'Live wait time', v: 'View queue →', href: '/r/' + encodeURIComponent(r.slug) });
+
+    $('info-list').innerHTML = rows.map((row) => `
+      <div class="info-item">
+        <div>
+          <div class="k">${TN.escapeHtml(row.k)}</div>
+          <div class="v">${row.href
+            ? `<a href="${TN.escapeHtml(row.href)}">${TN.escapeHtml(row.v)}</a>`
+            : TN.escapeHtml(row.v)}</div>
+        </div>
+        ${row.copy ? `<button class="info-copy" type="button" data-copy="${TN.escapeHtml(row.copy)}">Copy</button>` : ''}
+      </div>`).join('');
+
+    $('info-list').querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(btn.dataset.copy);
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        } catch (_) { TN.toast('Copy nahi hua', 'error'); }
+      });
+    });
+  }
+
+  $('m-info').addEventListener('click', () => $('info-sheet').classList.remove('hidden'));
+  $('info-close').addEventListener('click', () => $('info-sheet').classList.add('hidden'));
+  $('info-sheet').addEventListener('click', (e) => {
+    if (e.target.id === 'info-sheet') $('info-sheet').classList.add('hidden');
+  });
 
   /* --------------------------- customer details -------------------------- */
 
@@ -333,6 +528,9 @@
       const res = await TN.api('/api/public/orders', { body: payload, noRedirect: true });
 
       rememberCustomer(name, phone);
+      saveLastOrder(cartList().map(({ item, qty }) => ({
+        item_id: item.id, name: item.name, price: item.price, qty,
+      })));
       state.cart.clear();
       updateCartBar();
       $('checkout-sheet').classList.add('hidden');
@@ -359,6 +557,8 @@
   }
 
   const EMOJI = { placed: '📨', accepted: '👍', preparing: '👨‍🍳', ready: '🔔', served: '🍽️', paid: '💳', cancelled: '❌' };
+  const RATING_EMOJI = { 5: '🤩', 4: '🙂', 3: '😐', 2: '🙁', 1: '😞' };
+  const RATING_LABEL = { 5: 'Loved it', 4: 'Good', 3: 'Okay', 2: 'Not great', 1: 'Bad' };
   const HEADLINE = {
     placed: 'Order mil gaya', accepted: 'Kitchen ne accept kar liya', preparing: 'Aapka khana ban raha hai',
     ready: 'Order ready hai!', served: 'Order table par serve ho gaya', paid: 'Payment ho gaya', cancelled: 'Order cancel ho gaya',
@@ -406,6 +606,7 @@
           <div class="emoji">${EMOJI[order.status] || '🍽️'}</div>
           <h2>${HEADLINE[order.status] || ''}</h2>
           ${isCancelled ? '' : `<p>${SUBTEXT[order.status] || ''}</p>`}
+          ${order.queue ? `<div class="queue-chip"><span class="dot"></span>Queue #${order.queue.position} · ~${order.queue.eta_minutes} min</div>` : ''}
         </div>
         <div class="order-card-body">
           ${isCancelled ? '<div class="cancelled-note">Yeh order cancel kar diya gaya hai.</div>' : stepsHtml}
@@ -416,15 +617,100 @@
             </div>
             ${order.payment_status === 'paid'
               ? '<div style="color:var(--green);font-weight:700;margin-top:6px">✓ Paid</div>'
-              : '<div style="margin-top:6px" class="tiny muted">💳 Pay at cash counter</div>'}
+              : (order.upi
+                ? ''
+                : '<div style="margin-top:6px" class="tiny muted">💳 Pay at cash counter</div>')}
           </div>
+          ${order.payment_status !== 'paid' && order.upi ? payBoxHtml(order, currencySym) : ''}
+          ${feedbackHtml(order)}
         </div>`;
       host.appendChild(card);
+
+      // Split-the-bill selector (equal split — no gateway, just UPI).
+      if (order.payment_status !== 'paid' && order.upi) {
+        card.querySelectorAll('[data-split]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const n = Number(btn.dataset.split);
+            card.querySelectorAll('[data-split]').forEach((b) => b.classList.toggle('on', b === btn));
+            const amount = Number(order.total) / n;
+            const per = card.querySelector('[data-per]');
+            per.innerHTML = `${n === 1
+              ? 'Full amount'
+              : `${TN.fmtMoney(amount, currencySym)} per person`} · <a href="${upiHref(order, amount)}">Open UPI app →</a>`;
+          });
+        });
+      }
+
+      // One-tap emoji feedback.
+      card.querySelectorAll('[data-fb]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const rating = Number(btn.dataset.fb);
+          card.querySelectorAll('[data-fb]').forEach((b) => { b.disabled = true; });
+          try {
+            await TN.api(`/api/public/orders/${order.id}/feedback`, {
+              body: { table: tableToken, rating },
+              noRedirect: true,
+            });
+            TN.toast('Thanks for the feedback! 🙏', 'success');
+            await refreshOrders();
+            renderStatus();
+          } catch (err) {
+            card.querySelectorAll('[data-fb]').forEach((b) => { b.disabled = false; });
+            TN.toast(err.message, 'error');
+          }
+        });
+      });
     });
+  }
+
+  function upiHref(order, amount) {
+    const link = order.upi && order.upi.link ? order.upi.link : '';
+    return link.replace(/([?&])am=[^&]*/, `$1am=${encodeURIComponent(Number(amount).toFixed(2))}`);
+  }
+
+  function payBoxHtml(order, currency) {
+    const amounts = [1, 2, 3, 4];
+    return `
+      <div class="pay-box">
+        <div class="pay-top">
+          <div>
+            <b>Pay ${TN.fmtMoney(order.total, currency)}</b>
+            <div class="tiny muted">UPI · ${TN.escapeHtml(order.upi.id)}</div>
+          </div>
+          <a class="btn btn-primary btn-sm" href="${TN.escapeHtml(order.upi.link)}">Pay now</a>
+        </div>
+        <div class="pay-split">
+          ${amounts.map((n) => `<button type="button" data-split="${n}" class="${n === 1 ? 'on' : ''}">${n === 1 ? 'Full' : '÷' + n}</button>`).join('')}
+        </div>
+        <div class="pay-per" data-per>Full amount · <a href="${TN.escapeHtml(order.upi.link)}">Open UPI app →</a></div>
+      </div>`;
+  }
+
+  function feedbackHtml(order) {
+    if (order.rating) {
+      return `
+        <div class="feedback-box">
+          <div class="feedback-done">${RATING_EMOJI[order.rating] || '🙏'} Thanks for the feedback!</div>
+          ${order.feedback ? `<p class="tiny muted" style="margin-top:6px">“${TN.escapeHtml(order.feedback)}”</p>` : ''}
+        </div>`;
+    }
+    if (!['served', 'paid'].includes(order.status)) return '';
+    return `
+      <div class="feedback-box">
+        <h4>How was the food?</h4>
+        <p>One tap — aapka feedback seedha restaurant tak jaata hai.</p>
+        <div class="emoji-row">
+          ${[5, 4, 3, 2, 1].map((n) => `
+            <button type="button" data-fb="${n}" aria-label="${RATING_LABEL[n]}">
+              ${RATING_EMOJI[n]}<span>${RATING_LABEL[n]}</span>
+            </button>`).join('')}
+        </div>
+      </div>`;
   }
 
   $('btn-back-menu').addEventListener('click', () => {
     showView('menu');
+    renderMenu(); // refresh quantities + \"my usual\" after the last order
     if (!savedCustomer().name) greet();
   });
 

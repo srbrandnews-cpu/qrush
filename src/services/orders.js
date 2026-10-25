@@ -280,12 +280,57 @@ async function notifyCustomer(order, payload) {
   }
 }
 
+/** Build a UPI intent link (works with GPay / PhonePe / Paytm, no gateway). */
+function upiLink({ upiId, merchant, amount, note }) {
+  const params = [
+    `pa=${encodeURIComponent(upiId)}`,
+    `pn=${encodeURIComponent(merchant || 'Restaurant')}`,
+    `am=${encodeURIComponent(Number(amount).toFixed(2))}`,
+    'cu=INR',
+  ];
+  if (note) params.push(`tn=${encodeURIComponent(note)}`);
+  return `upi://pay?${params.join('&')}`;
+}
+
 /** Live status for the customer (no login needed). */
 async function getCustomerOrder(tableToken, orderId) {
   const order = await getOrderWithItems(orderId);
   if (!order) return null;
   if (order.table_token !== tableToken) return null; // prevent ID guessing across tables
-  return decorateForCustomer(order);
+
+  const decorated = decorateForCustomer(order);
+  const tenant = await get('SELECT name, upi_id, prep_minutes FROM tenants WHERE id = ?', [order.tenant_id]);
+  const prep = Number(tenant && tenant.prep_minutes) || 15;
+  decorated.prep_minutes = prep;
+
+  // Live queue position + ETA while the kitchen is still working on it.
+  if ([ORDER_STATUS.PLACED, ORDER_STATUS.ACCEPTED, ORDER_STATUS.PREPARING].includes(order.status)) {
+    const ahead = await get(
+      `SELECT COUNT(*) AS c FROM orders
+        WHERE tenant_id = ? AND id < ? AND status IN (?, ?, ?)`,
+      [order.tenant_id, order.id, ORDER_STATUS.PLACED, ORDER_STATUS.ACCEPTED, ORDER_STATUS.PREPARING]
+    );
+    const position = Number(ahead && ahead.c ? ahead.c : 0) + 1;
+    const created = Date.parse(String(order.created_at).replace(' ', 'T') + 'Z');
+    const elapsed = Number.isFinite(created) ? Math.max(0, Math.floor((Date.now() - created) / 60000)) : 0;
+    decorated.queue = {
+      position,
+      ahead: position - 1,
+      eta_minutes: Math.max(1, prep - elapsed + (position - 1) * 3),
+    };
+  }
+
+  // Pay-from-phone link once the order is ready/served and still unpaid.
+  if (tenant && tenant.upi_id && order.payment_status !== 'paid' && ['ready', 'served'].includes(order.status)) {
+    decorated.upi = {
+      id: tenant.upi_id,
+      merchant: tenant.name,
+      amount: round2(Number(order.total) || 0),
+      link: upiLink({ upiId: tenant.upi_id, merchant: tenant.name, amount: order.total, note: `${order.table_name} bill` }),
+    };
+  }
+
+  return decorated;
 }
 
 /**

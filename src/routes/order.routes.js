@@ -71,7 +71,86 @@ router.get('/stats', async (req, res, next) => {
 
     const topItems = await getTopItems(tenantId, today);
 
-    res.json({ today: stats, byStatus, openNow: openRow.count, topItems });
+    // ---- live-service extras: heatmap, rush score, prep time, ratings ----
+    const hourly = await query(
+      `SELECT substr(created_at, 12, 2) AS hour, COUNT(*) AS count,
+              COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue
+         FROM orders
+        WHERE tenant_id = ? AND substr(created_at, 1, 10) = ?
+        GROUP BY hour ORDER BY hour`,
+      [tenantId, today]
+    );
+
+    const tenantRow = await get('SELECT prep_minutes FROM tenants WHERE id = ?', [tenantId]);
+    const prepTarget = Number(tenantRow && tenantRow.prep_minutes) || 15;
+
+    const events = await query(
+      `SELECT e.order_id, e.to_status, e.created_at
+         FROM order_events e JOIN orders o ON o.id = e.order_id
+        WHERE o.tenant_id = ? AND substr(o.created_at, 1, 10) = ?
+          AND e.to_status IN ('placed', 'ready')
+        ORDER BY e.id`,
+      [tenantId, today]
+    );
+    const placedAt = new Map();
+    const prepDurations = [];
+    for (const ev of events) {
+      const ts = Date.parse(String(ev.created_at).replace(' ', 'T') + 'Z');
+      if (!Number.isFinite(ts)) continue;
+      if (ev.to_status === 'placed') placedAt.set(ev.order_id, ts);
+      else if (ev.to_status === 'ready') {
+        const started = placedAt.get(ev.order_id);
+        if (Number.isFinite(started) && ts >= started) prepDurations.push((ts - started) / 60000);
+      }
+    }
+    const avgPrepMinutes = prepDurations.length
+      ? Math.round(prepDurations.reduce((a, b) => a + b, 0) / prepDurations.length)
+      : null;
+    const speedScore = prepDurations.length
+      ? Math.round((prepDurations.filter((m) => m <= prepTarget).length / prepDurations.length) * 100)
+      : null;
+
+    const ratingRow = await get(
+      `SELECT COALESCE(AVG(rating), 0) AS avg_rating, COUNT(rating) AS rating_count
+         FROM orders WHERE tenant_id = ? AND rating IS NOT NULL`,
+      [tenantId]
+    );
+    const recentFeedback = await query(
+      `SELECT o.id, o.order_no, o.rating, o.feedback, o.customer_name, o.updated_at,
+              t.name AS table_name
+         FROM orders o JOIN tables t ON t.id = o.table_id
+        WHERE o.tenant_id = ? AND o.rating IS NOT NULL
+        ORDER BY o.id DESC LIMIT 5`,
+      [tenantId]
+    );
+
+    const reqRow = await get(
+      "SELECT COUNT(*) AS c FROM table_requests WHERE tenant_id = ? AND status = 'open'",
+      [tenantId]
+    );
+    const cutoff = new Date(Date.now() - 3600000).toISOString().slice(0, 19).replace('T', ' ');
+    const hourRow = await get(
+      'SELECT COUNT(*) AS c FROM orders WHERE tenant_id = ? AND created_at >= ?',
+      [tenantId, cutoff]
+    );
+
+    res.json({
+      today: stats,
+      byStatus,
+      openNow: openRow.count,
+      topItems,
+      hourly,
+      avgPrepMinutes,
+      speedScore,
+      prepTarget,
+      rating: {
+        avg: Math.round(Number(ratingRow.avg_rating || 0) * 10) / 10,
+        count: Number(ratingRow.rating_count) || 0,
+      },
+      recentFeedback,
+      openRequests: Number(reqRow.c) || 0,
+      lastHourOrders: Number(hourRow.c) || 0,
+    });
   } catch (err) {
     next(err);
   }

@@ -35,6 +35,81 @@
   let soundName = localStorage.getItem(SOUND_KEY) || 'classic';
   if (!SOUNDS[soundName]) soundName = 'classic';
 
+  let requests = [];
+
+  /* --------------------------- voice callout ----------------------------- */
+  /* The kitchen hears the order out loud, in English or Hindi. Uses the
+     browser's built-in speech synthesis — free, no audio files, no network. */
+  const VOICE_KEY = 'tn_kitchen_voice';
+  let voiceMode = localStorage.getItem(VOICE_KEY) || 'en';
+  if (!['en', 'hi', 'off'].includes(voiceMode)) voiceMode = 'en';
+  const HINUM = { 1: 'एक', 2: 'दो', 3: 'तीन', 4: 'चार', 5: 'पांच', 6: 'छह', 7: 'सात', 8: 'आठ', 9: 'नौ', 10: 'दस' };
+
+  function spokenTable(label) {
+    const text = String(label || 'Table');
+    if (voiceMode === 'hi') {
+      const m = text.match(/^table\s*(\d+)$/i);
+      if (m) return 'टेबल ' + (HINUM[m[1]] || m[1]);
+    }
+    return text.replace(/#/g, '');
+  }
+
+  function speak(text) {
+    if (voiceMode === 'off' || !('speechSynthesis' in window) || !text) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = voiceMode === 'hi' ? 'hi-IN' : 'en-IN';
+      u.rate = 0.96;
+      u.pitch = 1.02;
+      u.volume = 1;
+      const want = voiceMode === 'hi' ? 'hi' : 'en-in';
+      const voices = window.speechSynthesis.getVoices() || [];
+      const exact = voices.find((v) => String(v.lang || '').toLowerCase().startsWith(want));
+      const fallback = voices.find((v) => String(v.lang || '').toLowerCase().startsWith('en'));
+      if (exact || fallback) u.voice = exact || fallback;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (_) { /* browser without voices */ }
+  }
+
+  function speakOrder(order) {
+    if (!order || voiceMode === 'off') return;
+    const table = spokenTable(order.bill_label || order.table_name);
+    const items = (order.items || []).slice(0, 8).map((it) => {
+      const qty = voiceMode === 'hi' ? (HINUM[it.qty] || it.qty) : it.qty;
+      return `${qty} ${it.name}`;
+    });
+    if (!items.length) return;
+    const label = voiceMode === 'hi' ? 'नया ऑर्डर' : 'New order';
+    speak(`${label}, ${table}, ${items.join(', ')}`);
+  }
+
+  function speakRequest(req) {
+    if (!req || voiceMode === 'off') return;
+    const table = spokenTable(req.table_name);
+    const labels = {
+      water: voiceMode === 'hi' ? 'पानी' : 'water',
+      spoon: voiceMode === 'hi' ? 'चम्मच' : 'spoon',
+      bill: voiceMode === 'hi' ? 'बिल' : 'bill',
+      ac: 'AC',
+      waiter: voiceMode === 'hi' ? 'वेटर' : 'waiter',
+    };
+    speak(`${table}, ${labels[req.type] || req.type}`);
+  }
+
+  function initVoicePicker() {
+    const sel = $('voice-pick');
+    if (!sel) return;
+    sel.value = voiceMode;
+    sel.addEventListener('change', () => {
+      voiceMode = sel.value;
+      try { localStorage.setItem(VOICE_KEY, voiceMode); } catch (_) { /* private mode */ }
+      if (voiceMode !== 'off') {
+        speak(voiceMode === 'hi' ? 'टेबल चार, पनीर टिक्का दो' : 'Table four, Paneer Tikka two');
+      }
+    });
+  }
+
   function ensureAudio() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -93,9 +168,11 @@
     $('r-name').textContent = data.tenant ? data.tenant.name : '';
     $('me').textContent = (data.user.name || 'K').charAt(0).toUpperCase();
     initSoundPicker();
-    await refresh();
+    initVoicePicker();
+    await Promise.all([refresh(), refreshRequests()]);
     connect();
     setInterval(tickTimers, 20000);
+    setInterval(refreshRequests, 20000);
   }
 
   async function refresh() {
@@ -128,11 +205,52 @@
     $('empty').classList.toggle('hidden', orders.length > 0);
     document.querySelector('.board').classList.toggle('hidden', orders.length === 0);
 
-    // Play the alert once per batch of new orders.
-    if (orders.some((o) => o._fresh)) {
+    // Play the alert once per batch of new orders, and call the newest one out.
+    const fresh = orders.filter((o) => o._fresh);
+    if (fresh.length) {
       beep();
+      if (soundOn) speakOrder(fresh.sort((a, b) => b.id - a.id)[0]);
       orders.forEach((o) => delete o._fresh);
     }
+  }
+
+  /* --------------------------- table requests ---------------------------- */
+  const REQ_ICONS = { water: '💧', spoon: '🍴', bill: '🧾', ac: '❄️', waiter: '🙋' };
+  const REQ_LABELS = { water: 'Water', spoon: 'Spoon', bill: 'Bill', ac: 'AC', waiter: 'Waiter' };
+
+  async function refreshRequests() {
+    try {
+      const data = await TN.api('/api/requests?status=open');
+      requests = data.requests || [];
+      renderRequests();
+    } catch (_) { /* keep previous */ }
+  }
+
+  function renderRequests() {
+    const strip = $('req-strip');
+    const list = $('req-list');
+    if (!strip || !list) return;
+    strip.classList.toggle('hidden', requests.length === 0);
+    list.innerHTML = '';
+    requests.forEach((req) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'req-pill-kds';
+      btn.innerHTML = `<span>${REQ_ICONS[req.type] || '🔔'}</span>
+        <span class="table">${TN.escapeHtml(req.table_name)}</span>
+        <span>${REQ_LABELS[req.type] || req.type}</span>
+        <span class="done">Done</span>`;
+      btn.addEventListener('click', () => resolveRequest(req.id));
+      list.appendChild(btn);
+    });
+  }
+
+  async function resolveRequest(id) {
+    try {
+      await TN.api(`/api/requests/${id}/resolve`, { method: 'PATCH' });
+      await refreshRequests();
+      TN.toast('Request done ✅', 'success');
+    } catch (err) { TN.toast(err.message, 'error'); }
   }
 
   function card(o) {
@@ -221,6 +339,14 @@
       $('conn').innerHTML = '<span class="dot"></span> Offline — retrying…';
     });
     socket.on('order:update', refresh);
+    socket.on('request:new', ({ request }) => {
+      if (!request) return;
+      TN.toast(`${request.table_name} — ${REQ_LABELS[request.type] || request.type}`, '');
+      beep();
+      if (soundOn) speakRequest(request);
+      refreshRequests();
+    });
+    socket.on('request:update', refreshRequests);
   }
 
   /* --------------------------------- misc -------------------------------- */

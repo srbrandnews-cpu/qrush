@@ -6,6 +6,19 @@ hota hai, customer ke phone par **push notification** chali jaati hai → table 
 
 Multi-tenant hai — ek hi system par aap kayi restaurants chala sakte hain (bechne ke liye bhi ready).
 
+### ✨ Table service, sirf QR menu nahi
+
+- **One-tap table requests** — water, spoon, bill, AC, waiter; kitchen + cashier screens par live chip.
+- **Live queue & ETA** — customer ko "Queue #2 · ~8 min" dikhta hai.
+- **Kitchen voice callout** — naya order English ya Hindi mein announce hota hai (10 alert sounds ke saath).
+- **UPI on the phone** — ready/served bill par `upi://pay` link, full ya equal split (÷2/÷3/÷4). Koi gateway fee nahi.
+- **Rush mode** — peak hours mein customer ko sirf "quick" items; full menu one tap away.
+- **QRush score + heatmap** — owner ko average prep time, on-time %, hourly rush chart.
+- **Emoji feedback** — customer 1-tap rating; owner dashboard par average + latest comments.
+- **Branded table tents** — QR ke saath venue name, WiFi aur UPI; print-ready.
+- **Public wait page** — `/r/<slug>` par live queue/ETA (bina login).
+- **Dark mode** — har screen par light/dark toggle (kitchen display always dark). Choice browser mein yaad rehti hai.
+
 ---
 
 ## ⚡ Sabse pehle: kaise kholein

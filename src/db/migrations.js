@@ -11,7 +11,7 @@
  * never edit an existing one (already-deployed databases would skip it).
  */
 
-const { addColumn, tableExists, run } = require('../config/db');
+const { addColumn, tableExists, run, exec, dialect } = require('../config/db');
 
 const MIGRATIONS = [
   {
@@ -28,6 +28,39 @@ const MIGRATIONS = [
     name: '002-push-only',
     async up() {
       await run("UPDATE tenants SET notify_channels = 'push'");
+    },
+  },
+  {
+    // v2.0 — live table service: quick requests, rush menu, UPI, feedback.
+    name: '003-live-service',
+    async up() {
+      await addColumn('tenants', 'wifi_name', 'TEXT');
+      await addColumn('tenants', 'wifi_password', 'TEXT');
+      await addColumn('tenants', 'upi_id', 'TEXT');
+      await addColumn('tenants', 'rush_mode', 'INTEGER NOT NULL DEFAULT 0');
+      await addColumn('tenants', 'prep_minutes', 'INTEGER NOT NULL DEFAULT 15');
+      await addColumn('menu_items', 'is_quick', 'INTEGER NOT NULL DEFAULT 0');
+      await addColumn('orders', 'rating', 'INTEGER');
+      await addColumn('orders', 'feedback', 'TEXT');
+
+      if (!(await tableExists('table_requests'))) {
+        const created = dialect() === 'postgres'
+          ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+          : `datetime('now')`;
+        await exec(`
+          CREATE TABLE IF NOT EXISTS table_requests (
+            id            ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            tenant_id     INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            table_id      INTEGER NOT NULL REFERENCES tables(id) ON DELETE CASCADE,
+            type          TEXT    NOT NULL,
+            status        TEXT    NOT NULL DEFAULT 'open',
+            resolved_by   TEXT,
+            created_at    TEXT    NOT NULL DEFAULT (${created}),
+            resolved_at   TEXT
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_requests_tenant ON table_requests(tenant_id, status)');
+      }
     },
   },
 ];

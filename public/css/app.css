@@ -337,6 +337,88 @@ table.data tbody tr:hover { background: #f8fbfd; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Responsive shell */
+/* ------------------------------ Theme toggle ---------------------------- */
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2); display: grid; place-items: center;
+  cursor: pointer; font-size: 16px; line-height: 1; flex: none; box-shadow: var(--shadow-xs);
+  transition: background .15s, border-color .15s, color .15s, transform .15s;
+}
+.theme-toggle:hover { border-color: var(--line-strong); transform: translateY(-1px); color: var(--primary-600); }
+.theme-toggle:focus-visible { outline: none; box-shadow: var(--ring); }
+
+/* ==========================================================================
+   Dark theme
+   Every surface is driven by the same tokens; these overrides cover the few
+   components that intentionally use a literal white.
+   ========================================================================== */
+[data-theme="dark"] {
+  --primary: #14b8a6;
+  --primary-500: #2dd4bf;
+  --primary-600: #2dd4bf;
+  --primary-700: #5eead4;
+  --primary-50: rgba(20, 184, 166, .12);
+  --primary-100: rgba(20, 184, 166, .2);
+
+  --ink: #e8eef9;
+  --ink-2: #c3cddd;
+  --muted: #94a3b8;
+  --muted-2: #6b7c93;
+  --line: #1e2c44;
+  --line-strong: #2b3b57;
+  --bg: #070e1a;
+  --card: #0e1929;
+
+  --green: #4ade80;
+  --green-bg: rgba(22, 163, 74, .16);
+  --amber: #fbbf24;
+  --amber-bg: rgba(245, 158, 11, .14);
+  --blue: #60a5fa;
+  --blue-bg: rgba(59, 130, 246, .16);
+  --red: #f87171;
+  --red-bg: rgba(239, 68, 68, .15);
+  --violet: #a78bfa;
+  --violet-bg: rgba(139, 92, 246, .16);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 16px 34px -22px rgba(0, 0, 0, .9);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, .4), 0 24px 48px -26px rgba(0, 0, 0, .95);
+  --shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, .9);
+  --ring: 0 0 0 4px rgba(45, 212, 191, .2);
+  --nav-grad: linear-gradient(180deg, #070d18 0%, #0b1526 55%, #081120 100%);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(900px 460px at 6% -10%, rgba(20, 184, 166, .13), transparent 60%),
+    radial-gradient(760px 420px at 100% 0%, rgba(13, 148, 136, .09), transparent 58%),
+    var(--bg);
+}
+
+[data-theme="dark"] * { scrollbar-color: #334155 transparent; }
+[data-theme="dark"] *::-webkit-scrollbar-thumb { background: #334155; background-clip: content-box; }
+[data-theme="dark"] *::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: content-box; }
+
+[data-theme="dark"] .btn { background: var(--card); }
+[data-theme="dark"] .btn:hover { background: #16243a; border-color: #3a4b68; }
+[data-theme="dark"] .btn-ghost:hover { background: rgba(255, 255, 255, .07); }
+[data-theme="dark"] .input,
+[data-theme="dark"] select.input,
+[data-theme="dark"] textarea.input { background: #0b1524; }
+[data-theme="dark"] select.input option { background: #0e1929; color: var(--ink); }
+[data-theme="dark"] .card-head { background: linear-gradient(180deg, #111e31, var(--card)); }
+[data-theme="dark"] .badge.muted { background: rgba(148, 163, 184, .12); border-color: var(--line); }
+[data-theme="dark"] .modal { background: var(--card); border-color: var(--line); }
+[data-theme="dark"] table.data th { background: #0b1524; }
+[data-theme="dark"] table.data tbody tr:hover { background: rgba(255, 255, 255, .035); }
+[data-theme="dark"] .topbar { background: rgba(8, 15, 27, .82); }
+[data-theme="dark"] .stat { background: var(--card); }
+[data-theme="dark"] .empty { background: rgba(255, 255, 255, .02); }
+[data-theme="dark"] .chip { background: #111d30; }
+[data-theme="dark"] .avatar { color: #5eead4; }
+[data-theme="dark"] .logo-white { filter: none; }
+[data-theme="dark"] .spinner.dark { border-color: var(--line); border-top-color: var(--primary-500); }
+
 @media (max-width: 860px) {
   .content { padding: 18px; }
   .shell { flex-direction: column; }

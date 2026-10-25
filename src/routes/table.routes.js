@@ -5,6 +5,7 @@ const express = require('express');
 const { query, get, run } = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { menuUrl, menuQrDataUrl } = require('../utils/qr');
+const { OPEN_STATUSES } = require('../utils/constants');
 
 const router = express.Router();
 router.use(requireAuth, requireRole('owner'));
@@ -30,6 +31,23 @@ router.get('/', async (req, res, next) => {
       'SELECT * FROM tables WHERE tenant_id = ? ORDER BY id',
       [req.user.tenant_id]
     )).map(withUrl);
+
+    // Live occupancy for the floor view: an unpaid bill (incl. served) counts.
+    const billStatuses = [...OPEN_STATUSES, 'served'];
+    const live = await query(
+      `SELECT table_id, COUNT(*) AS open_orders, COALESCE(SUM(total), 0) AS open_total
+         FROM orders
+        WHERE tenant_id = ? AND status IN (${billStatuses.map(() => '?').join(',')})
+        GROUP BY table_id`,
+      [req.user.tenant_id, ...billStatuses]
+    );
+    const byTable = new Map(live.map((l) => [l.table_id, l]));
+    for (const t of rows) {
+      const l = byTable.get(t.id);
+      t.open_orders = Number(l && l.open_orders) || 0;
+      t.open_total = Number(l && l.open_total) || 0;
+    }
+
     res.json({ tables: rows });
   } catch (err) {
     next(err);
@@ -138,7 +156,10 @@ router.get('/qr-sheet', async (req, res, next) => {
     for (const t of rows) {
       sheet.push({ ...withUrl(t), qr: await menuQrDataUrl(t.qr_token, { scale: 4 }) });
     }
-    const restaurant = await get('SELECT name FROM tenants WHERE id = ?', [req.user.tenant_id]);
+    const restaurant = await get(
+      'SELECT name, slug, phone, address, wifi_name, wifi_password, upi_id FROM tenants WHERE id = ?',
+      [req.user.tenant_id]
+    );
     res.json({ restaurant, tables: sheet });
   } catch (err) {
     next(err);

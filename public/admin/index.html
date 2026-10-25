@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0f172a" />
   <title>Admin — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
   <link rel="icon" type="image/png" href="/img/favicon.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
@@ -42,6 +49,10 @@
       <div class="grow"></div>
       <div class="side-foot">
         <div id="whoami" class="tiny"></div>
+        <button class="nav-item" data-theme-toggle title="Toggle dark mode">
+          <span data-theme-icon style="width:18px;text-align:center;font-size:16px">☾</span>
+          <span>Dark mode</span>
+        </button>
         <button class="nav-item" id="logout">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
           Logout
@@ -98,6 +109,41 @@
               <div class="value" id="d-tables">0</div>
               <div class="sub" id="d-menu">0 menu items</div>
             </div>
+          </div>
+
+          <div class="grid-2 mb24">
+            <div class="card">
+              <div class="card-head">
+                <h3>⚡ QRush score</h3>
+                <span class="badge ready" id="d-score-badge">—</span>
+              </div>
+              <div class="card-pad" style="display:flex;gap:18px;align-items:center">
+                <div class="score-ring" id="d-score-ring" style="--score:0">
+                  <div><b id="d-score">—</b><span>speed</span></div>
+                </div>
+                <div class="grow">
+                  <div class="small muted">Orders ready within your target time</div>
+                  <div class="small mt8"><b id="d-prep">—</b> avg prep · target <b id="d-target">15</b> min</div>
+                  <div class="tiny muted mt8" id="d-rush-line">This hour: 0 orders</div>
+                  <div class="tiny mt8" id="d-requests-line" style="color:var(--muted)">0 open table requests</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Guest feedback</h3>
+                <span class="badge muted" id="d-ratings">0 ratings</span>
+              </div>
+              <div id="d-feedback"><div class="empty">No feedback yet.</div></div>
+            </div>
+          </div>
+
+          <div class="card mb24">
+            <div class="card-head">
+              <h3>Rush heatmap — today</h3>
+              <span class="badge muted">Orders per hour</span>
+            </div>
+            <div class="card-pad"><div class="heat" id="d-heat"></div></div>
           </div>
 
           <!-- Getting started checklist -->
@@ -166,7 +212,7 @@
             </div>
           </div>
           <div class="flex between center mb16">
-            <h2 style="font-size:18px">QR code stickers</h2>
+            <h2 style="font-size:18px">Branded table tents</h2>
             <button class="btn" id="print-qr">🖨️ Print all</button>
           </div>
           <div id="qr-grid" class="qr-grid"></div>
@@ -283,6 +329,28 @@
               </div>
               <div class="field"><label>Address</label><textarea class="input" id="s-address"></textarea></div>
               <div class="field"><label>GST / tax percent</label><input class="input" id="s-gst" type="number" min="0" max="100" step="0.5" /></div>
+
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:4px">Guest experience</h3>
+              <p class="tiny muted" style="margin:0 0 14px">
+                WiFi aur UPI customer ke info sheet aur printed table tents par dikhte hain.
+              </p>
+              <div class="row">
+                <div class="field"><label>WiFi name</label><input class="input" id="s-wifi-name" placeholder="Cafe_Guest" /></div>
+                <div class="field"><label>WiFi password</label><input class="input" id="s-wifi-pass" placeholder="••••••" /></div>
+              </div>
+              <div class="row">
+                <div class="field"><label>UPI ID</label><input class="input" id="s-upi" placeholder="restaurant@okhdfcbank" /></div>
+                <div class="field"><label>Typical prep time (min)</label><input class="input" id="s-prep" type="number" min="1" max="120" step="1" placeholder="15" /></div>
+              </div>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="s-rush"><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45">
+                  <b>Rush mode</b><br>
+                  <span class="muted">Peak hours mein menu sirf quick items dikhaye (customer full menu bhi khol sakta hai).</span>
+                </span>
+              </label>
+
               <button class="btn btn-primary" id="save-settings">Save settings</button>
             </div>
           </div>

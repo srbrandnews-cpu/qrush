@@ -104,14 +104,15 @@ router.post('/items', requireRole('owner'), async (req, res, next) => {
     const sort = Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : (max.m || 0) + 1;
 
     const r = await run(
-      `INSERT INTO menu_items (tenant_id, category_id, name, description, price, image_url, is_veg, is_available, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO menu_items (tenant_id, category_id, name, description, price, image_url, is_veg, is_available, is_quick, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.tenant_id, categoryId, String(b.name).trim(),
         b.description ? String(b.description).trim() : null,
         price, b.image_url ? String(b.image_url).trim() : null,
         b.is_veg ? 1 : 0,
         b.is_available === false ? 0 : 1,
+        b.is_quick ? 1 : 0,
         sort,
       ]
     );
@@ -141,7 +142,7 @@ router.put('/items/:id', requireRole('owner'), async (req, res, next) => {
     await run(
       `UPDATE menu_items SET
          category_id = ?, name = ?, description = ?, price = ?, image_url = ?,
-         is_veg = ?, is_available = ?, sort_order = ?
+         is_veg = ?, is_available = ?, is_quick = ?, sort_order = ?
        WHERE id = ?`,
       [
         categoryId,
@@ -151,6 +152,7 @@ router.put('/items/:id', requireRole('owner'), async (req, res, next) => {
         b.image_url !== undefined ? (b.image_url ? String(b.image_url).trim() : null) : item.image_url,
         b.is_veg != null ? (b.is_veg ? 1 : 0) : item.is_veg,
         b.is_available != null ? (b.is_available ? 1 : 0) : item.is_available,
+        b.is_quick != null ? (b.is_quick ? 1 : 0) : item.is_quick,
         Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : item.sort_order,
         item.id,
       ]

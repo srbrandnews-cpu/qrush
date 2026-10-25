@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS tenants (
   gst_percent   REAL    NOT NULL DEFAULT 0,
   country_code  TEXT    NOT NULL DEFAULT '+91',
   notify_channels TEXT  NOT NULL DEFAULT 'push',
+  wifi_name     TEXT,
+  wifi_password TEXT,
+  upi_id        TEXT,
+  rush_mode     INTEGER NOT NULL DEFAULT 0,
+  prep_minutes  INTEGER NOT NULL DEFAULT 15,
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -48,6 +53,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
   image_url     TEXT,
   is_veg        INTEGER NOT NULL DEFAULT 1,
   is_available  INTEGER NOT NULL DEFAULT 1,
+  is_quick      INTEGER NOT NULL DEFAULT 0,
   sort_order    INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -95,6 +101,8 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_status  TEXT    NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid','paid')),
   payment_method  TEXT    CHECK (payment_method IN ('cash','upi','card')),
   notes           TEXT,
+  rating          INTEGER,
+  feedback        TEXT,
   created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -142,3 +150,17 @@ CREATE TABLE IF NOT EXISTS order_events (
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_id);
+
+-- One-tap service requests from the customer's phone (water, spoon, bill ...).
+-- Staff screens resolve them; they are never part of a bill.
+CREATE TABLE IF NOT EXISTS table_requests (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id     INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  table_id      INTEGER NOT NULL REFERENCES tables(id) ON DELETE CASCADE,
+  type          TEXT    NOT NULL,
+  status        TEXT    NOT NULL DEFAULT 'open',
+  resolved_by   TEXT,
+  created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+  resolved_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_requests_tenant ON table_requests(tenant_id, status);

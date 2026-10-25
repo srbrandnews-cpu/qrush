@@ -49,3 +49,26 @@
 .pm.active { border-color: var(--primary); background: var(--primary-50); color: var(--primary-700); }
 
 .paid-tag { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-weight: 700; font-size: 14px; }
+
+/* --------------------------- Service requests --------------------------- */
+.req-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 14px; scrollbar-width: none; }
+.req-strip::-webkit-scrollbar { display: none; }
+.req-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-radius: 999px; border: 1px solid rgba(245, 158, 11, .45); background: var(--amber-bg);
+  color: var(--ink); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: .15s;
+  box-shadow: var(--shadow-xs);
+}
+.req-pill:hover { transform: translateY(-1px); border-color: var(--amber); }
+.req-pill .ico { font-size: 15px; }
+.req-pill .table { color: var(--amber); }
+.req-pill .done { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
+.req-empty { font-size: 12.5px; color: var(--muted); padding: 8px 0 14px; }
+
+/* ============================== Dark theme ============================== */
+[data-theme="dark"] body { background: var(--bg); }
+[data-theme="dark"] .ccard { background: var(--card); }
+[data-theme="dark"] .ccard-head { background: linear-gradient(180deg, #111e31, var(--card)); }
+[data-theme="dark"] .pm { background: #111d30; }
+[data-theme="dark"] .tab:hover { background: rgba(255, 255, 255, .05); }
+[data-theme="dark"] .tab.active { color: #5eead4; }

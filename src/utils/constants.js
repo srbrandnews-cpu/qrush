@@ -29,6 +29,16 @@ const STATUS_LABEL = {
 // Customer-facing progress steps (cancelled orders show separately).
 const CUSTOMER_FLOW = ['placed', 'accepted', 'preparing', 'ready', 'served'];
 
+// One-tap table requests. Kept small and universal so every venue can use them.
+const REQUEST_TYPES = ['water', 'spoon', 'bill', 'ac', 'waiter'];
+const REQUEST_LABELS = {
+  water: 'Water',
+  spoon: 'Spoon / tissue',
+  bill: 'Bill',
+  ac: 'AC',
+  waiter: 'Waiter',
+};
+
 // Allowed transitions -> next statuses.
 const TRANSITIONS = {
   placed: ['accepted', 'cancelled'],
@@ -59,6 +69,8 @@ module.exports = {
   ORDER_STATUS,
   STATUS_LABEL,
   CUSTOMER_FLOW,
+  REQUEST_TYPES,
+  REQUEST_LABELS,
   TRANSITIONS,
   TRANSITION_ROLE,
   OPEN_STATUSES,

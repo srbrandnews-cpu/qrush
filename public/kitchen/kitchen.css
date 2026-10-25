@@ -110,3 +110,24 @@ body { background: #0f172a; color: #e2e8f0; }
   cursor: pointer; max-width: 150px;
 }
 .sound-pick:focus { outline: 2px solid #38bdf8; outline-offset: 1px; }
+.voice-pick { max-width: 118px; }
+
+/* --------------------------- Service requests --------------------------- */
+.req-strip-kds {
+  display: flex; gap: 8px; align-items: center; overflow-x: auto; scrollbar-width: none;
+  padding: 8px 18px; border-bottom: 1px solid #1e293b; background: rgba(11, 18, 32, .6);
+}
+.req-strip-kds::-webkit-scrollbar { display: none; }
+.req-strip-kds .lead {
+  flex: none; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #f59e0b;
+}
+.req-pill-kds {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px;
+  border-radius: 999px; border: 1px solid rgba(245, 158, 11, .45); background: #2a2410;
+  color: #fde68a; font-size: 13px; font-weight: 700; cursor: pointer; transition: .15s;
+}
+.req-pill-kds:hover { border-color: #f59e0b; transform: translateY(-1px); }
+.req-pill-kds .table { color: #fbbf24; }
+.req-pill-kds .done { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.req-pill-kds.fresh { animation: reqflash 1s ease 2; }
+@keyframes reqflash { 0%,100% { box-shadow: none } 50% { box-shadow: 0 0 0 3px rgba(245, 158, 11, .45) } }

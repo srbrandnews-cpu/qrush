@@ -10,6 +10,7 @@
   let role = 'cashier';
   let paying = null;   // bill currently in the payment modal
   let method = 'cash';
+  let requests = [];
 
   /* --------------------------------- load -------------------------------- */
   async function load() {
@@ -22,7 +23,9 @@
 
     await refresh();
     await loadStats();
+    await refreshRequests();
     connect();
+    setInterval(refreshRequests, 20000);
   }
 
   async function refresh() {
@@ -239,6 +242,44 @@
     }
   });
 
+  /* --------------------------- service requests -------------------------- */
+  const REQ_ICONS = { water: '💧', spoon: '🍴', bill: '🧾', ac: '❄️', waiter: '🙋' };
+  const REQ_LABELS = { water: 'Water', spoon: 'Spoon', bill: 'Bill', ac: 'AC', waiter: 'Waiter' };
+
+  async function refreshRequests() {
+    try {
+      const data = await TN.api('/api/requests?status=open');
+      requests = data.requests || [];
+      renderRequests();
+    } catch (_) { /* keep previous */ }
+  }
+
+  function renderRequests() {
+    const strip = $('req-strip');
+    if (!strip) return;
+    strip.classList.toggle('hidden', requests.length === 0);
+    strip.innerHTML = '';
+    requests.forEach((req) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'req-pill';
+      btn.innerHTML = `<span class="ico">${REQ_ICONS[req.type] || '🔔'}</span>
+        <span class="table">${TN.escapeHtml(req.table_name)}</span>
+        <span>${REQ_LABELS[req.type] || req.type}</span>
+        <span class="done">Done</span>`;
+      btn.addEventListener('click', () => resolveRequest(req.id));
+      strip.appendChild(btn);
+    });
+  }
+
+  async function resolveRequest(id) {
+    try {
+      await TN.api(`/api/requests/${id}/resolve`, { method: 'PATCH' });
+      await refreshRequests();
+      TN.toast('Request done ✅', 'success');
+    } catch (err) { TN.toast(err.message, 'error'); }
+  }
+
   /* --------------------------------- tabs -------------------------------- */
   $('tabs').addEventListener('click', (e) => {
     const btn = e.target.closest('.tab');
@@ -260,6 +301,13 @@
     socket.on('connect', () => { $('conn').className = 'conn live'; refresh(); });
     socket.on('disconnect', () => { $('conn').className = 'conn off'; $('conn').innerHTML = '<span class="dot"></span> Offline'; });
     socket.on('order:update', () => { refresh(); loadStats(); });
+    socket.on('request:new', ({ request }) => {
+      if (!request) return;
+      TN.toast(`${request.table_name} — ${REQ_LABELS[request.type] || request.type}`, '');
+      if (navigator.vibrate) navigator.vibrate(120);
+      refreshRequests();
+    });
+    socket.on('request:update', refreshRequests);
   }
 
   $('logout').addEventListener('click', () => TN.logout());

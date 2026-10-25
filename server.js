@@ -31,6 +31,7 @@ app.use('/api/auth', require('./src/routes/auth.routes'));
 app.use('/api/menu', require('./src/routes/menu.routes'));
 app.use('/api/tables', require('./src/routes/table.routes'));
 app.use('/api/orders', require('./src/routes/order.routes'));
+app.use('/api/requests', require('./src/routes/request.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
 app.use('/api/push', require('./src/routes/push.routes'));
 app.use('/api/public', require('./src/routes/public.routes'));
@@ -65,6 +66,7 @@ app.get('/login', page(path.join('login', 'index.html')));
 app.get('/admin', page(path.join('admin', 'index.html')));
 app.get('/kitchen', page(path.join('kitchen', 'index.html')));
 app.get('/cashier', page(path.join('cashier', 'index.html')));
+app.get('/r/:slug', page(path.join('wait', 'index.html')));
 app.get('/menu', page(path.join('menu', 'index.html')));
 
 // --- 404 for unknown API calls, plain 404 page otherwise ---
