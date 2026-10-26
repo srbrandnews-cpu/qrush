@@ -154,6 +154,9 @@ body { background: var(--bg); overscroll-behavior-y: contain; }
   background: rgba(255,255,255,.25); border-radius: 7px; padding: 2px 9px; font-size: 13px;
 }
 
+/* Keep toasts above the fixed cart bar so they never hide the total. */
+body.has-cart #toasts { bottom: calc(92px + env(safe-area-inset-bottom)); }
+
 /* -------------------------------- Sheets -------------------------------- */
 .sheet {
   position: fixed; inset: 0; z-index: 100; background: rgba(15,23,42,.45);

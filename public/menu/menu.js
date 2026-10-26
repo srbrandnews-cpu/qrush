@@ -663,6 +663,7 @@
   function updateCartBar() {
     const n = cartCount();
     $('cart-bar').classList.toggle('hidden', n === 0);
+    document.body.classList.toggle('has-cart', n > 0);
     $('cart-count').textContent = n;
     $('cart-total').textContent = TN.fmtMoney(total(), state.restaurant.currency);
   }
