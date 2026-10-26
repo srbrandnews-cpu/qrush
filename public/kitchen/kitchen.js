@@ -44,44 +44,40 @@
   let voiceMode = localStorage.getItem(VOICE_KEY) || 'en';
   if (!['en', 'hi', 'off'].includes(voiceMode)) voiceMode = 'en';
   const HINUM = { 1: 'एक', 2: 'दो', 3: 'तीन', 4: 'चार', 5: 'पांच', 6: 'छह', 7: 'सात', 8: 'आठ', 9: 'नौ', 10: 'दस' };
+  const ENNUM = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten' };
 
   function spokenTable(label) {
-    const text = String(label || 'Table');
+    const text = String(label || 'Table').replace(/#/g, '').trim();
     if (voiceMode === 'hi') {
-      const m = text.match(/^table\s*(\d+)$/i);
-      if (m) return 'टेबल ' + (HINUM[m[1]] || m[1]);
+      const m = text.match(/^table\s*(\d+)\s*([a-z])?$/i);
+      if (m) return 'टेबल ' + (HINUM[m[1]] || m[1]) + (m[2] ? ', ' + m[2].toUpperCase() : '');
+      return text;
     }
-    return text.replace(/#/g, '');
+    const m = text.match(/^table\s*(\d+)\s*([a-z])?$/i);
+    if (m) return 'Table ' + (ENNUM[m[1]] || m[1]) + (m[2] ? ', ' + m[2].toUpperCase() : '');
+    return text;
   }
 
   function speak(text) {
-    if (voiceMode === 'off' || !('speechSynthesis' in window) || !text) return;
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = voiceMode === 'hi' ? 'hi-IN' : 'en-IN';
-      u.rate = 0.96;
-      u.pitch = 1.02;
-      u.volume = 1;
-      const want = voiceMode === 'hi' ? 'hi' : 'en-in';
-      const voices = window.speechSynthesis.getVoices() || [];
-      const exact = voices.find((v) => String(v.lang || '').toLowerCase().startsWith(want));
-      const fallback = voices.find((v) => String(v.lang || '').toLowerCase().startsWith('en'));
-      if (exact || fallback) u.voice = exact || fallback;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    } catch (_) { /* browser without voices */ }
+    if (voiceMode === 'off' || !text || !TN.voice) return;
+    TN.voice.speak(text, {
+      lang: voiceMode === 'hi' ? 'hi-IN' : 'en-IN',
+      mode: voiceMode,
+      rate: 0.98,
+      pitch: 1,
+    });
   }
 
   function speakOrder(order) {
     if (!order || voiceMode === 'off') return;
     const table = spokenTable(order.bill_label || order.table_name);
     const items = (order.items || []).slice(0, 8).map((it) => {
-      const qty = voiceMode === 'hi' ? (HINUM[it.qty] || it.qty) : it.qty;
+      const qty = voiceMode === 'hi' ? (HINUM[it.qty] || it.qty) : (ENNUM[it.qty] || it.qty);
       return `${qty} ${it.name}`;
     });
     if (!items.length) return;
     const label = voiceMode === 'hi' ? 'नया ऑर्डर' : 'New order';
-    speak(`${label}, ${table}, ${items.join(', ')}`);
+    speak(`${label}. ${table}. ${items.join('. ')}.`);
   }
 
   function speakRequest(req) {
@@ -94,7 +90,17 @@
       ac: 'AC',
       waiter: voiceMode === 'hi' ? 'वेटर' : 'waiter',
     };
-    speak(`${table}, ${labels[req.type] || req.type}`);
+    speak(`${table}. ${labels[req.type] || req.type}.`);
+  }
+
+  function updateVoiceTitle() {
+    const sel = $('voice-pick');
+    if (!sel || !TN.voice) return;
+    if (voiceMode === 'off') { sel.title = 'Order voice callout is off'; return; }
+    const name = TN.voice.bestName(voiceMode);
+    sel.title = name
+      ? `Natural online callout · browser fallback: ${name}`
+      : 'Natural online order voice callout';
   }
 
   function initVoicePicker() {
@@ -104,10 +110,13 @@
     sel.addEventListener('change', () => {
       voiceMode = sel.value;
       try { localStorage.setItem(VOICE_KEY, voiceMode); } catch (_) { /* private mode */ }
+      updateVoiceTitle();
       if (voiceMode !== 'off') {
-        speak(voiceMode === 'hi' ? 'टेबल चार, पनीर टिक्का दो' : 'Table four, Paneer Tikka two');
+        speak(voiceMode === 'hi' ? 'टेबल चार. पनीर टिक्का, दो.' : 'Table four. Paneer Tikka, two.');
       }
     });
+    setTimeout(updateVoiceTitle, 500);
+    setTimeout(updateVoiceTitle, 1600);
   }
 
   function ensureAudio() {

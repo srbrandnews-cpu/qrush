@@ -91,9 +91,15 @@ async function main() {
   assert(adv.data.order.status === 'paid' && adv.data.order.payment_status === 'paid', 'cashier collects payment');
   assert(adv.data.order.payment_method === 'cash', 'payment method recorded as cash');
 
-  // 8. Customer tracks the final status
-  const finalStatus = await call(`/api/public/orders/${placed.id}?table=` + encodeURIComponent(tableToken));
+  // 8. Customer tracks the final status (scoped to their own device)
+  const finalStatus = await call(`/api/public/orders/${placed.id}?table=` + encodeURIComponent(tableToken) +
+    '&deviceId=test-device-1');
   assert(finalStatus.data.order.status === 'paid', 'customer sees "paid" status');
+
+  // Another guest with the same table QR must not read this bill.
+  const peeking = await call(`/api/public/orders/${placed.id}?table=` + encodeURIComponent(tableToken) +
+    '&deviceId=someone-else');
+  assert(peeking.status === 404, 'another device on the same table cannot read the bill');
 
   // 9. Role guard: a kitchen user cannot move a READY order to "served" (cashier's job)
   const order2 = await call('/api/public/orders', {

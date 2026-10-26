@@ -29,8 +29,8 @@
       <span class="conn" id="conn"><span class="dot"></span> Connecting…</span>
       <select id="sound-pick" class="sound-pick" title="New order alert sound" aria-label="New order alert sound"></select>
       <select id="voice-pick" class="sound-pick voice-pick" title="Order voice callout" aria-label="Order voice callout">
-        <option value="en">🔊 English</option>
-        <option value="hi">🔊 हिंदी</option>
+        <option value="en">🔊 English (natural)</option>
+        <option value="hi">🔊 हिंदी (natural)</option>
         <option value="off">🔇 Voice off</option>
       </select>
       <button class="btn btn-sm kbtn" id="sound" title="Sound on/off">🔔 Sound</button>
@@ -70,6 +70,7 @@
   </div>
 
   <script src="/js/common.js"></script>
+  <script src="/js/voice.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/kitchen/kitchen.js"></script>
 </body>

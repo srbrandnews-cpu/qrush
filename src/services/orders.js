@@ -42,7 +42,8 @@ const BILL_ACTIVE_STATUSES = [...OPEN_STATUSES, ORDER_STATUS.SERVED];
 
 /** Stable identity for a bill: the phone if we have one, else the device. */
 function billKey(order) {
-  if (order.customer_phone) return `phone:${order.customer_phone}`;
+  const phone = cleanPhone(order.customer_phone);
+  if (phone) return `phone:${phone}`;
   if (order.device_id) return `device:${order.device_id}`;
   return `order:${order.id}`;
 }
@@ -59,11 +60,22 @@ function billSuffix(index) {
   return s;
 }
 
-/** Canonical phone shape so "98765 43210" and "9876543210" match. */
+/**
+ * Canonical phone shape so "+91 98765 43210", "098765 43210" and
+ * "9876543210" all resolve to the same bill identity. India is the default
+ * market, but other country numbers are kept intact.
+ */
 function cleanPhone(value) {
   if (value === null || value === undefined) return null;
-  const cleaned = String(value).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
-  return cleaned || null;
+  let digits = String(value).replace(/\D/g, '');
+  if (!digits) return null;
+
+  if (digits.startsWith('00')) digits = digits.slice(2); // international prefix
+  if (digits.length === 13 && digits.startsWith('091')) digits = digits.slice(3);
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+
+  return digits || null;
 }
 
 /**
@@ -131,8 +143,29 @@ async function createOrder(payload) {
     throw httpError(400, 'Cart is empty');
   }
 
-  // The phone identifies the bill, so keep it clean and sane.
-  const phone = cleanPhone(customerPhone);
+  // The phone identifies the bill, so keep it clean and sane. Also repair the
+  // add-on case from older clients: if this device already has an open order
+  // without a phone, backfill it so both orders land in the same bill.
+  let phone = cleanPhone(customerPhone);
+  if (deviceId) {
+    const previous = await get(
+      `SELECT id, customer_phone FROM orders
+        WHERE table_id = ? AND device_id = ?
+          AND status IN (${BILL_ACTIVE_STATUSES.map(() => '?').join(',')})
+        ORDER BY id DESC LIMIT 1`,
+      [tableId, deviceId, ...BILL_ACTIVE_STATUSES]
+    );
+    if (!phone) phone = cleanPhone(previous && previous.customer_phone);
+    if (phone && previous && !cleanPhone(previous.customer_phone)) {
+      await run(
+        `UPDATE orders SET customer_phone = ?
+          WHERE table_id = ? AND device_id = ?
+            AND status IN (${BILL_ACTIVE_STATUSES.map(() => '?').join(',')})
+            AND (customer_phone IS NULL OR customer_phone = '')`,
+        [phone, tableId, deviceId, ...BILL_ACTIVE_STATUSES]
+      );
+    }
+  }
   if (phone && phone.replace(/\D/g, '').length < 7) {
     throw httpError(400, 'Please enter a valid phone number');
   }
@@ -382,6 +415,7 @@ function decorateForCustomer(order) {
   const isCancelled = order.status === ORDER_STATUS.CANCELLED;
   return {
     ...order,
+    bill_key: billKey(order),
     status_label: STATUS_LABEL[order.status],
     is_cancelled: isCancelled,
     progress: {

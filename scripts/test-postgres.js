@@ -152,6 +152,9 @@ async function main() {
     const code = await new Promise((res) => test.on('close', res));
     if (code !== 0) throw new Error('Flow tests failed on PostgreSQL (exit ' + code + ')');
 
+    log('\n     Bill merge / add-on test...');
+    await runNode('scripts/test-bill-merge.js', { BASE_URL: `http://localhost:${APP_PORT}` });
+
     log('\n5/6  Verifying PostgreSQL-specific behaviour...');
     await verifyPostgresSpecifics(APP_PORT);
 

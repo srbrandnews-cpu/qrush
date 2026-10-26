@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { query, get, run } = require('../config/db');
-const { createOrder, getCustomerOrder, decorateForCustomer } = require('../services/orders');
+const { createOrder, getCustomerOrder, decorateForCustomer, cleanPhone } = require('../services/orders');
 const { OPEN_STATUSES, REQUEST_TYPES, REQUEST_LABELS } = require('../utils/constants');
 const { emitToTenant } = require('../realtime/socket');
 
@@ -11,6 +11,18 @@ const router = express.Router();
 // What the customer still sees on their phone: the kitchen steps plus served
 // (so they can pay by UPI and leave a rating before the cashier closes the bill).
 const CUSTOMER_ACTIVE = [...OPEN_STATUSES, 'served'];
+
+/**
+ * A customer may only see (and rate) orders that belong to their phone or
+ * this browser's device id. Without this, the second guest at a table would
+ * open the first guest's bill just by scanning the same QR.
+ */
+function ownsCustomerOrder(row, phone, deviceId) {
+  const wanted = cleanPhone(phone);
+  if (wanted && cleanPhone(row.customer_phone) === wanted) return true;
+  if (deviceId && row.device_id && String(row.device_id) === String(deviceId)) return true;
+  return false;
+}
 
 /**
  * Resolve a table by its QR token. Anonymous (no login) by design.
@@ -55,13 +67,21 @@ router.get('/menu', async (req, res, next) => {
     const uncategorized = items.filter((i) => !i.category_id || !categories.some((c) => c.id === i.category_id));
     if (uncategorized.length) menu.push({ id: null, name: 'More', items: uncategorized });
 
-    // Any open orders already on this table (so a returning phone sees status).
-    const active = await query(
-      `SELECT id, order_no, status, created_at FROM orders
-        WHERE table_id = ? AND status IN (${CUSTOMER_ACTIVE.map(() => '?').join(',')})
-        ORDER BY id DESC`,
-      [table.table_id, ...CUSTOMER_ACTIVE]
-    );
+    // Only this guest's open orders are returned (phone + device), never the
+    // other diners' bills on the same table.
+    const phone = req.query.phone || '';
+    const deviceId = req.query.deviceId || '';
+    const activeRows = (phone || deviceId)
+      ? await query(
+        `SELECT id, order_no, status, created_at, customer_phone, device_id FROM orders
+          WHERE table_id = ? AND status IN (${CUSTOMER_ACTIVE.map(() => '?').join(',')})
+          ORDER BY id DESC`,
+        [table.table_id, ...CUSTOMER_ACTIVE]
+      )
+      : [];
+    const active = activeRows
+      .filter((row) => ownsCustomerOrder(row, phone, deviceId))
+      .map(({ id, order_no, status, created_at }) => ({ id, order_no, status, created_at }));
 
     res.json({
       restaurant: {
@@ -114,12 +134,19 @@ router.post('/orders', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/orders/:id?table=<qr_token>  -> live status for the customer.
+ * GET /api/public/orders/:id?table=<qr_token>&phone=...&deviceId=...
+ * Live status for the customer, limited to orders that belong to their phone
+ * or this browser's device. Orders created before phones/devices were stored
+ * stay readable with the table QR alone.
  */
 router.get('/orders/:id', async (req, res, next) => {
   try {
     const order = await getCustomerOrder(String(req.query.table || ''), Number(req.params.id));
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    const identified = order.customer_phone || order.device_id;
+    if (identified && !ownsCustomerOrder(order, req.query.phone, req.query.deviceId)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
     res.json({ order });
   } catch (err) {
     next(err);
@@ -127,21 +154,29 @@ router.get('/orders/:id', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/tables/:token/orders  -> all open orders on this table.
- * Lets a customer reopen the page later and still track their food.
+ * GET /api/public/tables/:token/orders?phone=...&deviceId=...
+ * This guest's open orders on the table. Lets a customer reopen the page
+ * later and still track their food — without exposing another guest's bill.
  */
 router.get('/tables/:token/orders', async (req, res, next) => {
   try {
     const table = await resolveTable(req.params.token);
     if (!table) return res.status(404).json({ error: 'Invalid table' });
 
-    const rows = await query(
-      `SELECT id FROM orders WHERE table_id = ? AND status IN (${CUSTOMER_ACTIVE.map(() => '?').join(',')}) ORDER BY id`,
-      [table.table_id, ...CUSTOMER_ACTIVE]
-    );
+    const phone = req.query.phone || '';
+    const deviceId = req.query.deviceId || '';
+    const rows = (phone || deviceId)
+      ? await query(
+        `SELECT id, customer_phone, device_id FROM orders
+          WHERE table_id = ? AND status IN (${CUSTOMER_ACTIVE.map(() => '?').join(',')}) ORDER BY id`,
+        [table.table_id, ...CUSTOMER_ACTIVE]
+      )
+      : [];
+
     const orders = [];
-    for (const r of rows) {
-      const o = await getCustomerOrder(req.params.token, r.id);
+    for (const row of rows) {
+      if (!ownsCustomerOrder(row, phone, deviceId)) continue;
+      const o = await getCustomerOrder(req.params.token, row.id);
       if (o) orders.push(o);
     }
     res.json({ orders });
@@ -228,6 +263,9 @@ router.post('/orders/:id/feedback', async (req, res, next) => {
       id, table.table_id, table.tenant_id,
     ]);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    if ((order.customer_phone || order.device_id) && !ownsCustomerOrder(order, b.phone, b.deviceId)) {
+      return res.status(403).json({ error: 'This order belongs to another guest' });
+    }
     if (!['ready', 'served', 'paid'].includes(order.status)) {
       return res.status(400).json({ error: 'You can rate once your food is served' });
     }

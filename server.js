@@ -34,6 +34,7 @@ app.use('/api/orders', require('./src/routes/order.routes'));
 app.use('/api/requests', require('./src/routes/request.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
 app.use('/api/push', require('./src/routes/push.routes'));
+app.use('/api/voice', require('./src/routes/voice.routes'));
 app.use('/api/public', require('./src/routes/public.routes'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));

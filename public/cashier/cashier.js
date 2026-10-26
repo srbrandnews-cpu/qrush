@@ -126,11 +126,14 @@
       actions += `<button class="btn btn-success" data-act="pay">💰 Collect ${TN.fmtMoney(due, currency)}</button>`;
     }
 
-    const billRows = inBill.map((o) => {
+    const billRows = inBill.map((o, index) => {
       const items = o.items.map((it) =>
         `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`).join('');
       return `<div class="bill-order">
-          <div class="row-line tiny muted"><span>#${o.order_no} • ${o.status}</span><span></span></div>
+          <div class="row-line tiny muted bill-order-head">
+            <span>#${o.order_no} • ${o.status}${index > 0 ? ' <span class="addon-tag">Add-on</span>' : ''}</span>
+            <span></span>
+          </div>
           ${items}
         </div>`;
     }).join('');

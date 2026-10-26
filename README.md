@@ -9,8 +9,9 @@ Multi-tenant hai — ek hi system par aap kayi restaurants chala sakte hain (bec
 ### ✨ Table service, sirf QR menu nahi
 
 - **One-tap table requests** — water, spoon, bill, AC, waiter; kitchen + cashier screens par live chip.
+- **One bill per phone** — same table + same number ke add-on items ek hi bill mein; alag number = alag bill (`Table 1A`).
 - **Live queue & ETA** — customer ko "Queue #2 · ~8 min" dikhta hai.
-- **Kitchen voice callout** — naya order English ya Hindi mein announce hota hai (10 alert sounds ke saath).
+- **Spoken welcome + kitchen callout** — QR scan par venue ka welcome note + natural voice; kitchen naye order English/Hindi mein announce karta hai (10 alert sounds ke saath).
 - **UPI on the phone** — ready/served bill par `upi://pay` link, full ya equal split (÷2/÷3/÷4). Koi gateway fee nahi.
 - **Rush mode** — peak hours mein customer ko sirf "quick" items; full menu one tap away.
 - **QRush score + heatmap** — owner ko average prep time, on-time %, hourly rush chart.
@@ -155,6 +156,7 @@ hotel-table-booking/
 ├── scripts/
 │   ├── make-icon.js         # app icons banata hai (PNG)
 │   ├── test-flow.js         # end-to-end order flow test
+│   ├── test-bill-merge.js   # same-table add-on / separate-phone bills
 │   ├── test-postgres.js     # wahi test, real PostgreSQL par
 │   └── reset-orders.js      # demo orders clean karta hai
 └── data/                    # SQLite database + VAPID keys (auto-create, gitignored)

@@ -91,6 +91,18 @@
     </div>
   </div>
 
+  <!-- ========================= WELCOME SPLASH =========================== -->
+  <div id="welcome-splash" class="welcome-splash hidden" role="dialog" aria-label="Welcome">
+    <div class="ws-ring"></div>
+    <img class="ws-logo" src="/img/logo.svg" alt="" />
+    <div class="ws-kicker">Welcome to</div>
+    <h1 id="ws-venue">Restaurant</h1>
+    <div class="ws-table"><span id="ws-table">Table</span></div>
+    <div class="ws-hello" id="ws-hello"></div>
+    <button class="ws-enter" id="ws-enter" type="button">Tap to continue</button>
+    <div class="ws-foot">Scan · Order · Relax</div>
+  </div>
+
   <!-- ============================== WELCOME ============================== -->
   <div id="welcome" class="welcome hidden">
     <div class="welcome-card">
@@ -130,6 +142,7 @@
           <label>Mobile number <span style="color:#c0392b">*</span></label>
           <input class="input" id="co-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="e.g. 98765 43210" />
           <p class="tiny muted" style="margin:4px 0 0">Isi number se aapka bill banega. Ek table par do log alag number daalein to bill alag-alag banenge.</p>
+          <div class="bill-note hidden" id="co-bill-note"></div>
         </div>
         <div class="field"><label>Your name (optional)</label><input class="input" id="co-name" placeholder="e.g. Rahul" /></div>
         <div class="field"><label>Order notes (optional)</label><textarea class="input" id="co-notes" placeholder="e.g. less spicy, no onion…"></textarea></div>
@@ -166,6 +179,7 @@
   </div>
 
   <script src="/js/common.js"></script>
+  <script src="/js/voice.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/menu/menu.js"></script>
 </body>

@@ -18,12 +18,20 @@
     reqBusy: new Set(),
   };
 
+  let splashTimer = null;
+  let splashGreeted = false;
+
   /* ============================== BOOT ================================== */
 
   async function boot() {
     if (!tableToken) return fail('Is page ko table ke QR code se kholein.', 'QR code scan karke open karein');
     try {
-      const data = await TN.api(`/api/public/menu?table=${encodeURIComponent(tableToken)}`, { noRedirect: true });
+      // Send the saved phone + device so the server only returns this guest's
+      // open bill — not the other diners' bills on the same table.
+      const saved = savedCustomer();
+      const qs = new URLSearchParams({ table: tableToken, deviceId: TN.deviceId() });
+      if (saved.phone) qs.set('phone', saved.phone);
+      const data = await TN.api(`/api/public/menu?${qs.toString()}`, { noRedirect: true });
       state.restaurant = data.restaurant;
       state.table = data.table;
       state.menu = data.menu.filter((c) => c.items && c.items.length);
@@ -42,7 +50,6 @@
       renderInfo();
 
       // Returning customer: keep their name/number handy (one less typing).
-      const saved = savedCustomer();
       if (saved.name) $('co-name').value = saved.name;
       if (saved.phone) $('co-phone').value = saved.phone;
 
@@ -50,7 +57,11 @@
       connectSocket();
       restorePushState();
 
-      // If the table already has open orders, surface them right away.
+      // A branded welcome note + spoken greeting greets every scan, before
+      // anything else. The name prompt follows only for new guests.
+      showWelcomeSplash(saved);
+
+      // If this guest already has an open order, surface it right away.
       if (data.activeOrders && data.activeOrders.length) {
         await refreshOrders();
         if (state.orders.length) {
@@ -58,10 +69,6 @@
           showView('status');
         }
       }
-
-      // Greet only on the menu screen — someone checking their order status
-      // should not get a name popup on top of it.
-      greet(!$('view-menu').classList.contains('hidden'));
     } catch (err) {
       fail(err.message, 'Menu unavailable');
     }
@@ -376,13 +383,64 @@
     try { localStorage.setItem(CUST_KEY, JSON.stringify(next)); } catch (_) { /* private mode */ }
   }
 
+  /** Realtime updates are for the whole table; only react to our own bill. */
+  function isMyOrder(order) {
+    if (!order) return false;
+    const myPhone = canonicalPhone(savedCustomer().phone);
+    if (myPhone && canonicalPhone(order.customer_phone) === myPhone) return true;
+    return !!(order.device_id && order.device_id === TN.deviceId());
+  }
+
+  /* -------------------------- welcome splash ----------------------------- */
+
+  function speakWelcome(saved) {
+    if (!state.restaurant || !TN.voice) return;
+    const venue = state.restaurant.name;
+    const guest = (saved && saved.name) || '';
+    const hindi = /[\u0900-\u097F]/.test(venue + ' ' + guest);
+    const text = hindi
+      ? `${venue} में आपका स्वागत है${guest ? ', ' + guest : ''}। हमें आपकी सेवा करके खुशी होगी।`
+      : `Welcome to ${venue}${guest ? ', ' + guest : ''}. We are happy to serve you.`;
+    TN.voice.speak(text, {
+      lang: hindi ? 'hi-IN' : 'en-IN',
+      mode: hindi ? 'hi' : 'en',
+      rate: 0.95,
+      pitch: 1,
+      retryGesture: true,
+    });
+  }
+
+  function showWelcomeSplash(saved) {
+    splashGreeted = false;
+    $('ws-venue').textContent = state.restaurant.name;
+    $('ws-table').textContent = state.table.name;
+    const guest = (saved && saved.name) || '';
+    $('ws-hello').textContent = guest ? `Welcome back, ${guest}!` : 'We are happy to serve you';
+    $('welcome-splash').classList.remove('hidden');
+    requestAnimationFrame(() => $('welcome-splash').classList.add('show'));
+    speakWelcome(saved);
+    clearTimeout(splashTimer);
+    splashTimer = setTimeout(hideWelcomeSplash, 3200);
+  }
+
+  function hideWelcomeSplash() {
+    const el = $('welcome-splash');
+    if (!el || el.classList.contains('hidden')) return;
+    clearTimeout(splashTimer);
+    el.classList.remove('show');
+    setTimeout(() => el.classList.add('hidden'), 220);
+    if (splashGreeted) return;
+    splashGreeted = true;
+    // A guest with an open bill is looking at status — don't cover it.
+    if (!$('view-menu').classList.contains('hidden')) greet(true);
+  }
+
+  $('ws-enter').addEventListener('click', hideWelcomeSplash);
+
   /** Greet the guest; ask for the name only when we do not know it yet. */
   function greet(allowAskName = true) {
     const saved = savedCustomer();
-    if (saved.name) {
-      TN.toast(`Welcome, ${saved.name}! 👋`, 'success');
-      return;
-    }
+    if (saved.name) return; // splash already said "welcome back"
     if (!allowAskName || sessionStorage.getItem('tn_welcome_skipped')) {
       TN.toast(`Welcome to ${state.restaurant.name}! 👋`, 'success');
       return;
@@ -414,6 +472,22 @@
   function digitsOnly(value) {
     return String(value || '').replace(/\D/g, '');
   }
+
+  /** Match the server: +91 / 0 prefixes must not create a second bill. */
+  function canonicalPhone(value) {
+    let d = digitsOnly(value);
+    if (!d) return '';
+    if (d.startsWith('00')) d = d.slice(2);
+    if (d.length === 13 && d.startsWith('091')) d = d.slice(3);
+    if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+    if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+    return d;
+  }
+
+  $('co-phone').addEventListener('blur', () => {
+    const normalized = canonicalPhone($('co-phone').value);
+    if (normalized) $('co-phone').value = normalized;
+  });
 
   function subtotal() {
     return cartList().reduce((s, l) => s + l.item.price * l.qty, 0);
@@ -486,9 +560,18 @@
     $('to-checkout').disabled = !state.cart.size;
   }
 
+  function updateCheckoutNote() {
+    const el = $('co-bill-note');
+    const openBill = state.orders.some((o) => o.payment_status !== 'paid');
+    if (!openBill) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+    el.classList.remove('hidden');
+    el.innerHTML = '<b>Open bill found.</b> Same mobile number rakhne par yeh naye items aapke <b>usi bill</b> mein add honge — alag bill nahi banega.';
+  }
+
   $('to-checkout').addEventListener('click', () => {
     $('cart-sheet').classList.add('hidden');
     $('checkout-bill').innerHTML = billHtml();
+    updateCheckoutNote();
     $('checkout-sheet').classList.remove('hidden');
   });
   $('checkout-close').addEventListener('click', () => $('checkout-sheet').classList.add('hidden'));
@@ -500,12 +583,13 @@
     if (!state.cart.size) return;
 
     const name = $('co-name').value.trim();
-    const phone = digitsOnly($('co-phone').value);
+    const phone = canonicalPhone($('co-phone').value);
     if (phone.length < 10) {
       TN.toast('Mobile number daalein — isi number se bill banega', 'error');
       $('co-phone').focus();
       return;
     }
+    $('co-phone').value = phone;
 
     const btn = $('place-order');
     btn.disabled = true;
@@ -551,7 +635,13 @@
 
   async function refreshOrders() {
     try {
-      const res = await TN.api(`/api/public/tables/${encodeURIComponent(tableToken)}/orders`, { noRedirect: true });
+      const saved = savedCustomer();
+      const qs = new URLSearchParams({ deviceId: TN.deviceId() });
+      if (saved.phone) qs.set('phone', saved.phone);
+      const res = await TN.api(
+        `/api/public/tables/${encodeURIComponent(tableToken)}/orders?${qs.toString()}`,
+        { noRedirect: true }
+      );
       state.orders = res.orders || [];
     } catch (_) { /* keep previous */ }
   }
@@ -569,6 +659,14 @@
     ready: 'Server aapke table par lane wala hai.', served: 'Enjoy your meal!', paid: 'Dhanyavaad!', cancelled: '',
   };
 
+  function billKeyOf(order) {
+    if (order.bill_key) return order.bill_key;
+    const phone = canonicalPhone(order.customer_phone);
+    if (phone) return 'phone:' + phone;
+    if (order.device_id) return 'device:' + order.device_id;
+    return 'order:' + order.id;
+  }
+
   function renderStatus() {
     const host = $('status-cards');
     host.innerHTML = '';
@@ -580,7 +678,29 @@
       return;
     }
 
-    state.orders.forEach((order) => {
+    // Add-on orders with the same phone/device are one bill. Show that once,
+    // instead of making the guest think each order is a separate bill.
+    const multi = state.orders.length > 1 &&
+      state.orders.every((o) => billKeyOf(o) === billKeyOf(state.orders[0]));
+    if (multi) {
+      host.insertAdjacentHTML('beforeend', billSummaryHtml(currencySym));
+      const summary = host.querySelector('.bill-summary');
+      const payBox = summary && summary.querySelector('.bs-pay');
+      if (payBox) {
+        const total = Number(payBox.dataset.total) || 0;
+        payBox.querySelectorAll('[data-bill-split]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const n = Number(btn.dataset.billSplit);
+            payBox.querySelectorAll('[data-bill-split]').forEach((b) => b.classList.toggle('on', b === btn));
+            const per = total / n;
+            const perEl = payBox.querySelector('[data-bill-per]');
+            perEl.innerHTML = `${n === 1 ? 'Full amount' : `${TN.fmtMoney(per, currencySym)} per person`} · <a href="${TN.escapeHtml(upiHrefRaw(payBox.dataset.upiLink, per))}">Open UPI app →</a>`;
+          });
+        });
+      }
+    }
+
+    state.orders.forEach((order, index) => {
       const card = document.createElement('div');
       card.className = 'order-card';
       card.dataset.id = order.id;
@@ -599,7 +719,7 @@
 
       card.innerHTML = `
         <div class="order-card-head ${isReady ? 'ready-flash' : ''}">
-          <span class="no">Aapka order</span>
+          <span class="no">${multi && index > 0 ? 'Add-on <span class="addon-inline">same bill</span>' : 'Aapka order'}</span>
           <span class="badge ${order.status}">${order.status_label || order.status}</span>
         </div>
         <div class="big-status">
@@ -612,16 +732,20 @@
           ${isCancelled ? '<div class="cancelled-note">Yeh order cancel kar diya gaya hai.</div>' : stepsHtml}
           <div class="order-items-mini">
             ${order.items.map((it) => `<div><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currencySym)}</span></div>`).join('')}
-            <div style="border-top:1px dashed var(--line);margin-top:6px;padding-top:6px;font-weight:700;color:var(--ink)">
+            ${multi ? '' : `<div style="border-top:1px dashed var(--line);margin-top:6px;padding-top:6px;font-weight:700;color:var(--ink)">
               <span>Total</span><span>${TN.fmtMoney(order.total, currencySym)}</span>
-            </div>
-            ${order.payment_status === 'paid'
-              ? '<div style="color:var(--green);font-weight:700;margin-top:6px">✓ Paid</div>'
-              : (order.upi
-                ? ''
-                : '<div style="margin-top:6px" class="tiny muted">💳 Pay at cash counter</div>')}
+            </div>`}
+            ${multi
+              ? (order.payment_status === 'paid'
+                ? '<div style="color:var(--green);font-weight:700;margin-top:6px">✓ Paid</div>'
+                : '<div style="margin-top:6px" class="tiny muted">🧾 Included in your bill above</div>')
+              : (order.payment_status === 'paid'
+                ? '<div style="color:var(--green);font-weight:700;margin-top:6px">✓ Paid</div>'
+                : (order.upi
+                  ? ''
+                  : '<div style="margin-top:6px" class="tiny muted">💳 Pay at cash counter</div>'))}
           </div>
-          ${order.payment_status !== 'paid' && order.upi ? payBoxHtml(order, currencySym) : ''}
+          ${multi ? '' : (order.payment_status !== 'paid' && order.upi ? payBoxHtml(order, currencySym) : '')}
           ${feedbackHtml(order)}
         </div>`;
       host.appendChild(card);
@@ -648,7 +772,12 @@
           card.querySelectorAll('[data-fb]').forEach((b) => { b.disabled = true; });
           try {
             await TN.api(`/api/public/orders/${order.id}/feedback`, {
-              body: { table: tableToken, rating },
+              body: {
+                table: tableToken,
+                rating,
+                phone: savedCustomer().phone || null,
+                deviceId: TN.deviceId(),
+              },
               noRedirect: true,
             });
             TN.toast('Thanks for the feedback! 🙏', 'success');
@@ -663,9 +792,66 @@
     });
   }
 
+  function upiHrefRaw(link, amount) {
+    return String(link || '').replace(/([?&])am=[^&]*/, `$1am=${encodeURIComponent(Number(amount).toFixed(2))}`);
+  }
+
   function upiHref(order, amount) {
-    const link = order.upi && order.upi.link ? order.upi.link : '';
-    return link.replace(/([?&])am=[^&]*/, `$1am=${encodeURIComponent(Number(amount).toFixed(2))}`);
+    return upiHrefRaw(order.upi && order.upi.link, amount);
+  }
+
+  function billSummaryHtml(currency) {
+    const unpaid = state.orders.filter((o) => o.payment_status !== 'paid' && !o.is_cancelled);
+    const total = Math.round(unpaid.reduce((sum, o) => sum + Number(o.total || 0), 0) * 100) / 100;
+    const payable = unpaid.length > 0 && unpaid.every((o) => ['ready', 'served'].includes(o.status));
+    const withUpi = unpaid.find((o) => o.upi);
+    const link = withUpi ? withUpi.upi.link : '';
+
+    const items = state.orders.map((o, i) => `
+      <div class="bs-order">
+        <div class="bs-order-head">
+          <span>${i === 0 ? 'First order' : 'Add-on'}</span>
+          <span class="badge ${o.status}">${o.status_label || o.status}</span>
+        </div>
+        ${o.items.map((it) => `<div class="row-line"><span>${it.qty} × ${TN.escapeHtml(it.name)}</span><span>${TN.fmtMoney(it.line_total, currency)}</span></div>`).join('')}
+      </div>`).join('');
+
+    let pay = '';
+    if (payable && withUpi) {
+      pay = `
+        <div class="pay-box bs-pay" data-total="${total}" data-upi-link="${TN.escapeHtml(link)}">
+          <div class="pay-top">
+            <div>
+              <b>Pay ${TN.fmtMoney(total, currency)}</b>
+              <div class="tiny muted">UPI · ${TN.escapeHtml(withUpi.upi.id)}</div>
+            </div>
+            <a class="btn btn-primary btn-sm" href="${TN.escapeHtml(upiHrefRaw(link, total))}">Pay now</a>
+          </div>
+          <div class="pay-split">
+            ${[1, 2, 3, 4].map((n) => `<button type="button" data-bill-split="${n}" class="${n === 1 ? 'on' : ''}">${n === 1 ? 'Full' : '÷' + n}</button>`).join('')}
+          </div>
+          <div class="pay-per" data-bill-per>Full amount · <a href="${TN.escapeHtml(upiHrefRaw(link, total))}">Open UPI app →</a></div>
+        </div>`;
+    } else if (!payable) {
+      pay = '<div class="tiny muted bs-pay-note">🔔 Payment link sabhi items ready hone par yahan aa jayega.</div>';
+    } else {
+      pay = '<div class="tiny muted bs-pay-note">💳 Pay at cash counter — cash / UPI.</div>';
+    }
+
+    return `
+      <div class="bill-summary">
+        <div class="bs-head">
+          <div>
+            <div class="bs-kicker">One bill</div>
+            <h3>Your bill</h3>
+          </div>
+          <span class="bs-count">${state.orders.length} orders</span>
+        </div>
+        <div class="bs-items">${items}</div>
+        <div class="bs-total"><span>Amount due</span><span>${TN.fmtMoney(total, currency)}</span></div>
+        ${pay}
+        <div class="bs-foot">Same mobile number se add kiye gaye items ek hi bill mein aate hain.</div>
+      </div>`;
   }
 
   function payBoxHtml(order, currency) {
@@ -722,6 +908,8 @@
 
     state.socket.on('order:update', async ({ order }) => {
       if (!order || order.table_token !== tableToken) return;
+      // Another guest on the same table must not trigger our celebration.
+      if (!isMyOrder(order)) return;
       const wasReady = state.orders.find((o) => o.id === order.id && o.status === 'ready');
       await refreshOrders();
       if ($('view-status').classList.contains('hidden') === false) renderStatus();
