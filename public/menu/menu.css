@@ -20,6 +20,7 @@ body { background: var(--bg); overscroll-behavior-y: contain; }
 /* ------------------------------- Header --------------------------------- */
 .m-header {
   background: var(--card);
+  max-width: 640px; margin: 0 auto;
   padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 11px;
 }
 .venue-mark {
@@ -51,6 +52,7 @@ body { background: var(--bg); overscroll-behavior-y: contain; }
 /* ------------------------------ Categories ------------------------------ */
 .cats {
   background: transparent;
+  max-width: 640px; margin: 0 auto;
   display: flex; gap: 8px; padding: 2px 16px 11px; overflow-x: auto; scrollbar-width: none;
 }
 .cats::-webkit-scrollbar { display: none; }
