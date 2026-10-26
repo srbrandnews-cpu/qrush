@@ -26,6 +26,10 @@
     authed: false,
   };
 
+  // Same fetch helper as the rest of the app, but never bounce to the venue
+  // login — this page owns its own platform sign-in card.
+  const saApi = (path, opts = {}) => TN.api(path, Object.assign({}, opts, { noRedirect: true }));
+
   /* ------------------------------- helpers ------------------------------- */
 
   function toDate(sql) {
@@ -99,7 +103,7 @@
   async function load(opts = {}) {
     try {
       setSync('busy', 'Syncing…');
-      const data = await TN.api('/api/admin/super-admin/overview');
+      const data = await saApi('/api/admin/super-admin/overview');
       state.stats = data.stats;
       state.tenants = data.tenants || [];
       state.meta = data.meta || null;
@@ -495,7 +499,7 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Creating…';
     try {
-      const data = await TN.api('/api/admin/super-admin/tenants', { method: 'POST', body: payload });
+      const data = await saApi('/api/admin/super-admin/tenants', { method: 'POST', body: payload });
       await load({ silent: true });
       showCreated(data.tenant, payload);
       TN.toast('Restaurant created', 'success');
@@ -561,7 +565,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> Saving…';
             try {
-              await TN.api(`/api/admin/super-admin/tenants/${t.id}`, {
+              await saApi(`/api/admin/super-admin/tenants/${t.id}`, {
                 method: 'PATCH',
                 body: { name, phone: $('et-phone').value.trim(), is_active: $('et-active').checked },
               });
@@ -665,7 +669,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> Resetting…';
             try {
-              await TN.api(`/api/admin/super-admin/tenants/${t.id}/owner`, {
+              await saApi(`/api/admin/super-admin/tenants/${t.id}/owner`, {
                 method: 'PUT',
                 body: { name, email, password: pass },
               });
@@ -706,7 +710,7 @@
           onClick: async (btn) => {
             btn.disabled = true;
             try {
-              await TN.api(`/api/admin/super-admin/tenants/${t.id}`, {
+              await saApi(`/api/admin/super-admin/tenants/${t.id}`, {
                 method: 'PATCH', body: { is_active: !active },
               });
               closeModal();
@@ -747,7 +751,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> Deleting…';
             try {
-              await TN.api(`/api/admin/super-admin/tenants/${t.id}`, { method: 'DELETE' });
+              await saApi(`/api/admin/super-admin/tenants/${t.id}`, { method: 'DELETE' });
               closeModal();
               await load({ silent: true });
               TN.toast('Restaurant deleted', 'success');
@@ -814,7 +818,84 @@
     429: 'Bahut zyada attempts — thodi der baad koshish karein.',
   };
 
+  const ROLES = {
+    super: {
+      title: 'Super Admin',
+      sub: 'Full system access',
+      placeholder: 'admin@restaurant.com',
+      cta: 'Sign in to console',
+      home: '/superadmin',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>',
+    },
+    owner: {
+      title: 'Restaurant Owner',
+      sub: 'Venue admin & reports',
+      placeholder: 'owner@restaurant.com',
+      cta: 'Open venue admin',
+      home: '/admin',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9"/><path d="M3 10l1.7-4.5A2 2 0 0 1 6.6 4h10.8a2 2 0 0 1 1.9 1.5L21 10z"/><path d="M9 20v-5h6v5"/></svg>',
+    },
+    kitchen: {
+      title: 'Kitchen',
+      sub: 'Live orders display',
+      placeholder: 'kitchen@restaurant.com',
+      cta: 'Open kitchen display',
+      home: '/kitchen',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13a4 4 0 1 1 1.3-7.8 5 5 0 0 1 7.4 0A4 4 0 1 1 17 13v5H7z"/><path d="M7 18h10"/></svg>',
+    },
+    cashier: {
+      title: 'Cashier',
+      sub: 'Bills & payments',
+      placeholder: 'cashier@restaurant.com',
+      cta: 'Open cashier',
+      home: '/cashier',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>',
+    },
+  };
+
   let refreshTimer = null;
+
+  function currentRole() {
+    const sel = $('sa-role');
+    return sel && ROLES[sel.value] ? sel.value : 'super';
+  }
+
+  function rememberEmail(role, email) {
+    try {
+      localStorage.setItem('tn_last_email_' + role, email);
+      if (role === 'owner') localStorage.setItem('tn_last_owner_email', email);
+    } catch (_) { /* ignore */ }
+  }
+
+  function savedEmail(role) {
+    try {
+      return localStorage.getItem('tn_last_email_' + role) ||
+        (role === 'owner' ? localStorage.getItem('tn_last_owner_email') : '') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /** Swap the role card (title, icon, CTA) to match the picked role. */
+  function applyRole(role, opts = {}) {
+    const key = ROLES[role] ? role : 'super';
+    const r = ROLES[key];
+
+    const card = document.querySelector('.sa-role');
+    if (card) card.dataset.role = key;
+    if ($('sa-role-title')) $('sa-role-title').textContent = r.title;
+    if ($('sa-role-sub')) $('sa-role-sub').textContent = r.sub;
+    if ($('sa-role-ico')) $('sa-role-ico').innerHTML = r.icon;
+
+    const email = $('sa-login-email');
+    if (email) {
+      email.placeholder = r.placeholder;
+      if (!opts.keepEmail) email.value = savedEmail(key);
+    }
+
+    loginError('');
+    setBusy(false);
+  }
 
   function loginError(message) {
     const box = $('sa-login-error');
@@ -833,7 +914,7 @@
     if (!btn) return;
     btn.disabled = !!busy;
     const label = btn.querySelector('span');
-    if (label) label.textContent = busy ? 'Signing in…' : 'Sign in to console';
+    if (label) label.textContent = busy ? 'Signing in…' : ROLES[currentRole()].cta;
   }
 
   function showLogin(message) {
@@ -854,7 +935,8 @@
     const pass = $('sa-login-password');
     if (pass) pass.type = 'password';
     if (email && !email.value) {
-      try { email.value = localStorage.getItem('tn_last_owner_email') || ''; } catch (_) { /* ignore */ }
+      const saved = savedEmail(currentRole());
+      if (saved) email.value = saved;
     }
     setTimeout(() => {
       if (email && !email.value) email.focus();
@@ -922,6 +1004,7 @@
 
     const email = $('sa-login-email').value.trim();
     const password = $('sa-login-password').value;
+    const role = currentRole();
     if (!email || !password) {
       loginError('Email aur password dono daalein.');
       (!email ? $('sa-login-email') : $('sa-login-password')).focus();
@@ -930,26 +1013,44 @@
 
     setBusy(true);
     try {
-      const data = await TN.api('/api/auth/login', {
+      const data = await saApi('/api/auth/login', {
         method: 'POST',
         body: { email, password },
         noRedirect: true,
       });
       const user = (data && data.user) || {};
+      const actual = user.role;
+      const actualTitle = ROLES[actual] ? ROLES[actual].title : 'staff';
 
-      if (user.role !== 'owner' || !user.is_super_admin) {
+      if (role === 'super') {
+        if (actual !== 'owner' || !user.is_super_admin) {
+          setBusy(false);
+          loginError(actual !== 'owner'
+            ? `Ye ${actualTitle} account hai — upar role "${actualTitle}" select karke sign in karein.`
+            : 'Is account ke paas platform access nahi hai. Venue ke liye "Restaurant Owner" select karein.');
+          $('sa-login-password').select();
+          return;
+        }
+
+        TN.setToken(data.token, 'owner');
+        rememberEmail('super', email);
+        rememberEmail('owner', email);
+        $('sa-login-password').value = '';
+        await enterConsole(user, data.tenant);
+        return;
+      }
+
+      if (actual !== role) {
         setBusy(false);
-        loginError(user.role && user.role !== 'owner'
-          ? 'Ye staff account hai — platform console sirf super admin ke liye hai.'
-          : 'Is account ke paas platform access nahi hai.');
+        loginError(`Ye ${actualTitle} account hai — upar role "${actualTitle}" select karke dobara try karein.`);
         $('sa-login-password').select();
         return;
       }
 
-      TN.setToken(data.token, 'owner');
-      try { localStorage.setItem('tn_last_owner_email', email); } catch (_) { /* ignore */ }
+      TN.setToken(data.token, role);
+      rememberEmail(role, email);
       $('sa-login-password').value = '';
-      await enterConsole(user, data.tenant);
+      window.location.href = ROLES[role].home;
     } catch (err) {
       setBusy(false);
       loginError(LOGIN_ERRORS[err.status] || err.message || 'Sign in nahi ho paya.');
@@ -962,7 +1063,7 @@
   async function boot() {
     let me = null;
     try {
-      me = await TN.api('/api/auth/me', { noRedirect: true });
+      me = await saApi('/api/auth/me', { noRedirect: true });
     } catch (err) {
       if (err.status === 401 || err.status === 403) {
         try { TN.clearToken(); } catch (_) { /* ignore */ }
@@ -998,6 +1099,7 @@
   $('sa-login-form').addEventListener('submit', onLogin);
   $('sa-login-email').addEventListener('input', () => loginError(''));
   $('sa-login-password').addEventListener('input', () => loginError(''));
+  $('sa-role').addEventListener('change', (e) => applyRole(e.target.value));
   $('sa-login-eye').addEventListener('click', () => {
     const input = $('sa-login-password');
     const btn = $('sa-login-eye');
@@ -1036,5 +1138,6 @@
     if (e.key === 'Escape') closeModal();
   });
 
+  applyRole(currentRole(), { keepEmail: true });
   boot();
 })();

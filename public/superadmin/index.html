@@ -33,18 +33,21 @@
       <form id="sa-login-form" novalidate>
         <div class="sa-login-error hidden" id="sa-login-error" role="alert"></div>
 
-        <div class="sa-role">
+        <div class="sa-role" data-role="super">
           <span class="sa-role-label">Select role</span>
-          <span class="sa-role-ico" aria-hidden="true">
+          <span class="sa-role-ico" id="sa-role-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
           </span>
           <span class="sa-role-text">
-            <b>Super Admin</b>
-            <small>Full system access</small>
+            <b id="sa-role-title">Super Admin</b>
+            <small id="sa-role-sub">Full system access</small>
           </span>
           <svg class="sa-role-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           <select id="sa-role" aria-label="Select role">
             <option value="super">Super Admin — Full system access</option>
+            <option value="owner">Restaurant Owner — Venue admin</option>
+            <option value="kitchen">Kitchen — Live orders</option>
+            <option value="cashier">Cashier — Bills &amp; payments</option>
           </select>
         </div>
 
