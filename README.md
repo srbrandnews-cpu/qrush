@@ -20,6 +20,7 @@ Multi-tenant hai — ek hi system par aap kayi restaurants chala sakte hain (bec
 - **Branded table tents** — QR ke saath venue name, WiFi aur UPI; print-ready.
 - **Public wait page** — `/r/<slug>` par live queue/ETA (bina login).
 - **Dark mode** — har screen par light/dark toggle (kitchen display always dark). Choice browser mein yaad rehti hai.
+- **Landing page** — photo hero + gallery, topbar par staff **login icon**, aur **New restaurant** tab jo seedha WhatsApp chat kholta hai (prefilled message ke saath). Number badalna ho to `public/index.html` ke bottom script mein `QRUSH_WA` constant edit karein.
 
 ---
 
