@@ -152,6 +152,14 @@ screens se alag identity, hamesha light). Role select karne par login sahi jagah
 Galat role chuna ho to saaf message milta hai (jaise kitchen account se Super Admin login),
 aur har role ka last-used email yaad rehta hai.
 
+### Role sign-ins (owner / kitchen / cashier)
+Ek hi browser me super-admin session chalta rehta hai, isliye platform console ke **topbar** ya
+**sidebar** me **Role sign-ins** button hai — wo `/superadmin?login=1` kholta hai. Ye URL
+hamesha orange sign-in card dikhata hai (super admin logged-in ho tab bhi), taaki owner, kitchen
+ya cashier ka login test kiya ja sake. Card par **Back to console** link aata hai, aur staff
+login se super-admin ka session nahi tootta. Venue admin (`/admin`) ke sidebar me bhi super
+admins ko **Role logins** link milta hai.
+
 - **Overview** — total restaurants, owners/staff, aaj ke orders aur revenue, guest rating,
   top venues, newest venues aur "needs attention" (menu/tables missing, suspended venue, rush).
 - **Restaurants** — search + status/sort filters, har venue ka today/all-time revenue, setup

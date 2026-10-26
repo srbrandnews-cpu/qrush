@@ -924,6 +924,7 @@
     $('sa-login').classList.remove('hidden');
     loginError(message || '');
     setBusy(false);
+    showBackConsole(false);
 
     const eye = $('sa-login-eye');
     if (eye) {
@@ -948,6 +949,20 @@
     $('sa-boot').classList.add('hidden');
     $('sa-login').classList.add('hidden');
     $('sa-app').classList.remove('hidden');
+  }
+
+  /** On /superadmin?login=1 a live super session can jump straight back. */
+  function showBackConsole(on) {
+    const link = $('sa-back-console');
+    if (link) link.classList.toggle('hidden', !on);
+  }
+
+  function forceLogin() {
+    try {
+      return new URLSearchParams(location.search).has('login');
+    } catch (_) {
+      return false;
+    }
   }
 
   /** Undo the "no access" state so the next sign-in starts clean. */
@@ -1037,6 +1052,9 @@
         rememberEmail('owner', email);
         $('sa-login-password').value = '';
         await enterConsole(user, data.tenant);
+        if (forceLogin()) {
+          try { history.replaceState(null, '', '/superadmin'); } catch (_) { /* ignore */ }
+        }
         return;
       }
 
@@ -1078,6 +1096,16 @@
       showLogin();
       return;
     }
+
+    // /superadmin?login=1 always shows the role sign-in card — even while the
+    // platform owner is already signed in on this browser. The saved session
+    // stays untouched so kitchen/cashier logins don't kick the super admin out.
+    if (forceLogin()) {
+      showLogin();
+      showBackConsole(me.user.role === 'owner' && !!me.user.is_super_admin);
+      return;
+    }
+
     if (me.user.role !== 'owner') {
       showLogin('Ye platform console sirf owner accounts ke liye hai.');
       return;

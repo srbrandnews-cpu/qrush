@@ -79,6 +79,7 @@
     if (me.user.is_super_admin) {
       $('platform-nav-label').classList.remove('hidden');
       $('platform-link').classList.remove('hidden');
+      if ($('roles-link')) $('roles-link').classList.remove('hidden');
     }
     connectSocket();
     showTab('dashboard');
