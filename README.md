@@ -139,6 +139,10 @@ Payment **cash counter par** hoti hai (online payment baad mein add kar sakte ha
 Sirf platform owner ke liye alag screen: **`/superadmin`**. Yahan se poora QRush network manage hota hai —
 ek restaurant ka owner login ise nahi khol sakta (403 + "access required" screen).
 
+`/superadmin` khulte hi ek dedicated **orange platform sign-in** screen aati hai (venue ke teal
+screens se alag identity, hamesha light). Wahan sirf super-admin emails sign in kar sakte hain;
+staff/venue accounts ko saaf message milta hai aur staff ke liye `/login` ka link diya hai.
+
 - **Overview** — total restaurants, owners/staff, aaj ke orders aur revenue, guest rating,
   top venues, newest venues aur "needs attention" (menu/tables missing, suspended venue, rush).
 - **Restaurants** — search + status/sort filters, har venue ka today/all-time revenue, setup

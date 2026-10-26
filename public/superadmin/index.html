@@ -18,7 +18,74 @@
   <link rel="stylesheet" href="/superadmin/superadmin.css" />
 </head>
 <body>
-  <div class="shell">
+  <!-- Boot splash: decides between sign-in and console. -->
+  <div class="sa-boot" id="sa-boot"><span class="spinner"></span></div>
+
+  <!-- ========================= PLATFORM SIGN IN ========================= -->
+  <main class="sa-login hidden" id="sa-login">
+    <div class="sa-login-card">
+      <div class="sa-login-logo" aria-hidden="true">
+        <img src="/img/logo-white.svg" alt="" />
+      </div>
+      <h1 class="sa-login-title">QRush Platform</h1>
+      <p class="sa-login-sub">Welcome back! Please sign in to continue</p>
+
+      <form id="sa-login-form" novalidate>
+        <div class="sa-login-error hidden" id="sa-login-error" role="alert"></div>
+
+        <div class="sa-role">
+          <span class="sa-role-label">Select role</span>
+          <span class="sa-role-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <span class="sa-role-text">
+            <b>Super Admin</b>
+            <small>Full system access</small>
+          </span>
+          <svg class="sa-role-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          <select id="sa-role" aria-label="Select role">
+            <option value="super">Super Admin — Full system access</option>
+          </select>
+        </div>
+
+        <div class="sa-field">
+          <label class="sa-label" for="sa-login-email">Email Address <span class="sa-req">*</span></label>
+          <div class="sa-input">
+            <svg class="sa-input-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l7.1 5.2a2 2 0 0 0 2.4 0L20 7"/></svg>
+            <input id="sa-login-email" type="email" placeholder="admin@restaurant.com" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="sa-field">
+          <label class="sa-label" for="sa-login-password">Password <span class="sa-req">*</span></label>
+          <div class="sa-input">
+            <svg class="sa-input-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="sa-login-password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+            <button type="button" class="sa-eye" id="sa-login-eye" aria-label="Show password">
+              <svg class="sa-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              <svg class="sa-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.1A10.6 10.6 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.2 3.9"/><path d="M6.2 6.9C3.6 8.6 2 12 2 12s3.6 6 10 6a10 10 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="sa-login-row">
+          <a class="sa-forgot" href="mailto:srbrandnews@gmail.com?subject=QRush%20platform%20password%20reset">Forgot Password?</a>
+        </div>
+
+        <button class="sa-login-btn" id="sa-login-submit" type="submit">
+          <span>Sign in to console</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+
+      <div class="sa-login-foot">
+        <span>Secure platform access</span>
+        <a href="/login">Staff login →</a>
+      </div>
+    </div>
+  </main>
+
+  <div class="shell hidden" id="sa-app">
     <aside class="sidebar">
       <div class="brand"><img class="brand-mark" src="/img/logo-white.svg" alt="" /> QRush</div>
       <div class="sa-brand-tag">Platform console</div>

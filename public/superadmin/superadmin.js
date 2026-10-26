@@ -23,6 +23,7 @@
     status: 'all',
     sort: 'newest',
     denied: false,
+    authed: false,
   };
 
   /* ------------------------------- helpers ------------------------------- */
@@ -107,6 +108,12 @@
       setSync('ok', 'Live · ' + time);
     } catch (err) {
       setSync('bad', 'Offline');
+      if (err.status === 401) {
+        // Session expired while the console was open — back to the sign-in card.
+        try { TN.clearToken(); } catch (_) { /* ignore */ }
+        showLogin('Session khatam ho gaya — dobara sign in karein.');
+        return;
+      }
       if (!opts.silent) TN.toast(err.message, 'error');
     }
   }
@@ -799,33 +806,182 @@
     setSync('bad', 'Restricted');
   }
 
+  /* -------------------------------- sign in ----------------------------- */
+
+  const LOGIN_ERRORS = {
+    401: 'Email ya password galat hai.',
+    403: 'Ye account platform access ke liye authorised nahi hai.',
+    429: 'Bahut zyada attempts — thodi der baad koshish karein.',
+  };
+
+  let refreshTimer = null;
+
+  function loginError(message) {
+    const box = $('sa-login-error');
+    if (!box) return;
+    if (!message) {
+      box.textContent = '';
+      box.classList.add('hidden');
+      return;
+    }
+    box.textContent = message;
+    box.classList.remove('hidden');
+  }
+
+  function setBusy(busy) {
+    const btn = $('sa-login-submit');
+    if (!btn) return;
+    btn.disabled = !!busy;
+    const label = btn.querySelector('span');
+    if (label) label.textContent = busy ? 'Signing in…' : 'Sign in to console';
+  }
+
+  function showLogin(message) {
+    state.authed = false;
+    $('sa-boot').classList.add('hidden');
+    $('sa-app').classList.add('hidden');
+    $('sa-login').classList.remove('hidden');
+    loginError(message || '');
+    setBusy(false);
+
+    const eye = $('sa-login-eye');
+    if (eye) {
+      eye.classList.remove('on');
+      eye.setAttribute('aria-label', 'Show password');
+    }
+
+    const email = $('sa-login-email');
+    const pass = $('sa-login-password');
+    if (pass) pass.type = 'password';
+    if (email && !email.value) {
+      try { email.value = localStorage.getItem('tn_last_owner_email') || ''; } catch (_) { /* ignore */ }
+    }
+    setTimeout(() => {
+      if (email && !email.value) email.focus();
+      else if (pass) pass.focus();
+    }, 80);
+  }
+
+  function showApp() {
+    $('sa-boot').classList.add('hidden');
+    $('sa-login').classList.add('hidden');
+    $('sa-app').classList.remove('hidden');
+  }
+
+  /** Undo the "no access" state so the next sign-in starts clean. */
+  function resetConsoleChrome() {
+    state.denied = false;
+    document.querySelectorAll('.nav-item[data-tab]').forEach((b) => b.classList.remove('hidden'));
+    ['refresh', 'new-tenant-top', 'nav-tenant-count'].forEach((id) => {
+      if ($(id)) $(id).classList.remove('hidden');
+    });
+    $('access-denied').classList.add('hidden');
+  }
+
+  function startRefresh() {
+    if (refreshTimer) return;
+    refreshTimer = setInterval(() => {
+      if (!document.hidden && state.authed && !state.denied) load({ silent: true });
+    }, 60000);
+  }
+
+  async function enterConsole(user, tenant) {
+    state.authed = true;
+    state.me = user;
+    state.tenantName = (tenant && tenant.name) || '';
+    $('whoami').textContent = `${user.name || user.email} • Platform`;
+    resetConsoleChrome();
+    showApp();
+
+    if (!user.is_super_admin) {
+      showDenied();
+      return;
+    }
+    await load();
+    showTab('overview');
+    startRefresh();
+  }
+
+  function signOut() {
+    state.authed = false;
+    state.me = null;
+    state.stats = null;
+    state.tenants = [];
+    state.meta = null;
+    try { TN.clearToken(); } catch (_) { /* ignore */ }
+    const pass = $('sa-login-password');
+    if (pass) pass.value = '';
+    loginError('');
+    showLogin();
+    TN.toast('Signed out', 'success');
+  }
+
+  async function onLogin(event) {
+    event.preventDefault();
+    loginError('');
+
+    const email = $('sa-login-email').value.trim();
+    const password = $('sa-login-password').value;
+    if (!email || !password) {
+      loginError('Email aur password dono daalein.');
+      (!email ? $('sa-login-email') : $('sa-login-password')).focus();
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const data = await TN.api('/api/auth/login', {
+        method: 'POST',
+        body: { email, password },
+        noRedirect: true,
+      });
+      const user = (data && data.user) || {};
+
+      if (user.role !== 'owner' || !user.is_super_admin) {
+        setBusy(false);
+        loginError(user.role && user.role !== 'owner'
+          ? 'Ye staff account hai — platform console sirf super admin ke liye hai.'
+          : 'Is account ke paas platform access nahi hai.');
+        $('sa-login-password').select();
+        return;
+      }
+
+      TN.setToken(data.token, 'owner');
+      try { localStorage.setItem('tn_last_owner_email', email); } catch (_) { /* ignore */ }
+      $('sa-login-password').value = '';
+      await enterConsole(user, data.tenant);
+    } catch (err) {
+      setBusy(false);
+      loginError(LOGIN_ERRORS[err.status] || err.message || 'Sign in nahi ho paya.');
+      $('sa-login-password').select();
+    }
+  }
+
   /* --------------------------------- boot ------------------------------- */
 
   async function boot() {
+    let me = null;
     try {
-      const me = await TN.fetchMe();
-      if (me.user.role !== 'owner') {
-        window.location.href = me.user.role === 'kitchen' ? '/kitchen' : '/cashier';
+      me = await TN.api('/api/auth/me', { noRedirect: true });
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        try { TN.clearToken(); } catch (_) { /* ignore */ }
+        showLogin();
         return;
       }
-      state.me = me.user;
-      state.tenantName = (me.tenant && me.tenant.name) || '';
-      $('whoami').textContent = `${me.user.name} • Platform`;
-
-      if (!me.user.is_super_admin) {
-        showDenied();
-        return;
-      }
-
-      await load();
-      showTab('overview');
-
-      setInterval(() => {
-        if (!document.hidden && !state.denied) load({ silent: true });
-      }, 60000);
-    } catch (_) {
-      // fetchMe already redirected (or showed a toast) for expired sessions.
+      showLogin('Server se connect nahi ho paya — dobara koshish karein.');
+      return;
     }
+
+    if (!me || !me.user) {
+      showLogin();
+      return;
+    }
+    if (me.user.role !== 'owner') {
+      showLogin('Ye platform console sirf owner accounts ke liye hai.');
+      return;
+    }
+    await enterConsole(me.user, me.tenant);
   }
 
   /* ------------------------------- events ------------------------------- */
@@ -836,8 +992,21 @@
   $('refresh').addEventListener('click', () => load());
   $('new-tenant').addEventListener('click', openCreate);
   $('new-tenant-top').addEventListener('click', openCreate);
-  $('logout').addEventListener('click', () => TN.logout());
-  $('denied-logout').addEventListener('click', () => TN.logout());
+  $('logout').addEventListener('click', signOut);
+  $('denied-logout').addEventListener('click', signOut);
+
+  $('sa-login-form').addEventListener('submit', onLogin);
+  $('sa-login-email').addEventListener('input', () => loginError(''));
+  $('sa-login-password').addEventListener('input', () => loginError(''));
+  $('sa-login-eye').addEventListener('click', () => {
+    const input = $('sa-login-password');
+    const btn = $('sa-login-eye');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.classList.toggle('on', show);
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    input.focus();
+  });
 
   $('tenant-search').addEventListener('input', (e) => {
     state.q = e.target.value;

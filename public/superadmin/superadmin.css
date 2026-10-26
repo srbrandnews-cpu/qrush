@@ -304,3 +304,151 @@
   #panel-overview .page-head-actions, #panel-restaurants .page-head-actions { width: 100%; }
   #panel-overview .page-head-actions .btn, #panel-restaurants .page-head-actions .btn { width: 100%; }
 }
+
+/* ==========================================================================
+   Platform sign-in
+   Orange "platform" identity, deliberately separate from the venue (teal)
+   screens. Always light, regardless of the saved theme.
+   ========================================================================== */
+
+.sa-boot {
+  min-height: 100vh; display: grid; place-items: center;
+  background: #fbfaf9;
+}
+.sa-boot .spinner {
+  width: 28px; height: 28px; border: 3px solid #f6e7db; border-top-color: #f97316;
+}
+
+.sa-login {
+  min-height: 100vh; display: grid; place-items: center; padding: 36px 18px;
+  color: #0f172a;
+  background:
+    radial-gradient(760px 430px at 6% -6%, #ffe5cf 0%, rgba(255, 229, 207, 0) 62%),
+    radial-gradient(660px 380px at 100% 0%, #eee3ff 0%, rgba(238, 227, 255, 0) 58%),
+    radial-gradient(720px 420px at 52% 110%, #ffe8ee 0%, rgba(255, 232, 238, 0) 62%),
+    linear-gradient(180deg, #fcfbfb, #f7f6f8);
+}
+.sa-login-card {
+  width: 100%; max-width: 440px; background: #fff; border-radius: 28px;
+  border: 1px solid rgba(15, 23, 42, .05);
+  padding: 34px 32px 24px;
+  box-shadow: 0 44px 90px -52px rgba(15, 23, 42, .55), 0 2px 8px rgba(15, 23, 42, .04);
+}
+.sa-login-logo {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
+  display: grid; place-items: center; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, #fbbf24, #f97316 55%, #f43f5e);
+  box-shadow: 0 14px 28px -12px rgba(249, 115, 22, .6), inset 0 0 0 1px rgba(255, 255, 255, .28);
+}
+.sa-login-logo img { width: 34px; height: 34px; display: block; }
+.sa-login-title {
+  margin: 0; text-align: center; font-size: 29px; line-height: 1.15;
+  font-weight: 800; letter-spacing: -.03em;
+  background: linear-gradient(95deg, #ea580c, #f59e0b 48%, #fbbf24);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.sa-login-sub {
+  margin: 8px 0 22px; text-align: center;
+  font-size: 13.5px; color: #7c8798;
+}
+
+.sa-label {
+  display: block; margin-bottom: 7px;
+  font-size: 11.5px; font-weight: 700; color: #7d8799; letter-spacing: .01em;
+}
+.sa-req { color: #f97316; }
+.sa-field { margin-bottom: 14px; }
+.sa-input { position: relative; }
+.sa-input input {
+  width: 100%; height: 47px; border-radius: 13px; border: 1px solid #e6e8ef;
+  padding: 0 44px; font: inherit; font-size: 14px; color: #0f172a; background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sa-input input::placeholder { color: #a8b0c0; }
+.sa-input input:focus {
+  outline: none; border-color: #f9a04a; box-shadow: 0 0 0 4px rgba(249, 115, 22, .12);
+}
+.sa-input-ico {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 19px; height: 19px; color: #f0832f; pointer-events: none;
+}
+.sa-eye {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent;
+  display: grid; place-items: center; color: #9aa3b2; cursor: pointer;
+}
+.sa-eye svg { width: 19px; height: 19px; }
+.sa-eye .sa-eye-off { display: none; }
+.sa-eye.on .sa-eye-on { display: none; }
+.sa-eye.on .sa-eye-off { display: block; }
+.sa-eye:hover { color: #f0832f; background: rgba(249, 115, 22, .08); }
+
+.sa-role {
+  position: relative; display: flex; align-items: center; gap: 11px;
+  border: 1px solid #e6e8ef; border-radius: 14px;
+  padding: 12px 40px 12px 13px; margin: 4px 0 16px; background: #fff;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.sa-role:hover { border-color: #f3c79b; }
+.sa-role:focus-within { border-color: #f9a04a; box-shadow: 0 0 0 4px rgba(249, 115, 22, .1); }
+.sa-role-label {
+  position: absolute; top: -7px; left: 12px; padding: 0 6px;
+  background: #fff; color: #9aa3b2;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+}
+.sa-role-ico {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: #fde9e4; color: #e35d4f;
+}
+.sa-role-ico svg { width: 18px; height: 18px; }
+.sa-role-text { min-width: 0; line-height: 1.3; }
+.sa-role-text b { display: block; font-size: 14px; font-weight: 700; color: #1e293b; }
+.sa-role-text small { display: block; font-size: 11.5px; color: #94a0b2; }
+.sa-role-chevron {
+  position: absolute; right: 14px; width: 16px; height: 16px; color: #9aa3b2;
+  pointer-events: none;
+}
+.sa-role select {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: 0;
+}
+
+.sa-login-row { display: flex; justify-content: flex-end; margin: 0 0 16px; }
+.sa-forgot { font-size: 12.5px; font-weight: 600; color: #2563eb; text-decoration: none; }
+.sa-forgot:hover { text-decoration: underline; }
+
+.sa-login-btn {
+  width: 100%; height: 48px; border: 0; border-radius: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: #fff; font-size: 14.5px; font-weight: 700; letter-spacing: .01em;
+  background: linear-gradient(100deg, #f59e0b, #f97316 55%, #f43f5e);
+  box-shadow: 0 18px 32px -18px rgba(244, 63, 94, .7);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.sa-login-btn:hover {
+  transform: translateY(-1px); filter: saturate(1.06);
+  box-shadow: 0 22px 36px -18px rgba(244, 63, 94, .75);
+}
+.sa-login-btn:active { transform: translateY(0); }
+.sa-login-btn:disabled { opacity: .72; cursor: default; transform: none; }
+.sa-login-btn svg { width: 17px; height: 17px; }
+
+.sa-login-error {
+  margin-bottom: 14px; padding: 10px 12px; border-radius: 10px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  font-size: 12.5px; line-height: 1.45;
+}
+.sa-login-foot {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f2f6;
+  font-size: 11.5px; color: #9aa3b2;
+}
+.sa-login-foot a { color: #f0832f; font-weight: 600; text-decoration: none; }
+.sa-login-foot a:hover { text-decoration: underline; }
+
+@media (max-width: 480px) {
+  .sa-login { padding: 22px 14px; }
+  .sa-login-card { padding: 28px 20px 20px; border-radius: 24px; }
+  .sa-login-title { font-size: 25px; }
+  .sa-login-foot { font-size: 11px; }
+}
