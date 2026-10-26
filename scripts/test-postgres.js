@@ -155,6 +155,9 @@ async function main() {
     log('\n     Bill merge / add-on test...');
     await runNode('scripts/test-bill-merge.js', { BASE_URL: `http://localhost:${APP_PORT}` });
 
+    log('\n     Platform console (super-admin) test...');
+    await runNode('scripts/test-superadmin.js', { BASE_URL: `http://localhost:${APP_PORT}` });
+
     log('\n5/6  Verifying PostgreSQL-specific behaviour...');
     await verifyPostgresSpecifics(APP_PORT);
 

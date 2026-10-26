@@ -13,6 +13,7 @@
     "seed": "node src/db/seed.js",
     "test": "node scripts/test-flow.js",
     "test:bill": "node scripts/test-bill-merge.js",
+    "test:superadmin": "node scripts/test-superadmin.js",
     "test:encoding": "node scripts/test-encoding.js",
     "test:csv": "node scripts/test-csv-import.js",
     "test:notify": "node scripts/test-notifications.js",

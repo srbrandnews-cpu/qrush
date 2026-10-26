@@ -18,6 +18,7 @@ const TN = (() => {
   function pageRole() {
     const p = location.pathname.replace(/\/+$/, '') || '/';
     if (p === '/admin' || p.startsWith('/admin/')) return 'owner';
+    if (p === '/superadmin' || p.startsWith('/superadmin/')) return 'owner';
     if (p === '/kitchen' || p.startsWith('/kitchen/')) return 'kitchen';
     if (p === '/cashier' || p.startsWith('/cashier/')) return 'cashier';
     return null;

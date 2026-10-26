@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Platform console · QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/superadmin/superadmin.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><img class="brand-mark" src="/img/logo-white.svg" alt="" /> QRush</div>
+      <div class="sa-brand-tag">Platform console</div>
+
+      <div class="side-nav-label">Network</div>
+      <button class="nav-item active" data-tab="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4l3 7 4-16 3 9h4"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-tab="restaurants">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg>
+        Restaurants
+        <span class="nav-count" id="nav-tenant-count">0</span>
+      </button>
+      <button class="nav-item" data-tab="access">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        Access &amp; health
+      </button>
+
+      <div class="grow"></div>
+      <div class="side-foot">
+        <div id="whoami" class="tiny"></div>
+        <a class="nav-item" href="/admin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
+          Venue admin
+        </a>
+        <button class="nav-item" data-theme-toggle title="Toggle dark mode">
+          <span data-theme-icon style="width:18px;text-align:center;font-size:16px">☾</span>
+          <span>Dark mode</span>
+        </button>
+        <button class="nav-item" id="logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="sa-crumb">
+          <span class="sa-crumb-dot"></span>
+          <span>Platform</span>
+          <span class="sa-crumb-sep">/</span>
+          <b id="sa-crumb-page">Overview</b>
+        </div>
+        <div class="topbar-right">
+          <span class="sa-sync" id="sa-sync"><i></i> Live</span>
+          <button class="btn btn-sm" id="refresh">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- ============================ OVERVIEW ============================ -->
+        <section class="tab-panel" id="panel-overview">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Platform overview</div>
+              <h1>All restaurants</h1>
+              <div class="sub">Poora QRush network ek nazar mein — aaj ka rush, revenue aur setup gaps.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="new-tenant-top">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                New restaurant
+              </button>
+            </div>
+          </div>
+
+          <div class="stat-grid mb24">
+            <div class="stat">
+              <div class="stat-top"><div class="label">Restaurants</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg></div></div>
+              <div class="value" id="p-tenants">—</div>
+              <div class="sub" id="p-tenants-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Owners &amp; staff</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18.5 20a6.5 6.5 0 0 0-2.5-5"/></svg></div></div>
+              <div class="value" id="p-owners">—</div>
+              <div class="sub" id="p-owners-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Orders today</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 14h-15z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div></div>
+              <div class="value" id="p-orders">—</div>
+              <div class="sub" id="p-orders-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Revenue today</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div></div>
+              <div class="value" id="p-revenue">—</div>
+              <div class="sub" id="p-revenue-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Tables &amp; menu</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M3 10h18M9 18v3M15 18v3"/></svg></div></div>
+              <div class="value" id="p-setup">—</div>
+              <div class="sub" id="p-setup-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Guest rating</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg></div></div>
+              <div class="value" id="p-rating">—</div>
+              <div class="sub" id="p-rating-sub">loading…</div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2 mb24">
+            <div class="card">
+              <div class="card-head"><h3>Top venues today</h3><span class="tiny muted">by revenue</span></div>
+              <div class="card-pad" id="ov-top"><div class="sa-skeleton"></div><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Newest restaurants</h3><span class="tiny muted">latest 5</span></div>
+              <div class="card-pad" id="ov-new"><div class="sa-skeleton"></div><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Needs attention</h3>
+              <span class="badge muted no-dot" id="ov-attn-count">0</span>
+            </div>
+            <div class="card-pad" id="ov-attn"><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+          </div>
+        </section>
+
+        <!-- =========================== RESTAURANTS ========================== -->
+        <section class="tab-panel hidden" id="panel-restaurants">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Network</div>
+              <h1>Restaurants</h1>
+              <div class="sub"><span id="tenant-count">0</span> venues · search, suspend or reset any owner account.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="new-tenant">+ New restaurant</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sa-toolbar">
+              <div class="sa-search">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input class="input" id="tenant-search" type="search" placeholder="Search restaurant, owner or email…" autocomplete="off" />
+              </div>
+              <select class="input sa-select" id="tenant-status" aria-label="Filter by status">
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+              <select class="input sa-select" id="tenant-sort" aria-label="Sort restaurants">
+                <option value="newest">Newest first</option>
+                <option value="revenue">Top revenue today</option>
+                <option value="orders">Most orders today</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Restaurant</th>
+                    <th>Owner</th>
+                    <th>Today</th>
+                    <th>All time</th>
+                    <th>Status</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tenant-rows">
+                  <tr><td colspan="6"><div class="sa-loading">Loading restaurants…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="sa-table-foot" id="tenant-foot"></div>
+          </div>
+        </section>
+
+        <!-- ============================ ACCESS ============================== -->
+        <section class="tab-panel hidden" id="panel-access">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Platform</div>
+              <h1>Access &amp; health</h1>
+              <div class="sub">Kaun platform admin hai, service kahan chal rahi hai, aur security reminders.</div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2 mb16">
+            <div class="card">
+              <div class="card-head"><h3>Your session</h3><span class="badge ready">Super admin</span></div>
+              <div class="card-pad" id="acc-session"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Platform admins</h3><span class="tiny muted">email allowlist</span></div>
+              <div class="card-pad" id="acc-admins"></div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2">
+            <div class="card">
+              <div class="card-head"><h3>Service</h3><span class="sa-health" id="acc-health"><i></i> checking</span></div>
+              <div class="card-pad" id="acc-service"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Security checklist</h3><span class="tiny muted">before sharing the URL</span></div>
+              <div class="card-pad" id="acc-checklist">
+                <div class="sa-check"><span class="sa-check-ico">1</span><div><b>Demo owner password badlein</b><div class="tiny muted">Admin → Staff → owner@demo.com → password update. Demo login public hai.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">2</span><div><b>Har venue ke UPI / WiFi bharein</b><div class="tiny muted">Warna customer ko payment link aur WiFi details nahi milengi.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">3</span><div><b>Test venues delete karein</b><div class="tiny muted">Restaurants tab → Manage → Delete. Demo venue delete nahi hota.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">4</span><div><b>Neon / JWT secrets rotate karein</b><div class="tiny muted">Render → Environment. Rotate karke deploy karein.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="sa-denied hidden" id="access-denied">
+          <div class="card card-pad sa-denied-card">
+            <div class="sa-denied-ico">🔒</div>
+            <h2>Super-admin access required</h2>
+            <p class="muted">Yeh console sirf platform owner ke liye hai. Aapke account ke paas permission nahi hai.</p>
+            <div class="flex gap8 center wrap" style="justify-content:center">
+              <a class="btn" href="/admin">Back to venue admin</a>
+              <button class="btn btn-primary" id="denied-logout">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="/js/common.js"></script>
+  <script src="/superadmin/superadmin.js"></script>
+</body>
+</html>

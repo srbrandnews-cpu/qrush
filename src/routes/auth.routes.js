@@ -3,7 +3,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { get, run, transaction } = require('../config/db');
-const { signToken, requireAuth, COOKIE_NAME } = require('../middleware/auth');
+const { signToken, requireAuth, isSuperAdmin, COOKIE_NAME } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -25,7 +25,13 @@ async function uniqueSlug(base) {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email, role: user.role };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    is_super_admin: isSuperAdmin(user),
+  };
 }
 
 /**

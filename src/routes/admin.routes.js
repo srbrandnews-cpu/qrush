@@ -2,8 +2,8 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { query, get, run, transaction } = require('../config/db');
-const { requireAuth, requireRole, requireSuperAdmin } = require('../middleware/auth');
+const { query, get, run, transaction, dialect, utcToday } = require('../config/db');
+const { requireAuth, requireRole, requireSuperAdmin, SUPER_ADMIN_EMAILS } = require('../middleware/auth');
 const { OPEN_STATUSES } = require('../utils/constants');
 const { baseUrl, qrDataUrl } = require('../utils/qr');
 const notify = require('../services/notify');
@@ -33,15 +33,106 @@ async function uniqueSlug(base) {
 // All super-admin routes require platform owner authentication
 router.use('/super-admin', requireAuth, requireSuperAdmin);
 
+/**
+ * One row per restaurant with the numbers a platform admin needs. Correlated
+ * subqueries keep the shape identical on SQLite and Postgres (a plain JOIN on
+ * owners would duplicate a restaurant that has more than one owner account).
+ */
+async function listPlatformTenants() {
+  const today = utcToday();
+  const openSlots = OPEN_STATUSES.map(() => '?').join(',');
+  const rows = await query(`
+    SELECT t.id, t.name, t.slug, t.phone, t.address, t.currency, t.gst_percent,
+           t.is_active, t.created_at, t.upi_id, t.prep_minutes, t.rush_mode,
+           (SELECT u.id FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_id,
+           (SELECT u.name FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_name,
+           (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_email,
+           (SELECT tb.qr_token FROM tables tb WHERE tb.tenant_id = t.id AND tb.is_active = 1 ORDER BY tb.id LIMIT 1) AS sample_table_token,
+           (SELECT COUNT(*) FROM tables tb WHERE tb.tenant_id = t.id) AS tables_count,
+           (SELECT COUNT(*) FROM menu_items mi WHERE mi.tenant_id = t.id) AS menu_count,
+           (SELECT COUNT(*) FROM users us WHERE us.tenant_id = t.id AND us.is_active = 1) AS staff_count,
+           (SELECT COUNT(*) FROM orders o WHERE o.tenant_id = t.id) AS orders_all,
+           (SELECT COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total ELSE 0 END), 0)
+              FROM orders o WHERE o.tenant_id = t.id) AS revenue_all,
+           (SELECT MAX(o.created_at) FROM orders o WHERE o.tenant_id = t.id) AS last_order_at,
+           (SELECT COUNT(*) FROM orders o WHERE o.tenant_id = t.id AND substr(o.created_at, 1, 10) = ?) AS orders_today,
+           (SELECT COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total ELSE 0 END), 0)
+              FROM orders o WHERE o.tenant_id = t.id AND substr(o.created_at, 1, 10) = ?) AS revenue_today,
+           (SELECT COUNT(*) FROM orders o WHERE o.tenant_id = t.id AND o.status IN (${openSlots})) AS open_orders
+      FROM tenants t
+     ORDER BY t.created_at DESC, t.id DESC
+  `, [today, today, ...OPEN_STATUSES]);
+
+  return rows.map((row) => Object.assign({}, row, {
+    tables_count: Number(row.tables_count) || 0,
+    menu_count: Number(row.menu_count) || 0,
+    staff_count: Number(row.staff_count) || 0,
+    orders_all: Number(row.orders_all) || 0,
+    revenue_all: Number(row.revenue_all) || 0,
+    orders_today: Number(row.orders_today) || 0,
+    revenue_today: Number(row.revenue_today) || 0,
+    open_orders: Number(row.open_orders) || 0,
+  }));
+}
+
+/**
+ * GET /api/admin/super-admin/overview
+ * Platform-wide KPIs + every restaurant with live/today/all-time numbers.
+ */
+router.get('/super-admin/overview', async (req, res, next) => {
+  try {
+    const today = utcToday();
+    const openSlots = OPEN_STATUSES.map(() => '?').join(',');
+    const stats = await get(`
+      SELECT
+        (SELECT COUNT(*) FROM tenants) AS tenants_total,
+        (SELECT COUNT(*) FROM tenants WHERE is_active = 1) AS tenants_active,
+        (SELECT COUNT(*) FROM tenants WHERE is_active = 0) AS tenants_suspended,
+        (SELECT COUNT(*) FROM users WHERE role = 'owner' AND is_active = 1) AS owners_total,
+        (SELECT COUNT(*) FROM users WHERE role IN ('kitchen', 'cashier') AND is_active = 1) AS staff_total,
+        (SELECT COUNT(*) FROM tables WHERE is_active = 1) AS tables_total,
+        (SELECT COUNT(*) FROM menu_items) AS menu_items_total,
+        (SELECT COUNT(*) FROM orders WHERE substr(created_at, 1, 10) = ?) AS orders_today,
+        (SELECT COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0)
+           FROM orders WHERE substr(created_at, 1, 10) = ?) AS revenue_today,
+        (SELECT COUNT(*) FROM orders) AS orders_all,
+        (SELECT COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0)
+           FROM orders) AS revenue_all,
+        (SELECT COUNT(*) FROM orders WHERE status IN (${openSlots})) AS open_orders,
+        (SELECT COUNT(DISTINCT tenant_id) FROM orders WHERE substr(created_at, 1, 10) = ?) AS active_tenants_today,
+        (SELECT COUNT(*) FROM tenants WHERE substr(created_at, 1, 10) = ?) AS tenants_new_today,
+        (SELECT COALESCE(AVG(rating), 0) FROM orders WHERE rating IS NOT NULL) AS rating_avg,
+        (SELECT COUNT(rating) FROM orders WHERE rating IS NOT NULL) AS rating_count
+    `, [today, today, ...OPEN_STATUSES, today, today]);
+
+    const normalized = {};
+    Object.keys(stats || {}).forEach((key) => {
+      const value = stats[key];
+      normalized[key] = value === null || value === undefined ? value : Number(value) || 0;
+    });
+
+    const tenants = await listPlatformTenants();
+    res.json({
+      stats: normalized,
+      tenants,
+      meta: {
+        database: dialect(),
+        node: process.version,
+        uptime_seconds: Math.round(process.uptime()),
+        today,
+        super_admins: SUPER_ADMIN_EMAILS,
+        demo_access: SUPER_ADMIN_EMAILS.includes('owner@demo.com'),
+        generated_at: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/super-admin/tenants', async (req, res, next) => {
   try {
-    const tenants = await query(`
-      SELECT t.*, u.name as owner_name, u.email as owner_email
-      FROM tenants t
-      LEFT JOIN users u ON u.tenant_id = t.id AND u.role = 'owner' AND u.is_active = 1
-      ORDER BY t.created_at DESC
-    `);
-    res.json({ tenants });
+    res.json({ tenants: await listPlatformTenants() });
   } catch (err) {
     next(err);
   }
@@ -53,8 +144,8 @@ router.post('/super-admin/tenants', async (req, res, next) => {
     if (!restaurant || !name || !email || !password) {
       return res.status(400).json({ error: 'Restaurant name, owner name, email and password are required' });
     }
-    if (String(password).length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) {
       return res.status(400).json({ error: 'Enter a valid email address' });
@@ -96,9 +187,17 @@ router.patch('/super-admin/tenants/:id', async (req, res, next) => {
     const tenant = await get('SELECT * FROM tenants WHERE id = ?', [id]);
     if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
+    if (is_active !== undefined && !is_active && Number(id) === Number(req.user.tenant_id)) {
+      return res.status(400).json({ error: 'You cannot suspend your own restaurant workspace' });
+    }
+
     const updates = [];
     const params = [];
-    if (name !== undefined) { updates.push('name = ?'); params.push(String(name).trim()); }
+    if (name !== undefined) {
+      const cleanName = String(name).trim();
+      if (!cleanName) return res.status(400).json({ error: 'Restaurant name cannot be empty' });
+      updates.push('name = ?'); params.push(cleanName.slice(0, 80));
+    }
     if (phone !== undefined) { updates.push('phone = ?'); params.push(phone ? String(phone).trim() : null); }
     if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active ? 1 : 0); }
 
@@ -114,6 +213,61 @@ router.patch('/super-admin/tenants/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * PUT /api/admin/super-admin/tenants/:id/owner
+ * Support action: fix the owner's name/email or set a new password.
+ * body: { name?, email?, password? }
+ */
+router.put('/super-admin/tenants/:id/owner', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tenant = await get('SELECT id, name FROM tenants WHERE id = ?', [id]);
+    if (!tenant) return res.status(404).json({ error: 'Restaurant not found' });
+
+    const owner = await get(
+      "SELECT * FROM users WHERE tenant_id = ? AND role = 'owner' ORDER BY id LIMIT 1",
+      [id]
+    );
+    if (!owner) return res.status(404).json({ error: 'This restaurant has no owner account' });
+
+    const b = req.body || {};
+    const updates = [];
+    const params = [];
+
+    if (b.name !== undefined) {
+      const cleanName = String(b.name).trim();
+      if (!cleanName) return res.status(400).json({ error: 'Owner name cannot be empty' });
+      updates.push('name = ?'); params.push(cleanName.slice(0, 80));
+    }
+    if (b.email !== undefined) {
+      const email = String(b.email).trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return res.status(400).json({ error: 'Enter a valid email address' });
+      }
+      const clash = await get('SELECT id FROM users WHERE email = ? AND id != ?', [email, owner.id]);
+      if (clash) return res.status(409).json({ error: 'Another account already uses this email' });
+      updates.push('email = ?'); params.push(email);
+    }
+    if (b.password !== undefined) {
+      if (String(b.password).length < 8) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters' });
+      }
+      updates.push('password_hash = ?'); params.push(bcrypt.hashSync(String(b.password), 10));
+    }
+
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+
+    params.push(owner.id);
+    await run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    res.json({
+      owner: await get('SELECT id, name, email, role, is_active FROM users WHERE id = ?', [owner.id]),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete('/super-admin/tenants/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -122,6 +276,9 @@ router.delete('/super-admin/tenants/:id', async (req, res, next) => {
 
     if (Number(id) === 1) {
       return res.status(400).json({ error: 'Demo tenant cannot be deleted' });
+    }
+    if (Number(id) === Number(req.user.tenant_id)) {
+      return res.status(400).json({ error: 'You cannot delete your own restaurant workspace' });
     }
 
     await run('DELETE FROM tenants WHERE id = ?', [id]);

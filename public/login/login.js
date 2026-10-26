@@ -1,29 +1,15 @@
-/* Login + signup screen logic. */
+/* Login screen logic. Public signup is disabled — only the platform admin
+   creates restaurants, so this screen has a single login form. */
 
 (() => {
   const $ = (id) => document.getElementById(id);
-  const isSignup = new URLSearchParams(location.search).get('mode') === 'signup';
-  // Read this BEFORE showTab() rewrites the URL, otherwise it gets stripped.
+  // Read this BEFORE anything rewrites the URL, otherwise it gets stripped.
   const wasExpired = new URLSearchParams(location.search).get('expired') === '1';
 
-  function showTab(mode) {
-    const login = mode === 'login';
-    $('tab-login').classList.toggle('active', login);
-    $('tab-signup').classList.toggle('active', !login);
-    $('form-login').classList.toggle('hidden', !login);
-    $('form-signup').classList.toggle('hidden', login);
-    // Keep the URL in sync so a refresh stays on the right tab.
-    const url = login ? '/login' : '/login?mode=signup';
-    if (wasExpired) {
-      history.replaceState(null, '', url + (url.includes('?') ? '&' : '?') + 'expired=1');
-    } else {
-      history.replaceState(null, '', url);
-    }
+  // Drop stale ?mode=signup from older links.
+  if (new URLSearchParams(location.search).get('mode') === 'signup') {
+    history.replaceState(null, '', '/login' + (wasExpired ? '?expired=1' : ''));
   }
-
-  $('tab-login').addEventListener('click', () => showTab('login'));
-  $('tab-signup').addEventListener('click', () => showTab('signup'));
-  showTab(isSignup ? 'signup' : 'login');
 
   // If the user was bounced here because the session expired, say so.
   if (wasExpired) {
@@ -55,30 +41,6 @@
       TN.toast(err.message, 'error');
       btn.disabled = false;
       btn.textContent = 'Login';
-    }
-  });
-
-  $('form-signup').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = $('signup-submit');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Creating…';
-    try {
-      const data = await TN.api('/api/auth/signup', {
-        noRedirect: true,
-        body: {
-          restaurant: $('su-restaurant').value.trim(),
-          name: $('su-name').value.trim(),
-          phone: $('su-phone').value.trim(),
-          email: $('su-email').value.trim(),
-          password: $('su-password').value,
-        },
-      });
-      await afterAuth(data);
-    } catch (err) {
-      TN.toast(err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Create account';
     }
   });
 })();

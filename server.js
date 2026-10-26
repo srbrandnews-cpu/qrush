@@ -65,6 +65,7 @@ const page = (file) => (req, res) => {
 app.get('/', page('index.html'));
 app.get('/login', page(path.join('login', 'index.html')));
 app.get('/admin', page(path.join('admin', 'index.html')));
+app.get('/superadmin', page(path.join('superadmin', 'index.html')));
 app.get('/kitchen', page(path.join('kitchen', 'index.html')));
 app.get('/cashier', page(path.join('cashier', 'index.html')));
 app.get('/r/:slug', page(path.join('wait', 'index.html')));

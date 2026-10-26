@@ -76,6 +76,10 @@
     }
     currency = (me.tenant && me.tenant.currency) || '₹';
     $('whoami').textContent = `${me.user.name} • ${me.tenant ? me.tenant.name : ''}`;
+    if (me.user.is_super_admin) {
+      $('platform-nav-label').classList.remove('hidden');
+      $('platform-link').classList.remove('hidden');
+    }
     connectSocket();
     showTab('dashboard');
   }

@@ -63,15 +63,28 @@ function requireRole(...roles) {
 }
 
 // Super-admin check: only the platform owner (by email) can manage tenants.
-// Allow srbrandnews@gmail.com (your account) AND the demo owner for testing.
-const SUPER_ADMIN_EMAILS = ['srbrandnews@gmail.com', 'owner@demo.com'];
+// Configure extra platform admins with a comma-separated SUPER_ADMIN_EMAILS
+// env var. The demo owner is kept for local testing and for the current live
+// venue; change its password from Admin -> Staff before sharing the URL.
+const SUPER_ADMIN_EMAILS = String(process.env.SUPER_ADMIN_EMAILS || 'srbrandnews@gmail.com,owner@demo.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+function isSuperAdmin(user) {
+  if (!user || !user.email) return false;
+  return SUPER_ADMIN_EMAILS.includes(String(user.email).toLowerCase());
+}
 
 function requireSuperAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Login required' });
-  if (!SUPER_ADMIN_EMAILS.includes(req.user.email)) {
+  if (!isSuperAdmin(req.user)) {
     return res.status(403).json({ error: 'Super-admin access required' });
   }
   next();
 }
 
-module.exports = { signToken, verifyToken, requireAuth, requireRole, requireSuperAdmin, COOKIE_NAME, SECRET };
+module.exports = {
+  signToken, verifyToken, requireAuth, requireRole, requireSuperAdmin,
+  isSuperAdmin, SUPER_ADMIN_EMAILS, COOKIE_NAME, SECRET,
+};

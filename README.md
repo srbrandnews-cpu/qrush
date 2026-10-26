@@ -92,10 +92,15 @@ Phir browser mein kholein: **http://localhost:3000**
 | **Owner** admin panel | http://localhost:3000/admin | `owner@demo.com` |
 | **Kitchen** display | http://localhost:3000/kitchen | `kitchen@demo.com` |
 | **Cash** counter | http://localhost:3000/cashier | `cashier@demo.com` |
+| **Platform** console (super admin) | http://localhost:3000/superadmin | `owner@demo.com` |
 | **Customer** menu (QR scan) | http://localhost:3000/menu?table=**&lt;token&gt;** | koi nahi |
 
 Customer wala link har table ka alag hota hai. Token Admin → **Tables & QR** tab mein mil jayega
 (wahin se QR code print kar sakte hain). Har QR usi table ka menu kholt hai.
+
+> **Public signup band hai.** Naya restaurant sirf platform admin `/superadmin` se add karta hai.
+> Login page par demo credentials nahi dikhte — apne staff ko credentials alag se bhejein.
+> Live URL share karne se pehle `owner@demo.com` ka password badal dein (Admin → Staff).
 
 ---
 
@@ -129,6 +134,32 @@ Payment **cash counter par** hoti hai (online payment baad mein add kar sakte ha
 
 ---
 
+## 🏛️ Platform console (super admin)
+
+Sirf platform owner ke liye alag screen: **`/superadmin`**. Yahan se poora QRush network manage hota hai —
+ek restaurant ka owner login ise nahi khol sakta (403 + "access required" screen).
+
+- **Overview** — total restaurants, owners/staff, aaj ke orders aur revenue, guest rating,
+  top venues, newest venues aur "needs attention" (menu/tables missing, suspended venue, rush).
+- **Restaurants** — search + status/sort filters, har venue ka today/all-time revenue, setup
+  (tables/items/staff), last order. **Manage** se:
+  - customer menu kholna, naam/phone edit karna,
+  - owner ka password/email reset karna (support ke liye),
+  - venue suspend/activate (QR menu band/chalu — data safe),
+  - venue permanently delete (type-the-name confirmation).
+- **New restaurant** — restaurant + owner account ek hi step mein banta hai, aur ready-to-send
+  credentials (email + generated password + admin URL) copy karne ko milte hain.
+- **Access & health** — kaun platform admin hai, database/runtime/uptime, health check aur
+  security checklist.
+
+Access email allowlist se milta hai: default `srbrandnews@gmail.com` aur `owner@demo.com`.
+Production mein `SUPER_ADMIN_EMAILS` env var se override karein (comma separated).
+
+**Kya safe hai:** apna hi workspace suspend/delete nahi hota, demo tenant delete nahi hota,
+aur normal owner ko platform APIs 403 dete hain.
+
+---
+
 ## 📁 Project structure
 
 ```
@@ -141,7 +172,7 @@ hotel-table-booking/
 │   ├── db/schema.postgres.sql# PostgreSQL schema (same structure)
 │   ├── db/init.js            # schema create on boot (dialect-aware)
 │   ├── db/seed.js            # demo restaurant data
-│   ├── middleware/auth.js    # JWT + role checking
+│   ├── middleware/auth.js    # JWT + role checking + super-admin allowlist
 │   ├── routes/               # auth, menu, tables, orders, admin, public, push
 │   ├── services/orders.js    # order + status + notification logic (core)
 │   ├── services/push.js      # web push (VAPID keys auto-generate)
@@ -149,7 +180,7 @@ hotel-table-booking/
 │   └── utils/                # constants (status flow), QR helper
 ├── public/
 │   ├── index.html            # landing page
-│   ├── login/  admin/  kitchen/  cashier/  menu/
+│   ├── login/  admin/  kitchen/  cashier/  menu/  superadmin/
 │   ├── sw.js                # service worker (push notifications)
 │   ├── css/app.css          # shared design system
 │   └── img/                 # generated app icons
@@ -157,6 +188,7 @@ hotel-table-booking/
 │   ├── make-icon.js         # app icons banata hai (PNG)
 │   ├── test-flow.js         # end-to-end order flow test
 │   ├── test-bill-merge.js   # same-table add-on / separate-phone bills
+│   ├── test-superadmin.js   # platform console + tenant CRUD test
 │   ├── test-postgres.js     # wahi test, real PostgreSQL par
 │   └── reset-orders.js      # demo orders clean karta hai
 └── data/                    # SQLite database + VAPID keys (auto-create, gitignored)
@@ -172,6 +204,7 @@ hotel-table-booking/
 | `BASE_URL` | Wo URL jo phone QR scan par kholega. **LAN demo:** `http://192.168.x.x:3000`, **prod:** `https://order.aapka-domain.com` |
 | `JWT_SECRET` | Login token sign karne ke liye — production mein zaroor badlein |
 | `VAPID_SUBJECT` | Web push ke liye support email |
+| `SUPER_ADMIN_EMAILS` | Platform console (`/superadmin`) ke allowed emails, comma separated. Default: `srbrandnews@gmail.com,owner@demo.com` |
 
 > **Phone se test karne ke liye:** dono (laptop + phone) same WiFi par hon, aur `BASE_URL`
 > mein laptop ka LAN IP daalein (cmd mein `ipconfig` se malum hoga). QR tabhi phone par scan hoga.
@@ -183,6 +216,8 @@ hotel-table-booking/
 ```bash
 npm start              # server chalu rakhein (alag terminal mein)
 npm test               # poora order-flow test (SQLite)
+npm run test:bill     # same-table add-on / separate-phone bill rules
+npm run test:superadmin # platform console: KPIs, tenant CRUD, access guards
 npm run test:csv       # CSV menu import test
 npm run test:encoding  # UTF-8 safety (हिन्दी नाम, emoji, ₹)
 npm run test:notify    # browser push pipeline (delivery log)
@@ -198,7 +233,7 @@ npm run test:pg
 ```
 
 Yeh real PostgreSQL server boot karke app uspar chalata hai, poora flow test karta hai,
-aur confirm karta hai ki data sach mein Postgres tables mein gaya.
+platform console test bhi chalata hai, aur confirm karta hai ki data sach mein Postgres tables mein gaya.
 
 **CSV import format** (template bhi admin panel se download hota hai):
 
