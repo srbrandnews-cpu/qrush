@@ -332,9 +332,9 @@
     const admins = (state.meta && state.meta.super_admins) || [];
     $('acc-admins').innerHTML = `
       <div class="sa-admin-chips">${admins.map((email) => `<span class="sa-admin-chip">🛡 ${esc(email)}</span>`).join('') || '<span class="muted">None configured</span>'}</div>
-      ${state.meta && state.meta.demo_access ? `<div class="sa-warn danger">
-        <b>owner@demo.com</b> ke paas platform access hai. Yeh demo login public hai — Admin → Staff se password badal dein,
-        ya Render par <b>SUPER_ADMIN_EMAILS</b> set karke ise hata dein.
+      ${state.meta && state.meta.demo_access ? `<div class="sa-warn">
+        <b>owner@demo.com</b> ke paas platform access hai. Iska password strong rakhein aur staff ke saath share na karein.
+        Aur admins add karne ke liye Render par <b>SUPER_ADMIN_EMAILS</b> set karein.
       </div>` : '<div class="sa-note">Sirf allowlisted emails hi tenants create / delete kar sakte hain.</div>'}`;
 
     const m = state.meta || {};
