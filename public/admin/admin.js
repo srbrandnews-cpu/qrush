@@ -429,6 +429,12 @@
       <div class="field"><label>Category</label><select class="input" id="m-item-cat">${catOptions}</select></div>
       <div class="field"><label>Name</label><input class="input" id="m-item-name" value="${item ? esc(item.name) : ''}" placeholder="e.g. Paneer Tikka" /></div>
       <div class="field"><label>Description (optional)</label><input class="input" id="m-item-desc" value="${item && item.description ? esc(item.description) : ''}" /></div>
+      <div class="field">
+        <label>Photo URL (optional)</label>
+        <input class="input" id="m-item-image" value="${item && item.image_url ? esc(item.image_url) : ''}" placeholder="https://images.example.com/paneer-tikka.jpg" />
+        <div class="img-preview empty" id="m-item-preview"></div>
+        <p class="tiny muted" style="margin:6px 0 0">Public image link (jpg / png / webp). Blank chhodne par menu par emoji tile dikhta hai.</p>
+      </div>
       <div class="row">
         <div class="field"><label>Price (${currency})</label><input class="input" id="m-item-price" type="number" min="0" step="1" value="${item ? item.price : ''}" /></div>
         <div class="field">
@@ -463,6 +469,7 @@
           const body = {
             category_id: Number(val('m-item-cat')) || null,
             name, description: val('m-item-desc'),
+            image_url: val('m-item-image'),
             price, is_veg: val('m-item-veg') === '1',
             is_available: $('m-item-avail').checked,
             is_quick: $('m-item-quick').checked,
@@ -474,6 +481,23 @@
         },
       },
     ]);
+
+    // Live thumbnail so the owner sees exactly what the customer menu will show.
+    const imgInput = $('m-item-image');
+    const preview = $('m-item-preview');
+    if (imgInput && preview) {
+      const syncPreview = () => {
+        const url = imgInput.value.trim();
+        preview.classList.toggle('empty', !url);
+        preview.innerHTML = url
+          ? `<img src="${esc(url)}" alt="" />`
+          : '<span>Preview — no photo, emoji tile</span>';
+      };
+      imgInput.addEventListener('input', syncPreview);
+      const thumb = preview.querySelector('img');
+      if (thumb) thumb.addEventListener('error', () => { preview.classList.add('empty'); });
+      syncPreview();
+    }
   }
 
   function confirmDeleteItem(item) {

@@ -38,6 +38,7 @@
       state.fullMenu = sessionStorage.getItem('tn_full_menu') === '1';
 
       $('r-name').textContent = data.restaurant.name;
+      $('venue-mark').textContent = venueInitial(data.restaurant.name);
       $('t-name').textContent = data.table.name;
       $('s-table').textContent = data.table.name;
       $('r-addr').textContent = data.restaurant.address || '';
@@ -48,6 +49,7 @@
       renderMenu();
       renderQuickRequests();
       renderInfo();
+      renderVenueActions();
 
       // Returning customer: keep their name/number handy (one less typing).
       if (saved.name) $('co-name').value = saved.name;
@@ -104,22 +106,122 @@
     return quick.length ? quick : state.menu;
   }
 
+  /* ---------------------------- venue services --------------------------- */
+
+  function venueInitial(name) {
+    const text = String(name || '').trim();
+    return text ? text.slice(0, 1).toUpperCase() : '🍽';
+  }
+
+  const PHONE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16.9v2.6a2 2 0 0 1-2.2 2 19.7 19.7 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.7 19.7 0 0 1 2.1 4a2 2 0 0 1 2-2.2h2.6a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6.4 6.4l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>';
+  const WA_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.6a8.4 8.4 0 0 1-9.1 8.3 9.3 9.3 0 0 1-3.2-.6L4 21l1.7-4.4a8.2 8.2 0 0 1-1.1-4A8.5 8.5 0 1 1 21 11.6Z"/><path d="M8.8 8.2c.1-.3.3-.3.5-.3h.4c.1 0 .3 0 .4.3l.6 1.4c.1.2 0 .4 0 .5l-.4.5c-.1.1-.2.2 0 .4.2.4.6.9 1 1.3.4.4.8.7 1.2.9.2.1.3.1.4 0l.6-.7c.1-.1.3-.2.4-.1l1.3.6c.2.1.3.1.3.3 0 .2-.1.7-.4 1-.3.3-.9.5-1.3.5-.4 0-1.2-.1-2.4-.7a9.4 9.4 0 0 1-3.4-3.2 4 4 0 0 1-.5-1.9c0-.7.4-1.1.6-1.4Z"/></svg>';
+  const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg>';
+
+  /** Call / WhatsApp / prep-time chips under the venue name. */
+  function renderVenueActions() {
+    const host = $('venue-actions');
+    if (!host) return;
+    const r = state.restaurant || {};
+    const phone = String(r.phone || '').trim();
+    const dial = phone.replace(/[^\d+]/g, '');
+    const wa = phone.replace(/\D/g, '');
+    const prep = Number(r.prep_minutes) || 0;
+
+    const chips = [];
+    if (dial.length >= 6) {
+      chips.push(`<a class="venue-act" href="tel:${TN.escapeHtml(dial)}">${PHONE_ICON}<span>Call</span></a>`);
+    }
+    if (wa.length >= 10) {
+      chips.push(`<a class="venue-act wa" href="https://wa.me/${wa}" target="_blank" rel="noopener">${WA_ICON}<span>WhatsApp</span></a>`);
+    }
+    if (prep > 0) {
+      chips.push(`<span class="venue-act eta">${CLOCK_ICON}<span>~${prep} min</span></span>`);
+    }
+    host.innerHTML = chips.join('');
+    host.classList.toggle('hidden', !chips.length);
+  }
+
+  /* ------------------------- category + scroll spy ------------------------ */
+
+  let activeCat = null;
+
+  function setActiveCat(index, center) {
+    activeCat = index;
+    const nav = $('cats');
+    if (!nav) return;
+    nav.querySelectorAll('.cat').forEach((chip) => {
+      chip.classList.toggle('active', Number(chip.dataset.index) === index);
+    });
+    if (center) {
+      const active = nav.querySelector('.cat.active');
+      if (active) {
+        const left = active.offsetLeft - nav.clientWidth / 2 + active.offsetWidth / 2;
+        nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+      }
+    }
+  }
+
+  function scrollToSection(index) {
+    if (index < 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const el = document.querySelector(`.menu-section[data-index="${index}"]`);
+    if (!el) return;
+    const stick = $('m-stick');
+    const offset = (stick ? stick.offsetHeight : 110) + 12;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+  }
+
+  let catRaf = 0;
+  function syncCatsOnScroll() {
+    if (catRaf) return;
+    catRaf = requestAnimationFrame(() => {
+      catRaf = 0;
+      const nav = $('cats');
+      if (!nav || !nav.children.length) return;
+      const secs = [...document.querySelectorAll('.menu-section')];
+      if (!secs.length) { setActiveCat(-1, false); return; }
+      const stick = $('m-stick');
+      const line = (stick ? stick.offsetHeight : 110) + 46;
+      let index = -1;
+      for (const sec of secs) {
+        if (sec.getBoundingClientRect().top - line <= 0) index = Number(sec.dataset.index);
+      }
+      // Short last section: reaching the page bottom should still highlight it.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 6) {
+        index = Number(secs[secs.length - 1].dataset.index);
+      }
+      if (index !== activeCat) setActiveCat(index, true);
+    });
+  }
+
+  window.addEventListener('scroll', syncCatsOnScroll, { passive: true });
+  window.addEventListener('resize', syncCatsOnScroll);
+
   function renderCats() {
     const nav = $('cats');
     nav.innerHTML = '';
-    visibleMenu().forEach((cat, i) => {
+    const cats = visibleMenu();
+
+    const addChip = (label, index) => {
       const btn = document.createElement('button');
-      btn.className = 'cat' + (i === 0 ? ' active' : '');
-      btn.textContent = cat.name;
-      btn.dataset.target = 'sec-' + i;
+      btn.type = 'button';
+      btn.className = 'cat';
+      btn.textContent = label;
+      btn.dataset.index = String(index);
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.cat').forEach((c) => c.classList.remove('active'));
-        btn.classList.add('active');
-        const el = $('sec-' + i);
-        if (el) window.scrollTo({ top: el.offsetTop - 118, behavior: 'smooth' });
+        setActiveCat(index, true);
+        scrollToSection(index);
       });
       nav.appendChild(btn);
-    });
+    };
+
+    addChip('All Items', -1);
+    cats.forEach((cat, i) => addChip(cat.name, i));
+
+    if (activeCat !== null && activeCat >= cats.length) activeCat = -1;
+    setActiveCat(activeCat === null ? -1 : activeCat, false);
   }
 
   function renderMenu() {
@@ -135,8 +237,8 @@
       const banner = document.createElement('div');
       banner.className = 'rush-banner';
       banner.innerHTML = `
-        <div><b>⚡ Rush menu</b><br><span class="tiny muted">Quick items only — kitchen is busy</span></div>
-        <button>${state.fullMenu ? 'Rush menu' : 'Full menu'}</button>`;
+        <div><b>⚡ Rush hour</b><br><span class="tiny muted">Quick items first — kitchen is busy</span></div>
+        <button>${state.fullMenu ? 'Quick menu' : 'Full menu'}</button>`;
       banner.querySelector('button').addEventListener('click', () => {
         state.fullMenu = !state.fullMenu;
         sessionStorage.setItem('tn_full_menu', state.fullMenu ? '1' : '0');
@@ -151,29 +253,89 @@
       const sec = document.createElement('section');
       sec.className = 'menu-section';
       sec.id = 'sec-' + i;
-      sec.innerHTML = `<h2 class="section-title">${TN.escapeHtml(cat.name)}</h2>`;
-      cat.items.forEach((item) => sec.appendChild(renderItem(item, currency)));
+      sec.dataset.index = String(i);
+      sec.innerHTML = `
+        <div class="sec-head">
+          <h2 class="section-title">${TN.escapeHtml(cat.name)}</h2>
+          <span class="sec-count">${cat.items.length}</span>
+          <span class="sec-line"></span>
+        </div>`;
+      cat.items.forEach((item) => sec.appendChild(renderItem(item, currency, cat.name)));
       host.appendChild(sec);
     });
 
     renderRepeatBar();
+    activeCat = null;
+    syncCatsOnScroll();
   }
 
-  function renderItem(item, currency) {
-    const el = document.createElement('div');
+  /* Food emoji used when a dish has no photo (or the photo fails to load). */
+  const DISH_EMOJI = [
+    [/biryani|pulao|jeera rice|fried rice|rice/, '🍛'],
+    [/paneer|cheese/, '🧀'],
+    [/mushroom/, '🍄'],
+    [/chicken|murgh|kebab|wings|lollipop/, '🍗'],
+    [/mutton|gosht|keema|lamb/, '🍖'],
+    [/fish|prawn|machli|seafood|crab/, '🐟'],
+    [/egg|omelette|anda/, '🍳'],
+    [/dal|daal|lentil|sambar|rasam/, '🥣'],
+    [/noodle|chowmein|hakka|manchurian/, '🍜'],
+    [/pizza/, '🍕'],
+    [/burger/, '🍔'],
+    [/sandwich|toast/, '🥪'],
+    [/fries|wedges/, '🍟'],
+    [/soup|shorba/, '🥘'],
+    [/spring roll|roll/, '🌯'],
+    [/roti|naan|paratha|kulcha|bread|puri|chapati/, '🫓'],
+    [/dosa|idli|uttapam|vada|poha|upma/, '🥞'],
+    [/samosa|pakora|bhaji|snack|starter|fritter/, '🍢'],
+    [/salad|raita/, '🥗'],
+    [/sweet|dessert|gulab|jamun|ice ?cream|kheer|halwa|brownie|rasmalai/, '🍨'],
+    [/tea|chai|coffee|latte/, '☕'],
+    [/juice|shake|lassi|drink|cola|soda|water|mocktail|beer|wine|cocktail/, '🥤'],
+    [/aloo|gobi|bhindi|sabzi|veg|curry|masala/, '🥗'],
+  ];
+
+  function dishEmoji(item, catName) {
+    const hay = `${item.name || ''} ${catName || ''}`.toLowerCase();
+    for (const [re, emoji] of DISH_EMOJI) if (re.test(hay)) return emoji;
+    return '🍽️';
+  }
+
+  /** Stable warm tint per dish, so each photo-less tile still feels distinct. */
+  function dishHue(name) {
+    const text = String(name || 'dish');
+    let hash = 0;
+    for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) % 360;
+    return 20 + (hash % 130);
+  }
+
+  function renderItem(item, currency, catName) {
+    const el = document.createElement('article');
     el.className = 'item' + (item.is_available ? '' : ' unavailable');
     el.dataset.id = item.id;
+    const url = item.image_url ? String(item.image_url).trim() : '';
     el.innerHTML = `
-      <div class="item-body">
+      <div class="dish-media" style="--dish-h:${dishHue(item.name)}">
+        <span class="dish-emoji" aria-hidden="true">${dishEmoji(item, catName)}</span>
+        ${url ? `<img class="dish-img" src="${TN.escapeHtml(url)}" alt="${TN.escapeHtml(item.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />` : ''}
+      </div>
+      <div class="dish-body">
         <div class="item-top">
           <span class="veg-mark ${item.is_veg ? '' : 'nonveg'}" title="${item.is_veg ? 'Veg' : 'Non-veg'}"></span>
-          <span class="item-name">${TN.escapeHtml(item.name)}</span>
+          <h3 class="item-name">${TN.escapeHtml(item.name)}</h3>
         </div>
-        ${item.description ? `<div class="item-desc">${TN.escapeHtml(item.description)}</div>` : ''}
-        <div class="item-price">${currency}${Number(item.price).toLocaleString('en-IN')}</div>
+        ${item.description ? `<p class="item-desc">${TN.escapeHtml(item.description)}</p>` : ''}
+        <div class="dish-foot">
+          <span class="item-price">${currency}${Number(item.price).toLocaleString('en-IN')}</span>
+          <div class="add-wrap"></div>
+        </div>
         ${item.is_available ? '' : '<div class="item-north">Currently unavailable</div>'}
-      </div>
-      <div class="add-wrap"></div>`;
+      </div>`;
+    // A broken image URL must not leave an empty grey hole — drop it and the
+    // emoji tile underneath shows instead.
+    const img = el.querySelector('.dish-img');
+    if (img) img.addEventListener('error', () => img.remove());
     if (item.is_available) updateAddControl(el.querySelector('.add-wrap'), item);
     return el;
   }

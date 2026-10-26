@@ -197,6 +197,15 @@
 .tent-venue { font-size: 10.5px; color: #64748b; text-align: center; margin-top: 2px; }
 .tent-meta { font-size: 9px; color: #475569; text-align: center; margin-top: 6px; line-height: 1.5; }
 
+/* Menu item photo preview inside the item modal */
+.img-preview {
+  margin-top: 9px; width: 100%; height: 108px; border-radius: 12px; overflow: hidden;
+  border: 1px dashed var(--line-strong); background: var(--bg);
+  display: grid; place-items: center;
+}
+.img-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-preview.empty span { font-size: 11.5px; color: var(--muted-2); padding: 0 12px; text-align: center; }
+
 /* ============================== Dark theme ============================== */
 [data-theme="dark"] body { background: var(--bg); }
 [data-theme="dark"] .qr-card,

@@ -9,6 +9,7 @@ Multi-tenant hai — ek hi system par aap kayi restaurants chala sakte hain (bec
 ### ✨ Table service, sirf QR menu nahi
 
 - **One-tap table requests** — water, spoon, bill, AC, waiter; kitchen + cashier screens par live chip.
+- **Photo-led QR menu** — venue header (Call / WhatsApp / prep-time chips), "All Items" + category chips with scroll-spy, aur har dish ka photo card. Photo na ho (ya link toot jaye) to dish ka emoji tile dikhta hai.
 - **One bill per phone** — same table + same number ke add-on items ek hi bill mein; alag number = alag bill (`Table 1A`).
 - **Live queue & ETA** — customer ko "Queue #2 · ~8 min" dikhta hai.
 - **Spoken welcome + kitchen callout** — QR scan par venue ka welcome note + natural voice; kitchen naye order English/Hindi mein announce karta hai (10 alert sounds ke saath).
@@ -126,7 +127,9 @@ Payment **cash counter par** hoti hai (online payment baad mein add kar sakte ha
   (hamesha dashboard par rehta hai; har step ke saath "Karein" button, aur upar toggle se
   chhupa sakte hain). Restaurant owner khud step-by-step setup kar sakta hai.
 - **Menu** — categories aur dishes add/edit/delete, veg/non-veg, price, availability toggle.
-  **📥 Import CSV** se poora menu 1 minute mein (missing categories apne aap ban jaate hain).
+  Har item par **Photo URL** (public jpg/png/webp link) + thumbnail preview; customer menu par
+  photo card, photo na ho to emoji tile. **📥 Import CSV** se poora menu 1 minute mein
+  (missing categories apne aap ban jaate hain; CSV ka `image` column bhi chalta hai).
 - **Tables & QR** — table add (ya bulk mein 10–200), QR code print karke table par lagana.
 - **Staff** — kitchen aur cashier ke alag accounts banayein.
 - **🔔 Notifications** — browser push channel aur delivery log.
