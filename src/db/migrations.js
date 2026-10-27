@@ -31,13 +31,9 @@ const MIGRATIONS = [
     },
   },
   {
-    // v2.1 — logo url for tenants, parcel option for orders
-    name: '004-logo-parcel',
+    // v2.0 — live table service: quick requests, rush menu, UPI, feedback.
+    name: '003-live-service',
     async up() {
-      await addColumn('tenants', 'logo_url', 'TEXT');
-      await addColumn('orders', 'is_parcel', 'INTEGER NOT NULL DEFAULT 0');
-    },
-  },
       await addColumn('tenants', 'wifi_name', 'TEXT');
       await addColumn('tenants', 'wifi_password', 'TEXT');
       await addColumn('tenants', 'upi_id', 'TEXT');
@@ -65,6 +61,14 @@ const MIGRATIONS = [
         `);
         await exec('CREATE INDEX IF NOT EXISTS idx_requests_tenant ON table_requests(tenant_id, status)');
       }
+    },
+  },
+  {
+    // v2.1 — logo url for tenants, parcel option for orders
+    name: '004-logo-parcel',
+    async up() {
+      await addColumn('tenants', 'logo_url', 'TEXT');
+      await addColumn('orders', 'is_parcel', 'INTEGER NOT NULL DEFAULT 0');
     },
   },
 ];
