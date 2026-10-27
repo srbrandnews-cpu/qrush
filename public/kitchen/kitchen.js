@@ -282,6 +282,7 @@
     el.innerHTML = `
       <div class="ocard-head">
         <span class="ocard-no">#${o.order_no}</span>
+        ${o.is_parcel ? '<span class="ocard-tag" style="background:#f59e0b;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">📦 Parcel</span>' : ''}
         <span class="ocard-table">${TN.escapeHtml(o.bill_label || o.table_name)}</span>
       </div>
       <div class="ocard-time ${late ? 'late' : ''}">⏱ <span data-timer="${o.created_at}">${mins} min ago</span></div>

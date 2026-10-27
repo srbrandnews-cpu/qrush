@@ -31,7 +31,7 @@ async function resolveTable(token) {
   if (!token) return null;
   return get(
     `SELECT t.id AS table_id, t.name AS table_name, t.seats, t.tenant_id,
-            tn.name AS restaurant, tn.slug, tn.currency, tn.gst_percent, tn.phone, tn.address,
+            tn.name AS restaurant, tn.slug, tn.currency, tn.gst_percent, tn.phone, tn.address, tn.logo_url,
             tn.wifi_name, tn.wifi_password, tn.upi_id, tn.rush_mode, tn.prep_minutes
        FROM tables t
        JOIN tenants tn ON tn.id = t.tenant_id
@@ -91,6 +91,7 @@ router.get('/menu', async (req, res, next) => {
         gst_percent: table.gst_percent,
         phone: table.phone,
         address: table.address,
+        logo_url: table.logo_url,
         wifi_name: table.wifi_name,
         wifi_password: table.wifi_password,
         upi_id: table.upi_id,
@@ -124,6 +125,7 @@ router.post('/orders', async (req, res, next) => {
       customerPhone: b.customerPhone,
       deviceId: b.deviceId,
       notes: b.notes,
+      isParcel: b.isParcel || b.is_parcel,
     });
 
     res.status(201).json({ order: decorateForCustomer(order) });

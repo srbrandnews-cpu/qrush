@@ -38,7 +38,11 @@
       state.fullMenu = sessionStorage.getItem('tn_full_menu') === '1';
 
       $('r-name').textContent = data.restaurant.name;
-      $('venue-mark').textContent = venueInitial(data.restaurant.name);
+      if (data.restaurant.logo_url) {
+        $('venue-mark').innerHTML = `<img src="${TN.escapeHtml(data.restaurant.logo_url)}" style="width:100%;height:100%;object-fit:cover" />`;
+      } else {
+        $('venue-mark').textContent = venueInitial(data.restaurant.name);
+      }
       $('t-name').textContent = data.table.name;
       $('s-table').textContent = data.table.name;
       $('r-addr').textContent = data.restaurant.address || '';
@@ -336,6 +340,13 @@
     // emoji tile underneath shows instead.
     const img = el.querySelector('.dish-img');
     if (img) img.addEventListener('error', () => img.remove());
+    el.querySelector('.dish-body').addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('.qty')) return;
+      showItemDetail(item, currency, catName);
+    });
+    el.querySelector('.dish-media').addEventListener('click', () => {
+      showItemDetail(item, currency, catName);
+    });
     if (item.is_available) updateAddControl(el.querySelector('.add-wrap'), item);
     return el;
   }
@@ -369,7 +380,43 @@
     updateCartBar();
   }
 
-  function cartList() { return [...state.cart.values()]; }
+  function showItemDetail(item, currency, catName) {
+    const url = item.image_url ? String(item.image_url).trim() : '';
+    const modalId = 'item-detail-modal';
+    let existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = modalId;
+    wrap.className = 'welcome';
+    wrap.style.zIndex = '95';
+    wrap.innerHTML = `
+      <div class="welcome-card" style="max-width:380px;text-align:left;padding:24px">
+        <div style="width:100%;height:200px;border-radius:16px;background:var(--bg);overflow:hidden;position:relative;margin-bottom:16px;display:grid;place-items:center">
+          <span style="font-size:48px">${dishEmoji(item, catName)}</span>
+          ${url ? `<img src="${TN.escapeHtml(url)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />` : ''}
+          <button class="btn btn-outline" id="id-close" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;padding:0;background:rgba(0,0,0,0.5);color:#fff;border:none">✕</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span class="veg-mark ${item.is_veg ? '' : 'nonveg'}"></span>
+          <span class="tiny muted" style="text-transform:uppercase;letter-spacing:.1em;font-weight:700">${catName || 'Item'}</span>
+        </div>
+        <h2 style="font-size:20px;font-weight:800;margin:0 0 6px">${TN.escapeHtml(item.name)}</h2>
+        <p style="font-size:14px;color:var(--muted);margin:0 0 16px;line-height:1.4">${item.description ? TN.escapeHtml(item.description) : 'Freshly prepared delicious item.'}</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:14px">
+          <span style="font-size:22px;font-weight:800;color:var(--primary)">${currency}${Number(item.price).toLocaleString('en-IN')}</span>
+          <button class="btn btn-primary" id="id-add" style="padding:10px 24px">Add to cart</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    wrap.querySelector('#id-close').addEventListener('click', () => wrap.remove());
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) wrap.remove(); });
+    wrap.querySelector('#id-add').addEventListener('click', () => {
+      changeQty(item, 1);
+      wrap.remove();
+      TN.toast(`Added ${item.name} to cart`, 'success');
+    });
+  }
   function cartCount() { return cartList().reduce((s, l) => s + l.qty, 0); }
 
   /* --------------------------- my usual (repeat) ------------------------- */
@@ -809,6 +856,7 @@
         customerName: name || null,
         customerPhone: phone,
         notes: $('co-notes').value.trim() || null,
+        isParcel: $('co-parcel').checked,
         items: cartList().map(({ item, qty }) => ({ item_id: item.id, qty })),
       };
       const res = await TN.api('/api/public/orders', { body: payload, noRedirect: true });

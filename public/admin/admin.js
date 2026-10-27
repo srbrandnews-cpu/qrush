@@ -430,10 +430,15 @@
       <div class="field"><label>Name</label><input class="input" id="m-item-name" value="${item ? esc(item.name) : ''}" placeholder="e.g. Paneer Tikka" /></div>
       <div class="field"><label>Description (optional)</label><input class="input" id="m-item-desc" value="${item && item.description ? esc(item.description) : ''}" /></div>
       <div class="field">
-        <label>Photo URL (optional)</label>
-        <input class="input" id="m-item-image" value="${item && item.image_url ? esc(item.image_url) : ''}" placeholder="https://images.example.com/paneer-tikka.jpg" />
-        <div class="img-preview empty" id="m-item-preview"></div>
-        <p class="tiny muted" style="margin:6px 0 0">Public image link (jpg / png / webp). Blank chhodne par menu par emoji tile dikhta hai.</p>
+        <label>Photo</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="input" id="m-item-image" value="${item && item.image_url ? esc(item.image_url) : ''}" placeholder="Image URL ya upload..." style="flex:1" />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            📁 Upload <input type="file" id="m-item-file" accept="image/*" style="display:none" />
+          </label>
+        </div>
+        <div class="img-preview ${item && item.image_url ? '' : 'empty'}" id="m-item-preview" style="margin-top:8px">${item && item.image_url ? `<img src="${esc(item.image_url)}" style="width:100%;height:100%;object-fit:cover" />` : ''}</div>
+        <p class="tiny muted" style="margin:6px 0 0">Blank chhodne par menu par emoji tile dikhta hai.</p>
       </div>
       <div class="row">
         <div class="field"><label>Price (${currency})</label><input class="input" id="m-item-price" type="number" min="0" step="1" value="${item ? item.price : ''}" /></div>
@@ -798,6 +803,12 @@
     $('s-phone').value = r.phone || '';
     $('s-currency').value = r.currency || '₹';
     $('s-address').value = r.address || '';
+    $('s-logo').value = r.logo_url || '';
+    if (r.logo_url) {
+      $('s-logo-preview').innerHTML = `<img src="${esc(r.logo_url)}" alt="Logo" style="width:100%;height:100%;object-fit:cover" />`;
+    } else {
+      $('s-logo-preview').innerHTML = '<span style="font-size:20px">🏪</span>';
+    }
     $('s-gst').value = r.gst_percent || 0;
     $('s-wifi-name').value = r.wifi_name || '';
     $('s-wifi-pass').value = r.wifi_password || '';
@@ -812,7 +823,7 @@
         method: 'PUT',
         body: {
           name: val('s-name'), phone: val('s-phone'), currency: val('s-currency') || '₹',
-          address: val('s-address'), gst_percent: Number(val('s-gst')) || 0,
+          address: val('s-address'), logo_url: val('s-logo'), gst_percent: Number(val('s-gst')) || 0,
           wifi_name: val('s-wifi-name'), wifi_password: val('s-wifi-pass'),
           upi_id: val('s-upi'), prep_minutes: Number(val('s-prep')) || 15,
           rush_mode: $('s-rush').checked,
@@ -906,6 +917,50 @@
   }
 
   $('logout').addEventListener('click', () => TN.logout());
+
+  /** Upload a file as a base64 DataURL (simple server-less "upload" for now). */
+  async function handleFileUpload(input, targetId, previewId) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { TN.toast('File is too large (max 5MB)', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const b64 = e.target.result;
+      $(targetId).value = b64;
+      if (previewId) {
+        $(previewId).innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover" />`;
+      }
+      $(targetId).dispatchEvent(new Event('input')); // trigger preview logic if any
+    };
+    reader.readAsDataURL(file);
+  }
+
+  $('s-logo-file').addEventListener('change', (e) => handleFileUpload(e.target, 's-logo', 's-logo-preview'));
+
+  $('s-logo').addEventListener('input', (e) => {
+    const v = e.target.value.trim();
+    if (v) $('s-logo-preview').innerHTML = `<img src="${esc(v)}" style="width:100%;height:100%;object-fit:cover" />`;
+    else $('s-logo-preview').innerHTML = '<span style="font-size:20px">🏪</span>';
+  });
+
+  // Handle item image upload
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'm-item-file') handleFileUpload(e.target, 'm-item-image', 'm-item-preview');
+  });
+
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'm-item-image') {
+      const v = e.target.value.trim();
+      const prev = $('m-item-preview');
+      if (v) {
+        prev.classList.remove('empty');
+        prev.innerHTML = `<img src="${esc(v)}" style="width:100%;height:100%;object-fit:cover" />`;
+      } else {
+        prev.classList.add('empty');
+        prev.innerHTML = '';
+      }
+    }
+  });
 
   boot().catch((err) => { if (err.status !== 401) TN.toast(err.message, 'error'); });
 })();

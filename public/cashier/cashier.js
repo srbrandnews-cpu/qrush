@@ -149,6 +149,7 @@
       <div class="ccard-body">
         <div class="ccard-meta">
           <span>⏱ ${mins} min</span>
+          ${inBill.some((o) => o.is_parcel) ? '<span style="color:#f59e0b;font-weight:800">📦 PARCEL</span>' : ''}
           ${bill.name ? `<span>👤 ${TN.escapeHtml(bill.name)}</span>` : ''}
           <span>📞 ${bill.phone ? TN.escapeHtml(bill.phone) : '—'}</span>
           ${inBill.some((o) => o.payment_status === 'paid' && o.payment_method)

@@ -340,13 +340,14 @@ router.put('/restaurant', async (req, res, next) => {
     }
     await run(
       `UPDATE tenants SET
-         name = ?, phone = ?, address = ?, currency = ?, gst_percent = ?,
+         name = ?, phone = ?, address = ?, logo_url = ?, currency = ?, gst_percent = ?,
          wifi_name = ?, wifi_password = ?, upi_id = ?, rush_mode = ?, prep_minutes = ?
        WHERE id = ?`,
       [
         b.name != null ? String(b.name).trim() : t.name,
         b.phone !== undefined ? (b.phone ? String(b.phone).trim() : null) : t.phone,
         b.address !== undefined ? (b.address ? String(b.address).trim() : null) : t.address,
+        b.logo_url !== undefined ? (b.logo_url ? String(b.logo_url).trim() : null) : t.logo_url,
         b.currency != null ? String(b.currency).trim() : t.currency,
         gst,
         b.wifi_name !== undefined ? (b.wifi_name ? String(b.wifi_name).trim() : null) : t.wifi_name,

@@ -346,6 +346,19 @@
                 <div class="field"><label>Phone</label><input class="input" id="s-phone" /></div>
                 <div class="field"><label>Currency symbol</label><input class="input" id="s-currency" placeholder="₹" /></div>
               </div>
+              <div class="field">
+                <label>Restaurant Logo</label>
+                <div class="logo-field-wrap" style="display:flex;gap:10px;align-items:center">
+                  <div id="s-logo-preview" style="width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);display:grid;place-items:center;overflow:hidden;flex:none">
+                    <span style="font-size:20px">🏪</span>
+                  </div>
+                  <input class="input" id="s-logo" placeholder="Photo URL ya local file path" style="flex:1" />
+                  <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+                    📁 Upload <input type="file" id="s-logo-file" accept="image/*" style="display:none" />
+                  </label>
+                </div>
+                <p class="tiny muted" style="margin:4px 0 0">QR welcome screen aur menu header par ye logo dikhega.</p>
+              </div>
               <div class="field"><label>Address</label><textarea class="input" id="s-address"></textarea></div>
               <div class="field"><label>GST / tax percent</label><input class="input" id="s-gst" type="number" min="0" max="100" step="0.5" /></div>
 

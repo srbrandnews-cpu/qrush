@@ -31,7 +31,7 @@
     <div id="view-menu" class="hidden">
       <div class="m-stick" id="m-stick">
         <header class="m-header">
-          <div class="venue-mark" id="venue-mark" aria-hidden="true"></div>
+          <div class="venue-mark" id="venue-mark" aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:800;font-size:18px;overflow:hidden"></div>
           <div class="venue-meta">
             <h1 id="r-name">Restaurant</h1>
             <div class="m-sub flex center gap8">
@@ -153,6 +153,13 @@
         </div>
         <div class="field"><label>Your name (optional)</label><input class="input" id="co-name" placeholder="e.g. Rahul" /></div>
         <div class="field"><label>Order notes (optional)</label><textarea class="input" id="co-notes" placeholder="e.g. less spicy, no onion…"></textarea></div>
+        <div class="field" style="background:var(--bg);padding:12px;border-radius:12px;border:1px solid var(--line);margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:700">
+            <span class="switch"><input type="checkbox" id="co-parcel"><span class="slider"></span></span>
+            <span>📦 I want Parcel (Takeaway)</span>
+          </label>
+          <p class="tiny muted" style="margin:6px 0 0 46px">Khana pack karwana hai? Kitchen ko inform kar denge.</p>
+        </div>
         <div class="field">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
             <input type="checkbox" id="co-notify" checked />
