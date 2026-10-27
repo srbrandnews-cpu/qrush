@@ -115,10 +115,12 @@ async function main() {
       )).lastInsertRowid;
       let itemSort = 1;
       for (const item of cat.items) {
+        // Demo dishes ship with bundled photos (public/img/demo).
+        const image = `/img/demo/${String(item.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}.jpg`;
         await run(
-          `INSERT INTO menu_items (tenant_id, category_id, name, description, price, is_veg, is_available, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
-          [tenantId, catId, item.name, item.description, item.price, item.is_veg, itemSort++]
+          `INSERT INTO menu_items (tenant_id, category_id, name, description, price, image_url, is_veg, is_available, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+          [tenantId, catId, item.name, item.description, item.price, image, item.is_veg, itemSort++]
         );
       }
       sort++;

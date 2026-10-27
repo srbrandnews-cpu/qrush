@@ -555,18 +555,56 @@
 
   /* -------------------------- welcome splash ----------------------------- */
 
+  const EMBLEM_PALETTES = [
+    ['#fbbf24', '#f43f5e', '#14b8a6'],
+    ['#22d3ee', '#6366f1', '#f472b6'],
+    ['#34d399', '#f59e0b', '#ef4444'],
+    ['#a78bfa', '#ec4899', '#fbbf24'],
+    ['#f97316', '#e11d48', '#8b5cf6'],
+  ];
+
+  /** Two-letter monogram: Latin "Spice Garden" -> SG, Devanagari -> first letters. */
+  function venueMonogram(name) {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return 'QR';
+    const chars = (w) => Array.from(w);
+    if (words.length === 1) return chars(words[0]).slice(0, 2).join('').toUpperCase();
+    return (chars(words[0])[0] + (chars(words[1])[0] || '')).toUpperCase();
+  }
+
+  /** Each venue gets its own colour combo, picked deterministically from its name. */
+  function paintWelcomeEmblem(name) {
+    const splash = $('welcome-splash');
+    if (!splash) return;
+    const key = Array.from(String(name || '')).reduce((sum, ch) => sum + ch.codePointAt(0), 0);
+    const [e1, e2, e3] = EMBLEM_PALETTES[key % EMBLEM_PALETTES.length];
+    splash.style.setProperty('--e1', e1);
+    splash.style.setProperty('--e2', e2);
+    splash.style.setProperty('--e3', e3);
+    const initial = $('ws-initial');
+    if (initial) {
+      const mono = venueMonogram(name);
+      initial.textContent = mono;
+      const len = Array.from(mono).length;
+      initial.className = 'ws-initial' + (len === 2 ? ' two' : len > 2 ? ' three' : '');
+    }
+  }
+
   function speakWelcome(saved) {
     if (!state.restaurant || !TN.voice) return;
     const venue = state.restaurant.name;
     const guest = (saved && saved.name) || '';
-    const hindi = /[\u0900-\u097F]/.test(venue + ' ' + guest);
-    const text = hindi
-      ? `${venue} में आपका स्वागत है${guest ? ', ' + guest : ''}। हमें आपकी सेवा करके खुशी होगी।`
-      : `Welcome to ${venue}${guest ? ', ' + guest : ''}. We are happy to serve you.`;
+    // Always English: Devanagari names are mispronounced by every installed
+    // voice, so we keep the venue name on screen and speak a clean greeting.
+    const latinVenue = !/[\u0900-\u097F]/.test(venue);
+    const spokenGuest = /[\u0900-\u097F]/.test(guest) ? '' : guest;
+    const text = latinVenue
+      ? `Welcome to ${venue}${spokenGuest ? ', ' + spokenGuest : ''}. We are happy to serve you.`
+      : `Welcome${spokenGuest ? ', ' + spokenGuest : ''}! We are happy to serve you.`;
     TN.voice.speak(text, {
-      lang: hindi ? 'hi-IN' : 'en-IN',
-      mode: hindi ? 'hi' : 'en',
-      rate: 0.95,
+      lang: 'en-IN',
+      mode: 'en',
+      rate: 0.94,
       pitch: 1,
       retryGesture: true,
     });
@@ -576,6 +614,7 @@
     splashGreeted = false;
     $('ws-venue').textContent = state.restaurant.name;
     $('ws-table').textContent = state.table.name;
+    paintWelcomeEmblem(state.restaurant.name);
     const guest = (saved && saved.name) || '';
     $('ws-hello').textContent = guest ? `Welcome back, ${guest}!` : 'We are happy to serve you';
     $('welcome-splash').classList.remove('hidden');
