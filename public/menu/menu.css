@@ -268,6 +268,7 @@ body.has-cart #toasts { bottom: calc(92px + env(safe-area-inset-bottom)); }
   position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
   align-items: center; justify-content: center; overflow: hidden; padding: 34px 22px 70px;
   text-align: center; color: #f8fafc; opacity: 0;
+  background: linear-gradient(155deg, #0f766e 0%, #0b4b52 46%, #071e2c 100%);
   background:
     radial-gradient(520px 320px at 50% 10%, color-mix(in srgb, var(--e3) 26%, transparent), transparent 70%),
     radial-gradient(420px 300px at 12% 95%, color-mix(in srgb, var(--e2) 18%, transparent), transparent 70%),
@@ -298,6 +299,9 @@ body.has-cart #toasts { bottom: calc(92px + env(safe-area-inset-bottom)); }
   position: relative; width: 104px; height: 104px; border-radius: 50%;
   display: grid; place-items: center; isolation: isolate;
   background: conic-gradient(from 205deg, var(--e1), var(--e2) 38%, var(--e3) 68%, var(--e1));
+  box-shadow:
+    0 26px 54px -20px rgba(0, 0, 0, .78),
+    0 0 0 1px rgba(255, 255, 255, .18);
   box-shadow:
     0 26px 54px -20px rgba(0, 0, 0, .78),
     0 0 34px -8px color-mix(in srgb, var(--e2) 55%, transparent),
