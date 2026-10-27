@@ -208,7 +208,9 @@ hotel-table-booking/
 │   ├── login/  admin/  kitchen/  cashier/  menu/  superadmin/
 │   ├── sw.js                # service worker (push notifications)
 │   ├── css/app.css          # shared design system
-│   └── img/                 # generated app icons
+│   └── img/                 # app icons, landing photos, demo dish photos
+│                            #   landing/ -> homepage gallery
+│                            #   demo/    -> bundled menu photos for the demo venue
 ├── scripts/
 │   ├── make-icon.js         # app icons banata hai (PNG)
 │   ├── test-flow.js         # end-to-end order flow test
