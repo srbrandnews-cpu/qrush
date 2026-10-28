@@ -40,8 +40,12 @@ function round2(n) {
 // A bill stays open while any of its orders is active (served = still unpaid).
 const BILL_ACTIVE_STATUSES = [...OPEN_STATUSES, ORDER_STATUS.SERVED];
 
-/** Stable identity for a bill: the phone if we have one, else the device. */
+/** Stable identity for a bill: the phone if we have one, else the device.
+ *  Paid/cancelled orders are never merged with others — each becomes its own
+ *  bill so a closed bill never accidentally swallows a later order. */
 function billKey(order) {
+  const status = String(order && order.status || '').toLowerCase();
+  if (status === 'paid' || status === 'cancelled') return `order:${order.id}`;
   const phone = cleanPhone(order.customer_phone);
   if (phone) return `phone:${phone}`;
   if (order.device_id) return `device:${order.device_id}`;
