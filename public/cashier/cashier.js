@@ -104,7 +104,25 @@
     host.innerHTML = '';
     const bills = billsForTab().sort((a, b) => b.latestId - a.latestId);
 
-    bills.forEach((bill) => host.appendChild(card(bill)));
+    if (tab === 'paid') {
+      // Group paid bills by payment method: UPI, Cash, Card.
+      const groups = { upi: [], cash: [], card: [], other: [] };
+      for (const b of bills) {
+        const m = (b.orders.map((o) => o.payment_method).filter(Boolean).pop() || 'cash').toLowerCase();
+        (groups[m] || groups.other).push(b);
+      }
+      const labels = { upi: '💳 UPI', cash: '💵 Cash', card: '💳 Card', other: 'Other' };
+      for (const key of ['upi', 'cash', 'card', 'other']) {
+        if (!groups[key].length) continue;
+        const head = document.createElement('div');
+        head.style.cssText = 'font-weight:800;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding:0 4px';
+        head.textContent = labels[key];
+        host.appendChild(head);
+        groups[key].forEach((bill) => host.appendChild(card(bill)));
+      }
+    } else {
+      bills.forEach((bill) => host.appendChild(card(bill)));
+    }
     $('empty').classList.toggle('hidden', bills.length > 0);
   }
 
