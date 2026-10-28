@@ -282,7 +282,8 @@
     el.innerHTML = `
       <div class="ocard-head">
         <span class="ocard-no">#${o.order_no}</span>
-        ${o.is_parcel ? '<span class="ocard-tag" style="background:#f59e0b;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">📦 Parcel</span>' : ''}
+        ${o.order_type === 'pickup' ? '<span class="ocard-tag" style="background:#7c3aed;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">🛵 Pickup</span>' : (o.order_type === 'takeaway' || o.is_parcel ? '<span class="ocard-tag" style="background:#f59e0b;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">📦 Takeaway</span>' : '')}
+        ${o.pickup_time ? `<span class="ocard-tag" style="background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:11px">⏰ ${TN.escapeHtml(o.pickup_time)}</span>` : ''}
         <span class="ocard-table">${TN.escapeHtml(o.bill_label || o.table_name)}</span>
       </div>
       <div class="ocard-time ${late ? 'late' : ''}">⏱ <span data-timer="${o.created_at}">${mins} min ago</span></div>

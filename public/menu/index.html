@@ -41,6 +41,7 @@
           </div>
           <div class="m-actions">
             <button id="m-info" class="bell" title="WiFi, UPI & venue info">ℹ</button>
+            <button class="bell" id="theme-picker-btn" title="Change theme">🎨</button>
             <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
             <button id="bell" class="bell" title="Enable order notifications">🔔</button>
           </div>
@@ -85,7 +86,8 @@
         </div>
         <div class="m-actions">
           <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
-          <button id="s-bell" class="bell" title="Enable notifications">🔔</button>
+          <button class="bell" id="theme-picker-btn2" title="Change theme">🎨</button>
+           <button id="s-bell" class="bell" title="Enable notifications">🔔</button>
         </div>
       </header>
       <div id="status-cards"></div>
@@ -153,12 +155,27 @@
         </div>
         <div class="field"><label>Your name (optional)</label><input class="input" id="co-name" placeholder="e.g. Rahul" /></div>
         <div class="field"><label>Order notes (optional)</label><textarea class="input" id="co-notes" placeholder="e.g. less spicy, no onion…"></textarea></div>
-        <div class="field" style="background:var(--bg);padding:12px;border-radius:12px;border:1px solid var(--line);margin-bottom:16px">
-          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:700">
-            <span class="switch"><input type="checkbox" id="co-parcel"><span class="slider"></span></span>
-            <span>📦 I want Parcel (Takeaway)</span>
-          </label>
-          <p class="tiny muted" style="margin:6px 0 0 46px">Khana pack karwana hai? Kitchen ko inform kar denge.</p>
+        <div class="field" style="margin-bottom:16px">
+          <label style="font-weight:700;margin-bottom:8px;display:block">Order type</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <label class="order-type-opt" style="padding:10px;border:1px solid var(--line);border-radius:12px;text-align:center;cursor:pointer;font-weight:700;font-size:13px">
+              <input type="radio" name="co-type" value="dinein" checked style="display:none" />
+              🍽️ Dine-in
+            </label>
+            <label class="order-type-opt" style="padding:10px;border:1px solid var(--line);border-radius:12px;text-align:center;cursor:pointer;font-weight:700;font-size:13px">
+              <input type="radio" name="co-type" value="takeaway" style="display:none" />
+              📦 Takeaway
+            </label>
+            <label class="order-type-opt" style="padding:10px;border:1px solid var(--line);border-radius:12px;text-align:center;cursor:pointer;font-weight:700;font-size:13px">
+              <input type="radio" name="co-type" value="pickup" style="display:none" />
+              🛵 Pickup
+            </label>
+          </div>
+        </div>
+        <div class="field hidden" id="pickup-time-field" style="margin-bottom:16px">
+          <label>Pickup time (optional)</label>
+          <input class="input" id="co-pickup-time" type="time" />
+          <p class="tiny muted" style="margin:4px 0 0">Kitchen ko inform kar denge.</p>
         </div>
         <div class="field">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer">

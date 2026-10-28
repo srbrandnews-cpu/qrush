@@ -149,7 +149,7 @@
       <div class="ccard-body">
         <div class="ccard-meta">
           <span>⏱ ${mins} min</span>
-          ${inBill.some((o) => o.is_parcel) ? '<span style="color:#f59e0b;font-weight:800">📦 PARCEL</span>' : ''}
+          ${inBill.some((o) => o.order_type === 'pickup') ? '<span style="color:#7c3aed;font-weight:800">🛵 PICKUP</span>' : (inBill.some((o) => o.order_type === 'takeaway' || o.is_parcel) ? '<span style="color:#f59e0b;font-weight:800">📦 TAKEAWAY</span>' : '')}
           ${bill.name ? `<span>👤 ${TN.escapeHtml(bill.name)}</span>` : ''}
           <span>📞 ${bill.phone ? TN.escapeHtml(bill.phone) : '—'}</span>
           ${inBill.some((o) => o.payment_status === 'paid' && o.payment_method)

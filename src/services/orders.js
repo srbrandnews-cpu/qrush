@@ -137,7 +137,7 @@ async function nextOrderNo(tenantId) {
  * }
  */
 async function createOrder(payload) {
-  const { tenantId, tableId, items, customerName, customerPhone, deviceId, notes, isParcel } = payload;
+  const { tenantId, tableId, items, customerName, customerPhone, deviceId, notes, isParcel, orderType, pickupTime } = payload;
 
   if (!Array.isArray(items) || items.length === 0) {
     throw httpError(400, 'Cart is empty');
@@ -208,14 +208,16 @@ async function createOrder(payload) {
     const res = await run(
       `INSERT INTO orders
          (tenant_id, table_id, order_no, customer_name, customer_phone, device_id,
-          status, item_count, subtotal, gst_amount, total, notes, is_parcel)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          status, item_count, subtotal, gst_amount, total, notes, is_parcel, order_type, pickup_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tenantId, tableId, orderNo,
         customerName || null, phone, deviceId || null,
         ORDER_STATUS.PLACED, itemCount, subtotal, gstAmount, total,
         notes ? notes.toString().slice(0, 300) : null,
         isParcel ? 1 : 0,
+        (orderType || (isParcel ? 'takeaway' : 'dinein')).toString().slice(0, 20),
+        pickupTime ? pickupTime.toString().slice(0, 40) : null,
       ]
     );
     const id = res.lastInsertRowid;

@@ -71,6 +71,14 @@ const MIGRATIONS = [
       await addColumn('orders', 'is_parcel', 'INTEGER NOT NULL DEFAULT 0');
     },
   },
+  {
+    // v2.2 — order type: dine-in / takeaway / pickup
+    name: '005-order-type',
+    async up() {
+      await addColumn('orders', 'order_type', "TEXT NOT NULL DEFAULT 'dinein'");
+      await addColumn('orders', 'pickup_time', 'TEXT');
+    },
+  },
 ];
 
 /**

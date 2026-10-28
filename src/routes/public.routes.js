@@ -125,7 +125,9 @@ router.post('/orders', async (req, res, next) => {
       customerPhone: b.customerPhone,
       deviceId: b.deviceId,
       notes: b.notes,
-      isParcel: b.isParcel || b.is_parcel,
+      isParcel: b.isParcel || b.is_parcel || b.orderType === 'takeaway' || b.orderType === 'pickup',
+      orderType: b.orderType || b.order_type,
+      pickupTime: b.pickupTime || b.pickup_time,
     });
 
     res.status(201).json({ order: decorateForCustomer(order) });

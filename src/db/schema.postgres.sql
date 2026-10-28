@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_method  TEXT    CHECK (payment_method IN ('cash','upi','card')),
   notes           TEXT,
   is_parcel       INTEGER NOT NULL DEFAULT 0,
+  order_type      TEXT    NOT NULL DEFAULT 'dinein',
+  pickup_time     TEXT,
   rating          INTEGER,
   feedback        TEXT,
   created_at      TEXT    NOT NULL DEFAULT (to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')),

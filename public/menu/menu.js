@@ -842,6 +842,36 @@
     $('checkout-bill').innerHTML = billHtml();
     updateCheckoutNote();
     $('checkout-sheet').classList.remove('hidden');
+    // highlight default selected order type
+    document.querySelectorAll('.order-type-opt').forEach((el) => {
+      const inp = el.querySelector('input');
+      if (inp && inp.checked) {
+        el.style.borderColor = 'var(--primary)';
+        el.style.background = 'var(--primary-50)';
+        el.style.color = 'var(--primary-700)';
+      }
+    });
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'co-type') {
+      document.querySelectorAll('.order-type-opt').forEach((el) => {
+        const inp = el.querySelector('input');
+        if (inp && inp.checked) {
+          el.style.borderColor = 'var(--primary)';
+          el.style.background = 'var(--primary-50)';
+          el.style.color = 'var(--primary-700)';
+        } else {
+          el.style.borderColor = 'var(--line)';
+          el.style.background = '';
+          el.style.color = '';
+        }
+      });
+      const val = document.querySelector('input[name="co-type"]:checked')?.value;
+      if ($('pickup-time-field')) {
+        $('pickup-time-field').classList.toggle('hidden', val !== 'pickup');
+      }
+    }
   });
   $('checkout-close').addEventListener('click', () => $('checkout-sheet').classList.add('hidden'));
   $('checkout-sheet').addEventListener('click', (e) => { if (e.target.id === 'checkout-sheet') $('checkout-sheet').classList.add('hidden'); });
@@ -876,7 +906,9 @@
         customerName: name || null,
         customerPhone: phone,
         notes: $('co-notes').value.trim() || null,
-        isParcel: $('co-parcel').checked,
+        isParcel: (document.querySelector('input[name="co-type"]:checked')?.value === 'takeaway' || document.querySelector('input[name="co-type"]:checked')?.value === 'pickup'),
+        orderType: document.querySelector('input[name="co-type"]:checked')?.value || 'dinein',
+        pickupTime: $('co-pickup-time')?.value || null,
         items: cartList().map(({ item, qty }) => ({ item_id: item.id, qty })),
       };
       const res = await TN.api('/api/public/orders', { body: payload, noRedirect: true });
@@ -1269,6 +1301,70 @@
   }
   $('bell').addEventListener('click', onBell);
   $('s-bell').addEventListener('click', onBell);
+
+  /* ============================== THEME PICKER ========================== */
+
+  const COLOR_THEMES = [
+    { id: 'teal', name: 'Teal Bistro', color: '#0d9488' },
+    { id: 'spice', name: 'Spice Route', color: '#ea580c' },
+    { id: 'royal', name: 'Royal Purple', color: '#7c3aed' },
+    { id: 'garden', name: 'Garden Fresh', color: '#16a34a' },
+    { id: 'ocean', name: 'Ocean Blue', color: '#2563eb' },
+    { id: 'rose', name: 'Rose Garden', color: '#e11d48' },
+  ];
+
+  function applyColorTheme(id) {
+    if (id && id !== 'teal') {
+      document.documentElement.dataset.colorTheme = id;
+    } else {
+      delete document.documentElement.dataset.colorTheme;
+    }
+    try { localStorage.setItem('tn_color_theme', id || 'teal'); } catch (_) {}
+  }
+
+  function openThemePicker() {
+    let modal = document.getElementById('theme-picker-modal');
+    if (modal) modal.remove();
+    const current = localStorage.getItem('tn_color_theme') || 'teal';
+    modal = document.createElement('div');
+    modal.id = 'theme-picker-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+      <div style="background:var(--card);border-radius:20px;padding:24px;max-width:360px;width:100%;box-shadow:var(--shadow-lg)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0;font-size:18px">🎨 Choose theme</h3>
+          <button id="tp-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          ${COLOR_THEMES.map((t) => `
+            <button data-theme="${t.id}" style="padding:14px 8px;border-radius:12px;border:2px solid ${t.id === current ? t.color : 'var(--line)'};background:${t.id === current ? t.color + '15' : 'var(--bg)'};cursor:pointer;font-weight:700;font-size:12px;color:var(--ink)">
+              <span style="display:block;width:28px;height:28px;border-radius:50%;background:${t.color};margin:0 auto 6px;box-shadow:0 4px 8px ${t.color}55"></span>
+              ${t.name}
+            </button>
+          `).join('')}
+        </div>
+        <p class="tiny muted" style="margin:14px 0 0;text-align:center">Dark mode toggle alag se header mein hai ☾</p>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#tp-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    modal.querySelectorAll('[data-theme]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyColorTheme(btn.dataset.theme);
+        modal.remove();
+        TN.toast('Theme changed ✅', 'success');
+      });
+    });
+  }
+
+  // init color theme
+  try {
+    const saved = localStorage.getItem('tn_color_theme');
+    if (saved) applyColorTheme(saved);
+  } catch (_) {}
+
+  if ($('theme-picker-btn')) $('theme-picker-btn').addEventListener('click', openThemePicker);
+  if ($('theme-picker-btn2')) $('theme-picker-btn2').addEventListener('click', openThemePicker);
 
   /* ============================== START ================================= */
 
