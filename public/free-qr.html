@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free QR Menu Generator — QRush</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body { background: var(--bg); }
+    .gen-wrap { max-width: 600px; margin: 40px auto; padding: 20px; }
+    .panel { background: #fff; padding: 30px; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
+    .field { margin-bottom: 20px; }
+    .input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin-top: 6px; }
+    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="gen-wrap">
+    <div class="panel">
+      <h1>Free QR Menu</h1>
+      <p class="muted">Apne restaurant ka menu QR generate karein.</p>
+      <div class="field">
+        <label>Restaurant Name</label>
+        <input class="input" id="g-name" placeholder="e.g. Spice Garden" />
+      </div>
+      <div class="field">
+        <label>Menu Link (Google Drive / PDF Link)</label>
+        <input class="input" id="g-url" placeholder="https://..." />
+      </div>
+      <button class="btn btn-primary btn-block" id="g-gen">Generate QR</button>
+      
+      <div id="qr-container" class="hidden">
+        <h3>Aapka QR ready hai!</h3>
+        <div id="qr-code"></div>
+        <p class="tiny muted">Isse print karke table par lagayein.</p>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $('g-gen').addEventListener('click', () => {
+      const url = $('g-url').value;
+      if (!url) return alert('Link daalein');
+      $('qr-code').innerHTML = '';
+      new QRCode($('qr-code'), { text: url, width: 200, height: 200 });
+      $('qr-container').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
