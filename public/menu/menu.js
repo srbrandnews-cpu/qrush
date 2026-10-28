@@ -417,6 +417,7 @@
       TN.toast(`Added ${item.name} to cart`, 'success');
     });
   }
+  function cartList() { return [...state.cart.values()]; }
   function cartCount() { return cartList().reduce((s, l) => s + l.qty, 0); }
 
   /* --------------------------- my usual (repeat) ------------------------- */
