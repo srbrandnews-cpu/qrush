@@ -98,10 +98,19 @@ const MIGRATIONS = [
             logo_url      TEXT,
             menu_data     TEXT    NOT NULL,
             menu_type     TEXT    NOT NULL DEFAULT 'image',
+            instagram     TEXT,
+            facebook      TEXT,
+            whatsapp      TEXT,
+            website       TEXT,
             created_at    TEXT    NOT NULL DEFAULT (${created})
           )
         `);
         await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_slug ON free_qr_menus(slug)');
+      } else {
+        await addColumn('free_qr_menus', 'instagram', 'TEXT');
+        await addColumn('free_qr_menus', 'facebook', 'TEXT');
+        await addColumn('free_qr_menus', 'whatsapp', 'TEXT');
+        await addColumn('free_qr_menus', 'website', 'TEXT');
       }
     },
   },

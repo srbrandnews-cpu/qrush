@@ -65,6 +65,18 @@
         <p class="tiny muted" style="margin:4px 0 0">App mein file upload karein (max 5MB).</p>
       </div>
 
+      <div class="field">
+        <label>Social Media Links (optional)</label>
+        <div class="row">
+          <input class="input" id="g-whatsapp" placeholder="WhatsApp number (e.g. 919876543210)" />
+          <input class="input" id="g-instagram" placeholder="Instagram URL" />
+        </div>
+        <div class="row" style="margin-top:10px">
+          <input class="input" id="g-facebook" placeholder="Facebook URL" />
+          <input class="input" id="g-website" placeholder="Website URL" />
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-block btn-lg" id="g-gen" style="margin-top:10px">Generate Free QR Code 🚀</button>
 
       <div id="qr-container" class="hidden">
@@ -133,6 +145,10 @@
             logo_url: logo || null,
             menu_data: menu,
             menu_type: 'image',
+            whatsapp: $('g-whatsapp').value.trim() || null,
+            instagram: $('g-instagram').value.trim() || null,
+            facebook: $('g-facebook').value.trim() || null,
+            website: $('g-website').value.trim() || null,
           }),
         });
         const data = await res.json();

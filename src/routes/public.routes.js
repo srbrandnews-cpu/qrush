@@ -343,8 +343,8 @@ router.post('/free-qr', async (req, res, next) => {
       passwordHash = await bcrypt.hash(String(b.password), 10);
     }
     await run(
-      `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type, instagram, facebook, whatsapp, website)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         slug,
         restaurant,
@@ -354,6 +354,10 @@ router.post('/free-qr', async (req, res, next) => {
         b.logo_url || null,
         menuData,
         (b.menu_type || 'image').toString().slice(0, 20),
+        (b.instagram || '').toString().slice(0, 200) || null,
+        (b.facebook || '').toString().slice(0, 200) || null,
+        (b.whatsapp || '').toString().slice(0, 200) || null,
+        (b.website || '').toString().slice(0, 200) || null,
       ]
     );
     const host = req.get('host');
@@ -372,20 +376,68 @@ router.get('/m/:slug', async (req, res, next) => {
   try {
     const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
     if (!row) return res.status(404).send('Menu not found');
-    const data = row.menu_data;
-    if (typeof data === 'string' && data.startsWith('data:')) {
-      const match = data.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        const buf = Buffer.from(match[2], 'base64');
-        res.set('Content-Type', match[1]);
-        res.set('Cache-Control', 'public, max-age=31536000');
-        return res.send(buf);
-      }
+
+    const logoHtml = row.logo_url
+      ? `<img src="${escapeHtml(row.logo_url)}" alt="${escapeHtml(row.restaurant)}" style="max-width:140px;max-height:140px;border-radius:20px;object-fit:cover;box-shadow:0 12px 30px -12px rgba(0,0,0,.4)" />`
+      : `<div style="width:100px;height:100px;border-radius:20px;background:linear-gradient(135deg,#ea580c,#f97316);display:grid;place-items:center;color:#fff;font-size:40px;font-weight:800">${escapeHtml((row.restaurant||'R').charAt(0).toUpperCase())}</div>`;
+
+    const menuData = row.menu_data;
+    let menuHtml = '';
+    if (typeof menuData === 'string' && menuData.startsWith('data:')) {
+      menuHtml = `<img src="${menuData}" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
+    } else {
+      menuHtml = `<a href="${escapeHtml(menuData)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
     }
-    res.redirect(data);
+
+    const socials = [];
+    if (row.whatsapp) socials.push(`<a href="https://wa.me/${escapeHtml(String(row.whatsapp).replace(/\\D/g,''))}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#25d366;color:#fff;font-weight:700;text-decoration:none">WhatsApp</a>`);
+    if (row.instagram) socials.push(`<a href="${escapeHtml(row.instagram)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;text-decoration:none">Instagram</a>`);
+    if (row.facebook) socials.push(`<a href="${escapeHtml(row.facebook)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#1877f2;color:#fff;font-weight:700;text-decoration:none">Facebook</a>`);
+    if (row.website) socials.push(`<a href="${escapeHtml(row.website)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#ea580c;color:#fff;font-weight:700;text-decoration:none">Website</a>`);
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(row.restaurant)} — Menu</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body { background: var(--bg); margin:0; padding:0; font-family: var(--font); }
+    .mwrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+    .mheader { text-align:center; padding: 32px 16px 24px; }
+    .mheader h1 { font-size: 28px; margin: 16px 0 4px; color: var(--ink); }
+    .mheader p { color: var(--muted); font-size: 14px; margin: 0; }
+    .menu-card { background:#fff; border:1px solid var(--line); border-radius:20px; padding:16px; box-shadow: var(--shadow-md); text-align:center; }
+    .socials { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:24px; }
+    .foot { text-align:center; margin-top:32px; font-size:11px; color:var(--muted-2); }
+  </style>
+</head>
+<body>
+  <div class="mwrap">
+    <div class="mheader">
+      ${logoHtml}
+      <h1>${escapeHtml(row.restaurant)}</h1>
+      ${row.owner_name ? `<p>By ${escapeHtml(row.owner_name)}</p>` : ''}
+    </div>
+    <div class="menu-card">
+      ${menuHtml}
+    </div>
+    ${socials.length ? `<div class="socials">${socials.join('')}</div>` : ''}
+    <div class="foot">Powered by QRush · Free Digital Menu</div>
+  </div>
+</body>
+</html>`;
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   } catch (err) {
     next(err);
   }
 });
+
+// tiny html escape helper
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 module.exports = router;
