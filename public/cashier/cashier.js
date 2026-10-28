@@ -104,8 +104,8 @@
     const host = $('list');
     host.innerHTML = '';
 
-    // Payment method filter buttons (only on paid tab).
-    if (tab === 'paid') {
+    // Payment method filter buttons (on paid and all tabs).
+    if (tab === 'paid' || tab === 'all') {
       const filterBar = document.createElement('div');
       filterBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:0 4px';
       const opts = [
@@ -126,9 +126,11 @@
     }
 
     let bills = billsForTab().sort((a, b) => b.latestId - a.latestId);
-    if (tab === 'paid' && payFilter !== 'all') {
+    if ((tab === 'paid' || tab === 'all') && payFilter !== 'all') {
       bills = bills.filter((b) => {
-        const m = (b.orders.map((o) => o.payment_method).filter(Boolean).pop() || 'cash').toLowerCase();
+        const methods = b.orders.map((o) => o.payment_method).filter(Boolean);
+        if (!methods.length) return false; // unpaid orders excluded when filtering by method
+        const m = methods.pop().toLowerCase();
         return m === payFilter;
       });
     }
