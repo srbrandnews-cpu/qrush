@@ -104,47 +104,23 @@ html[data-color-theme="rose"] {
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font);
-  background:
-    radial-gradient(900px 420px at 8% -8%, rgba(234, 88, 12, .10), transparent 60%),
-    radial-gradient(700px 380px at 100% 0%, rgba(124, 58, 237, .07), transparent 55%),
-    radial-gradient(600px 400px at 50% 100%, rgba(37, 99, 235, .05), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  background-attachment: fixed;
 }
-/* Subtle animated shimmer on body */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(120deg, rgba(234,88,12,.03), rgba(124,58,237,.03), rgba(37,99,235,.03));
-  background-size: 200% 200%;
-  animation: body-shimmer 12s ease infinite;
-}
-@keyframes body-shimmer {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-/* Ensure app content sits above shimmer */
-#app, main, .wrap, .m-stick, header { position: relative; z-index: 1; }
 a { color: var(--primary-600); text-decoration: none; }
 a:hover { color: var(--primary-700); }
 h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
 img { max-width: 100%; display: block; }
-button { font-family: inherit; transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
-button:hover:not(:disabled) { transform: translateY(-1px); }
-.btn:hover:not(:disabled) { filter: brightness(1.05); }
+button { font-family: inherit; transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease; }
+.btn:hover:not(:disabled) { box-shadow: var(--shadow); }
 .card, .step, .screen-card, .item, .ccard, .ocard {
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  transition: box-shadow .18s ease, border-color .18s ease;
 }
-.card:hover, .step:hover, .screen-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.card:hover, .step:hover, .screen-card:hover { box-shadow: var(--shadow-md); }
 ::selection { background: rgba(234, 88, 12, .22); }
 
 /* Slim, quiet scrollbars */
