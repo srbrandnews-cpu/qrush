@@ -21,9 +21,8 @@
       position: relative; overflow: hidden; color: #fff; padding: 52px;
       display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
       background:
-        radial-gradient(620px 420px at 18% 8%, rgba(45, 212, 191, .30), transparent 62%),
-        radial-gradient(520px 380px at 100% 100%, rgba(13, 148, 136, .45), transparent 60%),
-        linear-gradient(160deg, #08101f 0%, #0d2b28 48%, #0f766e 100%);
+        linear-gradient(160deg, rgba(8, 16, 31, .78) 0%, rgba(124, 45, 18, .65) 48%, rgba(234, 88, 12, .55) 100%),
+        url('/img/landing/restaurant.jpg') center / cover no-repeat;
     }
     .auth-aside::after {
       content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .30;
@@ -43,11 +42,11 @@
       font-size: 12px; font-weight: 800;
     }
     .auth-aside .aside-note { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: rgba(255,255,255,.7); }
-    .auth-aside .aside-note span.dot { width: 6px; height: 6px; border-radius: 50%; background: #2dd4bf; box-shadow: 0 0 0 4px rgba(45,212,191,.18); }
+    .auth-aside .aside-note span.dot { width: 6px; height: 6px; border-radius: 50%; background: #fdba74; box-shadow: 0 0 0 4px rgba(253,186,116,.18); }
 
     .auth-main {
       display: flex; align-items: center; justify-content: center; padding: 40px 22px;
-      background: radial-gradient(700px 400px at 100% 0%, rgba(20, 184, 166, .09), transparent 60%);
+      background: radial-gradient(700px 400px at 100% 0%, rgba(234, 88, 12, .10), transparent 60%);
     }
     .auth-card { width: 100%; max-width: 424px; }
     .auth-card .secure {
@@ -68,7 +67,7 @@
     .tab:hover { color: var(--ink-2); }
     .tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 14px -10px rgba(16,24,40,.25); }
     .demo-box {
-      margin-top: 18px; background: linear-gradient(180deg, #f0fdfa, #fff); border: 1px dashed var(--primary);
+      margin-top: 18px; background: linear-gradient(180deg, #fff7ed, #fff); border: 1px dashed var(--primary);
       border-radius: 12px; padding: 12px 14px; font-size: 12.5px; line-height: 1.8; color: var(--ink-2);
     }
     .demo-box code { background: #fff; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); font-size: 12px; }
@@ -80,14 +79,14 @@
 
     [data-theme="dark"] body { background: var(--bg); }
     [data-theme="dark"] .auth-main {
-      background: radial-gradient(700px 420px at 100% 0%, rgba(20, 184, 166, .12), transparent 62%);
+      background: radial-gradient(700px 420px at 100% 0%, rgba(234, 88, 12, .12), transparent 62%);
     }
     [data-theme="dark"] .auth-panel { background: var(--card); }
     [data-theme="dark"] .tabs { background: rgba(255, 255, 255, .06); }
     [data-theme="dark"] .tab.active { background: #16243a; }
-    [data-theme="dark"] .demo-box { background: linear-gradient(180deg, rgba(20, 184, 166, .1), var(--card)); }
+    [data-theme="dark"] .demo-box { background: linear-gradient(180deg, rgba(234, 88, 12, .1), var(--card)); }
     [data-theme="dark"] .demo-box code { background: #0b1524; }
-    [data-theme="dark"] .auth-card .secure { color: #5eead4; background: rgba(20, 184, 166, .12); border-color: rgba(20, 184, 166, .3); }
+    [data-theme="dark"] .auth-card .secure { color: #fdba74; background: rgba(234, 88, 12, .12); border-color: rgba(234, 88, 12, .3); }
   </style>
 </head>
 <body>
