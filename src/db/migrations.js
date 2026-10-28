@@ -79,6 +79,32 @@ const MIGRATIONS = [
       await addColumn('orders', 'pickup_time', 'TEXT');
     },
   },
+  {
+    // v2.3 — free QR menu uploads
+    name: '006-free-qr',
+    async up() {
+      if (!(await tableExists('free_qr_menus'))) {
+        const created = dialect() === 'postgres'
+          ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+          : `datetime('now')`;
+        await exec(`
+          CREATE TABLE IF NOT EXISTS free_qr_menus (
+            id            ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            slug          TEXT    NOT NULL UNIQUE,
+            restaurant    TEXT    NOT NULL,
+            owner_name    TEXT,
+            phone         TEXT,
+            password_hash TEXT,
+            logo_url      TEXT,
+            menu_data     TEXT    NOT NULL,
+            menu_type     TEXT    NOT NULL DEFAULT 'image',
+            created_at    TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_slug ON free_qr_menus(slug)');
+      }
+    },
+  },
 ];
 
 /**

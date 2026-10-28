@@ -1,6 +1,8 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { query, get, run } = require('../config/db');
 const { createOrder, getCustomerOrder, decorateForCustomer, cleanPhone } = require('../services/orders');
 const { OPEN_STATUSES, REQUEST_TYPES, REQUEST_LABELS } = require('../utils/constants');
@@ -317,6 +319,70 @@ router.get('/venue/:slug', async (req, res, next) => {
       eta_minutes: eta,
       updated_at: new Date().toISOString(),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/public/free-qr
+ * body: { restaurant, owner_name, phone, password, logo_url, menu_data, menu_type }
+ * Creates a free hosted menu page and returns a short URL for the QR code.
+ */
+router.post('/free-qr', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const restaurant = (b.restaurant || '').toString().trim().slice(0, 120);
+    const menuData = (b.menu_data || '').toString().trim();
+    if (!restaurant || !menuData) {
+      return res.status(400).json({ error: 'Restaurant name and menu are required' });
+    }
+    const slug = crypto.randomBytes(6).toString('hex');
+    let passwordHash = null;
+    if (b.password) {
+      passwordHash = await bcrypt.hash(String(b.password), 10);
+    }
+    await run(
+      `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        slug,
+        restaurant,
+        (b.owner_name || '').toString().slice(0, 120) || null,
+        (b.phone || '').toString().slice(0, 30) || null,
+        passwordHash,
+        b.logo_url || null,
+        menuData,
+        (b.menu_type || 'image').toString().slice(0, 20),
+      ]
+    );
+    const host = req.get('host');
+    const proto = req.protocol;
+    const url = `${proto}://${host}/m/${slug}`;
+    res.status(201).json({ slug, url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /m/:slug — serves the uploaded free menu.
+ */
+router.get('/m/:slug', async (req, res, next) => {
+  try {
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    if (!row) return res.status(404).send('Menu not found');
+    const data = row.menu_data;
+    if (typeof data === 'string' && data.startsWith('data:')) {
+      const match = data.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const buf = Buffer.from(match[2], 'base64');
+        res.set('Content-Type', match[1]);
+        res.set('Cache-Control', 'public, max-age=31536000');
+        return res.send(buf);
+      }
+    }
+    res.redirect(data);
   } catch (err) {
     next(err);
   }

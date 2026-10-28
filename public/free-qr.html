@@ -55,9 +55,14 @@
       </div>
 
       <div class="field">
-        <label>Menu PDF / Image URL <span style="color:var(--red)">*</span></label>
-        <input class="input" id="g-menu" placeholder="Google Drive PDF link ya Menu image URL..." />
-        <p class="tiny muted" style="margin:4px 0 0">Aap apne menu ka PDF link ya photo link yahan daal sakte hain.</p>
+        <label>Menu Photo / PDF <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+          <input class="input" id="g-menu" placeholder="File upload karein..." style="flex:1;margin-top:0" readonly />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            📁 Upload <input type="file" id="g-menu-file" accept="image/*,application/pdf" style="display:none" />
+          </label>
+        </div>
+        <p class="tiny muted" style="margin:4px 0 0">App mein file upload karein (max 5MB).</p>
       </div>
 
       <button class="btn btn-primary btn-block btn-lg" id="g-gen" style="margin-top:10px">Generate Free QR Code 🚀</button>
@@ -88,33 +93,71 @@
       reader.readAsDataURL(file);
     });
 
-    $('g-gen').addEventListener('click', () => {
+    // Handle menu file upload to base64
+    $('g-menu-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        $('g-menu').value = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $('g-gen').addEventListener('click', async () => {
       const rest = $('g-rest').value.trim();
       const owner = $('g-owner').value.trim();
       const phone = $('g-phone').value.trim();
       const pass = $('g-pass').value.trim();
       const menu = $('g-menu').value.trim();
+      const logo = $('g-logo').value.trim();
 
       if (!rest || !owner || !phone || !pass || !menu) {
         alert('Kripya sabhi zaroori fields (* waale) bhariye!');
         return;
       }
 
-      $('qr-code').innerHTML = '';
-      $('qr-subtitle').textContent = `${rest} • Owner: ${owner}`;
-      
-      // Generate QR for the menu URL
-      new QRCode($('qr-code'), {
-        text: menu,
-        width: 220,
-        height: 220,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
+      $('g-gen').disabled = true;
+      $('g-gen').textContent = 'Generating...';
 
-      $('qr-container').classList.remove('hidden');
-      $('qr-container').scrollIntoView({ behavior: 'smooth' });
+      try {
+        const res = await fetch('/api/public/free-qr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurant: rest,
+            owner_name: owner,
+            phone: phone,
+            password: pass,
+            logo_url: logo || null,
+            menu_data: menu,
+            menu_type: 'image',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        $('qr-code').innerHTML = '';
+        $('qr-subtitle').textContent = `${rest} • Owner: ${owner}`;
+        
+        new QRCode($('qr-code'), {
+          text: data.url,
+          width: 220,
+          height: 220,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+
+        $('qr-container').classList.remove('hidden');
+        $('qr-container').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        $('g-gen').disabled = false;
+        $('g-gen').textContent = 'Generate Free QR Code 🚀';
+      }
     });
 
     $('g-print').addEventListener('click', () => {
