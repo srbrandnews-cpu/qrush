@@ -604,7 +604,7 @@
   /* -------------------------- welcome splash ----------------------------- */
 
   const EMBLEM_PALETTES = [
-    ['#fbbf24', '#f43f5e', '#14b8a6'],
+    ['#fbbf24', '#f43f5e', '#f97316'],
     ['#22d3ee', '#6366f1', '#f472b6'],
     ['#34d399', '#f59e0b', '#ef4444'],
     ['#a78bfa', '#ec4899', '#fbbf24'],
@@ -1306,7 +1306,7 @@
   /* ============================== THEME PICKER ========================== */
 
   const COLOR_THEMES = [
-    { id: 'teal', name: 'Teal Bistro', color: '#0d9488' },
+    { id: 'orange', name: 'Orange Spice', color: '#ea580c' },
     { id: 'spice', name: 'Spice Route', color: '#ea580c' },
     { id: 'royal', name: 'Royal Purple', color: '#7c3aed' },
     { id: 'garden', name: 'Garden Fresh', color: '#16a34a' },
@@ -1315,18 +1315,18 @@
   ];
 
   function applyColorTheme(id) {
-    if (id && id !== 'teal') {
+    if (id && id !== 'orange') {
       document.documentElement.dataset.colorTheme = id;
     } else {
       delete document.documentElement.dataset.colorTheme;
     }
-    try { localStorage.setItem('tn_color_theme', id || 'teal'); } catch (_) {}
+    try { localStorage.setItem('tn_color_theme', id || 'orange'); } catch (_) {}
   }
 
   function openThemePicker() {
     let modal = document.getElementById('theme-picker-modal');
     if (modal) modal.remove();
-    const current = localStorage.getItem('tn_color_theme') || 'teal';
+    const current = localStorage.getItem('tn_color_theme') || 'orange';
     modal = document.createElement('div');
     modal.id = 'theme-picker-modal';
     modal.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;';

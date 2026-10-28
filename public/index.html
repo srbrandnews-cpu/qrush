@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0d9488" />
+  <meta name="theme-color" content="#ea580c" />
   <meta name="description" content="QRush — restaurant QR table ordering. Customer scans the QR, orders from the table, kitchen and cash counter get it live." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="QRush — Restaurant QR Table Ordering" />
@@ -38,7 +38,7 @@
     }
     .site-top .brand { color: #fff; }
     .site-top .site-links a.link { color: rgba(248, 250, 252, .75); }
-    .site-top .site-links a.link:hover { color: #5eead4; }
+    .site-top .site-links a.link:hover { color: #fdba74; }
     .site-top .nav-icon { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: #fff; }
     .site-top .wrap { height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
     .site-nav { display: flex; align-items: center; gap: 9px; }
@@ -84,19 +84,19 @@
     }
     .hero::after {
       content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-      background: radial-gradient(900px 500px at 80% 30%, rgba(20, 184, 166, .22), transparent 60%);
+      background: radial-gradient(900px 500px at 80% 30%, rgba(234, 88, 12, .22), transparent 60%);
     }
     .hero .wrap { position: relative; z-index: 1; padding-top: 90px; padding-bottom: 60px; }
     .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 50px; align-items: center; }
     .pill {
       display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
       padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
-      color: #5eead4; backdrop-filter: blur(8px); margin-bottom: 22px;
+      color: #fdba74; backdrop-filter: blur(8px); margin-bottom: 22px;
     }
-    .pill .dot { background: #14b8a6; box-shadow: 0 0 0 4px rgba(20, 184, 166, .16); }
+    .pill .dot { background: #f97316; box-shadow: 0 0 0 4px rgba(234, 88, 12, .16); }
     .hero h1 { font-size: clamp(40px, 5.2vw, 64px); line-height: 1.02; letter-spacing: -.045em; max-width: 680px; color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.4); }
     .hero h1 span {
-      background: linear-gradient(120deg, #5eead4, #2dd4bf 50%, #14b8a6);
+      background: linear-gradient(120deg, #fdba74, #fb923c 50%, #f97316);
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
     .hero .lead { font-size: 18px; color: rgba(248, 250, 252, .78); max-width: 560px; margin: 22px 0 0; line-height: 1.65; }
@@ -126,7 +126,7 @@
       backdrop-filter: blur(8px);
     }
     .mock-photo figcaption i {
-      width: 7px; height: 7px; border-radius: 50%; background: #2dd4bf;
+      width: 7px; height: 7px; border-radius: 50%; background: #fb923c;
       box-shadow: 0 0 0 3px rgba(45, 212, 191, .22); animation: pulse 1.8s infinite;
     }
     .phone {
@@ -176,8 +176,8 @@
     }
     .ph-step.now::before { background: var(--primary); }
     @keyframes stepPulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(13, 148, 136, .16); }
-      50% { box-shadow: 0 0 0 6px rgba(13, 148, 136, .04); }
+      0%, 100% { box-shadow: 0 0 0 3px rgba(234, 88, 12, .16); }
+      50% { box-shadow: 0 0 0 6px rgba(234, 88, 12, .04); }
     }
 
     .ph-orders { border-top: 1px solid var(--line); margin-top: 4px; padding: 2px 2px 4px; }
@@ -203,7 +203,7 @@
       display: flex; align-items: center; gap: 8px; color: var(--primary-700);
       background: linear-gradient(135deg, #f0fdfa, #f7fffd); border: 1px solid var(--primary-100);
     }
-    .phone-status .dot { background: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, .16); animation: pulse 1.6s infinite; }
+    .phone-status .dot { background: #f97316; box-shadow: 0 0 0 3px rgba(234, 88, 12, .16); animation: pulse 1.6s infinite; }
     .phone-status .go { margin-left: auto; font-size: 10.5px; color: var(--primary-600); }
 
     /* Compact "order ready" push alert */
@@ -215,7 +215,7 @@
     }
     .notif::after {
       content: ''; position: absolute; inset: auto 0 -1px 0; height: 3px; border-radius: 0 0 14px 14px;
-      background: linear-gradient(90deg, #22c55e, #0d9488); opacity: .85;
+      background: linear-gradient(90deg, #22c55e, #ea580c); opacity: .85;
     }
     .notif-ico {
       width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
@@ -251,7 +251,7 @@
 
     /* ------------------------------- Gallery ------------------------------- */
     .band.tint {
-      background: linear-gradient(180deg, rgba(13, 148, 136, .05), rgba(13, 148, 136, 0));
+      background: linear-gradient(180deg, rgba(234, 88, 12, .05), rgba(234, 88, 12, 0));
       border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
     }
     .gallery { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 168px; gap: 12px; }
@@ -271,7 +271,7 @@
     }
     .g-item figcaption span {
       font-size: 9.5px; font-weight: 800; letter-spacing: .15em;
-      text-transform: uppercase; color: #5eead4;
+      text-transform: uppercase; color: #fdba74;
     }
     .g-item figcaption b { font-size: 14.5px; letter-spacing: -.02em; line-height: 1.25; }
     .g-item:nth-child(1) { grid-column: span 2; grid-row: span 2; }
@@ -322,7 +322,7 @@
     .cta-band > * { position: relative; z-index: 1; }
     .cta-band h2 { color: #fff; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.03em; max-width: 520px; }
     .cta-band p { color: rgba(255, 255, 255, .8); margin: 8px 0 0; font-size: 14px; max-width: 480px; line-height: 1.6; }
-    .cta-band .eyebrow { color: #5eead4; }
+    .cta-band .eyebrow { color: #fdba74; }
     .cta-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .cta-band .btn { background: rgba(255, 255, 255, .95); color: #0b1220; border-color: transparent; }
     .cta-note.light { color: rgba(255, 255, 255, .6); font-size: 12px; margin-top: 12px; }
@@ -360,12 +360,12 @@
     [data-theme="dark"] .ph-hello .e { background: #111d30; }
     [data-theme="dark"] .ph-step i { background: #24344e; }
     [data-theme="dark"] .ph-step.now i { background: var(--card); }
-    [data-theme="dark"] .ph-row .ph-thumb { background: rgba(20, 184, 166, .12); }
+    [data-theme="dark"] .ph-row .ph-thumb { background: rgba(234, 88, 12, .12); }
     [data-theme="dark"] .phone-status { background: linear-gradient(135deg, rgba(20,184,166,.1), var(--card)); }
     [data-theme="dark"] .step,
     [data-theme="dark"] .screen-card { background: var(--card); }
-    [data-theme="dark"] .screen-card .ico { background: rgba(20, 184, 166, .12); }
-    [data-theme="dark"] .band.tint { background: linear-gradient(180deg, rgba(20, 184, 166, .07), rgba(20, 184, 166, 0)); }
+    [data-theme="dark"] .screen-card .ico { background: rgba(234, 88, 12, .12); }
+    [data-theme="dark"] .band.tint { background: linear-gradient(180deg, rgba(234, 88, 12, .07), rgba(20, 184, 166, 0)); }
     [data-theme="dark"] .cta-band .btn { background: #fff; color: #0b1220; }
   </style>
 </head>
