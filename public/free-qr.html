@@ -7,44 +7,118 @@
   <link rel="stylesheet" href="/css/app.css" />
   <style>
     body { background: var(--bg); }
-    .gen-wrap { max-width: 600px; margin: 40px auto; padding: 20px; }
-    .panel { background: #fff; padding: 30px; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
-    .field { margin-bottom: 20px; }
-    .input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin-top: 6px; }
-    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+    .gen-wrap { max-width: 640px; margin: 40px auto; padding: 20px; }
+    .panel { background: #fff; padding: 32px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
+    .field { margin-bottom: 18px; }
+    .input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; font: inherit; }
+    textarea.input { resize: vertical; min-height: 80px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 24px; padding: 24px; background: var(--primary-50); border-radius: 16px; border: 1px solid var(--primary-100); text-align: center; }
+    #qr-code { background: #fff; padding: 16px; border-radius: 12px; box-shadow: var(--shadow-xs); margin: 16px 0; }
   </style>
 </head>
 <body>
   <div class="gen-wrap">
     <div class="panel">
-      <h1>Free QR Menu</h1>
-      <p class="muted">Apne restaurant ka menu QR generate karein.</p>
-      <div class="field">
-        <label>Restaurant Name</label>
-        <input class="input" id="g-name" placeholder="e.g. Spice Garden" />
-      </div>
-      <div class="field">
-        <label>Menu Link (Google Drive / PDF Link)</label>
-        <input class="input" id="g-url" placeholder="https://..." />
-      </div>
-      <button class="btn btn-primary btn-block" id="g-gen">Generate QR</button>
+      <h2>🍽️ Free Digital QR Menu Generator</h2>
+      <p class="muted" style="margin-top:6px;margin-bottom:24px">Apni restaurant details bhariye aur instant free QR code banayein.</p>
       
+      <div class="field">
+        <label>Restaurant Name <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-rest" placeholder="e.g. Spice Garden" />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Owner Name <span style="color:var(--red)">*</span></label>
+          <input class="input" id="g-owner" placeholder="e.g. Rahul Sharma" />
+        </div>
+        <div class="field">
+          <label>Contact Number <span style="color:var(--red)">*</span></label>
+          <input class="input" id="g-phone" type="tel" placeholder="e.g. 9876543210" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password (for future access) <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-pass" type="password" placeholder="••••••••" />
+      </div>
+
+      <div class="field">
+        <label>Restaurant Logo (Image)</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+          <input class="input" id="g-logo" placeholder="Image URL ya file upload karein..." style="flex:1;margin-top:0" />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            📁 Upload <input type="file" id="g-logo-file" accept="image/*" style="display:none" />
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Menu PDF / Image URL <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-menu" placeholder="Google Drive PDF link ya Menu image URL..." />
+        <p class="tiny muted" style="margin:4px 0 0">Aap apne menu ka PDF link ya photo link yahan daal sakte hain.</p>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" id="g-gen" style="margin-top:10px">Generate Free QR Code 🚀</button>
+
       <div id="qr-container" class="hidden">
-        <h3>Aapka QR ready hai!</h3>
+        <h3 style="color:var(--primary-700)">🎉 Aapka QR Code Tayar Hai!</h3>
+        <p class="tiny muted" id="qr-subtitle" style="margin:4px 0 12px"></p>
         <div id="qr-code"></div>
-        <p class="tiny muted">Isse print karke table par lagayein.</p>
+        <p class="tiny muted">Is QR code ko save karke apne restaurant ke tables par print karwa lein.</p>
+        <button class="btn btn-outline btn-sm" id="g-print" style="margin-top:12px">🖨️ Print QR Code</button>
       </div>
     </div>
   </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
+
+    // Handle logo file upload to base64
+    $('g-logo-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        $('g-logo').value = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
     $('g-gen').addEventListener('click', () => {
-      const url = $('g-url').value;
-      if (!url) return alert('Link daalein');
+      const rest = $('g-rest').value.trim();
+      const owner = $('g-owner').value.trim();
+      const phone = $('g-phone').value.trim();
+      const pass = $('g-pass').value.trim();
+      const menu = $('g-menu').value.trim();
+
+      if (!rest || !owner || !phone || !pass || !menu) {
+        alert('Kripya sabhi zaroori fields (* waale) bhariye!');
+        return;
+      }
+
       $('qr-code').innerHTML = '';
-      new QRCode($('qr-code'), { text: url, width: 200, height: 200 });
+      $('qr-subtitle').textContent = `${rest} • Owner: ${owner}`;
+      
+      // Generate QR for the menu URL
+      new QRCode($('qr-code'), {
+        text: menu,
+        width: 220,
+        height: 220,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
       $('qr-container').classList.remove('hidden');
+      $('qr-container').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    $('g-print').addEventListener('click', () => {
+      window.print();
     });
   </script>
 </body>
