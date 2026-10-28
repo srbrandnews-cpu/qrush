@@ -620,20 +620,40 @@
   }
 
   /** Each venue gets its own colour combo, picked deterministically from its name. */
-  function paintWelcomeEmblem(name) {
+  function paintWelcomeEmblem(restaurant) {
     const splash = $('welcome-splash');
     if (!splash) return;
-    const key = Array.from(String(name || '')).reduce((sum, ch) => sum + ch.codePointAt(0), 0);
-    const [e1, e2, e3] = EMBLEM_PALETTES[key % EMBLEM_PALETTES.length];
-    splash.style.setProperty('--e1', e1);
-    splash.style.setProperty('--e2', e2);
-    splash.style.setProperty('--e3', e3);
-    const initial = $('ws-initial');
-    if (initial) {
-      const mono = venueMonogram(name);
-      initial.textContent = mono;
-      const len = Array.from(mono).length;
-      initial.className = 'ws-initial' + (len === 2 ? ' two' : len > 2 ? ' three' : '');
+    const name = restaurant && typeof restaurant === 'object' ? restaurant.name : restaurant;
+    const logoUrl = restaurant && typeof restaurant === 'object' ? restaurant.logo_url : state && state.restaurant ? state.restaurant.logo_url : null;
+
+    // Check if a custom logo exists
+    const emblem = document.getElementById('ws-emblem-wrap');
+    if (logoUrl) {
+      if (emblem) {
+        emblem.innerHTML = `<img src="${TN.escapeHtml(logoUrl)}" alt="${TN.escapeHtml(name || 'Restaurant')}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:relative;z-index:2" />`;
+        emblem.classList.add('has-logo');
+        emblem.style.background = 'none';
+        emblem.style.boxShadow = '0 30px 60px -25px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.15)';
+      }
+    } else {
+      if (emblem) {
+        emblem.classList.remove('has-logo');
+        emblem.innerHTML = '<span class="ws-emblem-ring"></span><span class="ws-emblem-disc"><span class="ws-initial" id="ws-initial">Q</span></span>';
+        emblem.style.background = '';
+        emblem.style.boxShadow = '';
+      }
+      const key = Array.from(String(name || '')).reduce((sum, ch) => sum + ch.codePointAt(0), 0);
+      const [e1, e2, e3] = EMBLEM_PALETTES[key % EMBLEM_PALETTES.length];
+      splash.style.setProperty('--e1', e1);
+      splash.style.setProperty('--e2', e2);
+      splash.style.setProperty('--e3', e3);
+      const initial = $('ws-initial');
+      if (initial) {
+        const mono = venueMonogram(name);
+        initial.textContent = mono;
+        const len = Array.from(mono).length;
+        initial.className = 'ws-initial' + (len === 2 ? ' two' : len > 2 ? ' three' : '');
+      }
     }
   }
 
@@ -661,7 +681,7 @@
     splashGreeted = false;
     $('ws-venue').textContent = state.restaurant.name;
     $('ws-table').textContent = state.table.name;
-    paintWelcomeEmblem(state.restaurant.name);
+    paintWelcomeEmblem(state.restaurant);
     const guest = (saved && saved.name) || '';
     $('ws-hello').textContent = guest ? `Welcome back, ${guest}!` : 'We are happy to serve you';
     $('welcome-splash').classList.remove('hidden');
