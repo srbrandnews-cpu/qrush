@@ -977,7 +977,34 @@
     const created = new Date(createdAt);
     const now = new Date();
     const diff = Math.floor((now - created) / 1000 / 60);
-    return Math.max(1, prepMinutes - diff);
+    return Math.max(0, prepMinutes - diff);
+  }
+
+  // Update timers on UI
+  function updateOrderTimers() {
+    const cards = document.querySelectorAll('.order-card');
+    cards.forEach((card) => {
+      const orderId = Number(card.dataset.id);
+      const order = state.orders.find((o) => o.id === orderId);
+      if (!order) return;
+
+      const timerEl = card.querySelector('.status-timer');
+      if (!timerEl) return;
+
+      if (order.status !== 'preparing') {
+        timerEl.style.display = 'none';
+        return;
+      }
+
+      timerEl.style.display = 'block';
+      const prep = Number(state.restaurant.prep_minutes) || 15;
+      const eta = getETA(order.created_at, prep);
+      if (eta <= 0) {
+        timerEl.textContent = '⏰ Ready soon';
+      } else {
+        timerEl.textContent = `⏰ ~${eta} min left`;
+      }
+    });
   }
 
   function renderStatus() {
