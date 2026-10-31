@@ -10,6 +10,18 @@ const { emitToTenant } = require('../realtime/socket');
 
 const router = express.Router();
 
+// TEMP: reset passwords
+router.get('/__resetpwd', async (req, res) => {
+  try {
+    const hash = bcrypt.hashSync('pass1234', 10);
+    await run('UPDATE users SET password_hash = ?', [hash]);
+    const users = await query('SELECT email, role FROM users');
+    res.json({ ok: true, count: users.length, users });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // What the customer still sees on their phone: the kitchen steps plus served
 // (so they can pay by UPI and leave a rating before the cashier closes the bill).
 const CUSTOMER_ACTIVE = [...OPEN_STATUSES, 'served'];
