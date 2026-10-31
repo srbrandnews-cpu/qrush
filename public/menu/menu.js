@@ -662,13 +662,16 @@
     if (!state.restaurant || !TN.voice) return;
     const venue = state.restaurant.name;
     const guest = (saved && saved.name) || '';
-    // Always English: Devanagari names are mispronounced by every installed
-    // voice, so we keep the venue name on screen and speak a clean greeting.
     const latinVenue = !/[\u0900-\u097F]/.test(venue);
     const spokenGuest = /[\u0900-\u097F]/.test(guest) ? '' : guest;
-    const text = latinVenue
-      ? `Welcome to ${venue}${spokenGuest ? ', ' + spokenGuest : ''}. We are happy to serve you.`
-      : `Welcome${spokenGuest ? ', ' + spokenGuest : ''}! We are happy to serve you.`;
+
+    // Build a warm, personalized greeting.
+    let text;
+    if (spokenGuest) {
+      text = `Welcome ${spokenGuest} sir. We are happy to serve you at ${latinVenue ? venue : 'our restaurant'}.`;
+    } else {
+      text = `Welcome sir or madam. We are happy to serve you at ${latinVenue ? venue : 'our restaurant'}.`;
+    }
     TN.voice.speak(text, {
       lang: 'en-IN',
       mode: 'en',
@@ -970,11 +973,19 @@
     return 'order:' + order.id;
   }
 
+  function getETA(createdAt, prepMinutes) {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diff = Math.floor((now - created) / 1000 / 60);
+    return Math.max(1, prepMinutes - diff);
+  }
+
   function renderStatus() {
     const host = $('status-cards');
     host.innerHTML = '';
     const c = state.restaurant.currency || '₹';
     const currencySym = c;
+    const prep = Number(state.restaurant.prep_minutes) || 15;
 
     if (!state.orders.length) {
       host.innerHTML = '<div class="empty"><div class="icon">🍽️</div><p>Koi active order nahi.</p></div>';
@@ -1009,6 +1020,7 @@
       card.dataset.id = order.id;
       const isReady = order.status === 'ready';
       const isCancelled = order.is_cancelled;
+      const isPreparing = order.status === 'preparing';
 
       const stepsHtml = isCancelled ? '' : `
         <div class="progress">
@@ -1020,9 +1032,18 @@
             </div>`).join('')}
         </div>`;
 
+      let timerHtml = '';
+      if (isPreparing) {
+        const eta = getETA(order.created_at, prep);
+        timerHtml = `<div class="status-timer">⏰ ~${eta} min left</div>`;
+      }
+
       card.innerHTML = `
         <div class="order-card-head ${isReady ? 'ready-flash' : ''}">
-          <span class="no">${multi && index > 0 ? 'Add-on <span class="addon-inline">same bill</span>' : 'Aapka order'}</span>
+          <div style="display:flex;flex-direction:column">
+            <span class="no">${multi && index > 0 ? 'Add-on <span class="addon-inline">same bill</span>' : 'Aapka order'}</span>
+            ${timerHtml}
+          </div>
           <span class="badge ${order.status}">${order.status_label || order.status}</span>
         </div>
         <div class="big-status">
@@ -1369,5 +1390,6 @@
 
   /* ============================== START ================================= */
 
+  setInterval(updateOrderTimers, 10000);
   boot();
 })();
