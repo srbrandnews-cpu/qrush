@@ -15,25 +15,41 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    body { background: #0b1020; }
-    .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 40px; max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .flow-panel { position: relative; color: #fff; }
-    .flow-head { margin-bottom: 28px; }
-    .flow-head h2 { color: #fff; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.03em; margin: 0 0 10px; }
-    .flow-head p { color: rgba(255,255,255,.8); margin: 0; font-size: 16px; max-width: 560px; }
-    .flow-step-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); font-size: 12.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; backdrop-filter: blur(8px); }
-    .flow-slider { position: relative; min-height: 320px; }
-    .flow-card { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; opacity: 0; transform: translateX(30px); transition: all .8s ease; pointer-events: none; }
-    .flow-card.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
-    .flow-icon { width: 80px; height: 80px; border-radius: 24px; display: grid; place-items: center; font-size: 38px; background: radial-gradient(circle, rgba(255,255,255,.28) 0%, rgba(255,255,255,.12) 100%); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.42); box-shadow: 0 40px 70px -40px rgba(249,115,22,.95); position: relative; }
-    .flow-icon::after { content: ''; position: absolute; inset: -14px; border-radius: 32px; border: 1px solid rgba(255,255,255,.16); }
-    .flow-text h3 { color: #fff; font-size: clamp(22px, 3vw, 32px); margin: 0 0 8px; letter-spacing: -.02em; }
-    .flow-text p { color: rgba(255,255,255,.86); margin: 0; font-size: 16px; max-width: 520px; line-height: 1.7; }
-    .flow-dots { display: flex; gap: 10px; margin-top: 24px; }
-    .flow-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.36); transition: all .4s ease; }
-    .flow-dot.active { width: 38px; border-radius: 999px; background: linear-gradient(90deg, #fff, #fdba74); }
+    body { background: radial-gradient(1200px 800px at 10% 10%, #1f2937, #0b1020); }
+    .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.15fr 0.9fr; align-items: center; gap: 60px; max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .flow-hero { display: flex; flex-direction: column; gap: 26px; color: #fff; }
+    .flow-hero-head h2 { color: #fff; font-size: clamp(30px, 4.2vw, 52px); letter-spacing: -.04em; margin: 10px 0 12px; line-height: 1.02; }
+    .flow-hero-head p { color: rgba(255,255,255,.82); margin: 0; font-size: 17px; max-width: 620px; }
+    .flow-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: radial-gradient(circle, rgba(255,255,255,.22), rgba(255,255,255,.1)); border: 1px solid rgba(255,255,255,.32); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; backdrop-filter: blur(10px); }
+    .flow-grid { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; }
+    .phone-mock { position: relative; width: 300px; height: 620px; border-radius: 42px; padding: 10px; background: radial-gradient(circle at top, #2f3545, #05070f); box-shadow: 0 80px 140px -90px rgba(249,115,22,.9), 0 40px 80px -60px rgba(15,23,42,.9); border: 1px solid rgba(255,255,255,.16); }
+    .phone-notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 140px; height: 26px; border-radius: 0 0 18px 18px; background: radial-gradient(circle at top, #2f3545, #05070f); z-index: 5; }
+    .phone-screen { position: relative; width: 100%; height: 100%; border-radius: 34px; overflow: hidden; background: #fff; }
+    .flow-step { position: absolute; inset: 0; display: flex; flex-direction: column; opacity: 0; transform: translateY(16px); transition: all .8s ease; pointer-events: none; }
+    .flow-step.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .fs-head { display: flex; align-items: center; gap: 10px; padding: 38px 18px 14px; border-bottom: 1px solid rgba(15,23,42,.06); background: linear-gradient(180deg, #fff7ed, #fff); }
+    .fs-logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #ea580c, #fb923c); display: grid; place-items: center; color: #fff; font-weight: 800; }
+    .fs-head-text b { display: block; font-size: 13px; }
+    .fs-head-text span { display: block; font-size: 11px; color: var(--muted); }
+    .fs-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; padding: 0 18px; }
+    .fs-emoji { width: 86px; height: 86px; border-radius: 26px; display: grid; place-items: center; font-size: 44px; background: radial-gradient(circle, rgba(234,88,12,.16), rgba(234,88,12,.08)); box-shadow: 0 40px 70px -50px rgba(234,88,12,.9); position: relative; }
+    .fs-emoji::after { content: ''; position: absolute; inset: -10px; border-radius: 32px; border: 1px solid rgba(234,88,12,.18); }
+    .fs-body h4 { margin: 6px 0 0; font-size: 18px; letter-spacing: -.01em; }
+    .fs-body p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+    .fs-bar { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-top: 1px solid rgba(15,23,42,.06); }
+    .fs-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(148,163,184,.4); }
+    .fs-dot.active { width: 26px; border-radius: 999px; background: linear-gradient(90deg, #ea580c, #fb923c); }
+    .flow-caption { display: flex; flex-direction: column; gap: 10px; }
+    .flow-caption-card { display: none; flex-direction: column; gap: 8px; padding: 18px 22px; border-radius: 18px; background: radial-gradient(circle at top left, rgba(255,255,255,.18), rgba(255,255,255,.08)); border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(12px); max-width: 560px; }
+    .flow-caption-card.active { display: flex; animation: fade-up .6s ease; }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .flow-caption-card h3 { color: #fff; margin: 0; font-size: clamp(18px, 2vw, 24px); letter-spacing: -.01em; }
+    .flow-caption-card p { color: rgba(255,255,255,.86); margin: 0; font-size: 15px; line-height: 1.8; }
+    .flow-caption-step { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fdba74; }
     .auth-main { display: flex; align-items: center; justify-content: center; padding: 40px 22px; }
     .auth-card { width: 100%; max-width: 424px; }
+    @media (max-width: 1080px) { .auth-wrap { grid-template-columns: 1fr; gap: 40px; } .flow-grid { grid-template-columns: 1fr; justify-items: center; } .flow-caption { align-items: center; text-align: center; } .flow-caption-card { text-align: left; } }
+    @media (max-width: 640px) { .phone-mock { width: 280px; height: 580px; } }
 
     .auth-main {
       display: flex; align-items: center; justify-content: center; padding: 40px 22px;
@@ -85,64 +101,189 @@
     <span data-theme-icon>☾</span>
   </button>
   <div class="auth-wrap">
-    <section class="flow-panel">
-      <div class="flow-head">
-        <div class="flow-step-pill">How QRush works</div>
-        <h2>Table par QR scan se lekar Payment tak</h2>
-        <p>Har step automate — staff aur customer dono ko clear visibility milti hai</p>
+    <section class="flow-hero">
+      <div class="flow-hero-head">
+        <span class="flow-pill">QR Table Ordering Flow</span>
+        <h2>Table par QR scan se lekar bill submit tak</h2>
+        <p>Customer bina app install kiye order karta hai. Kitchen, Cashier aur Staff sab ek system par live connected hote hain.</p>
       </div>
-      <div class="flow-slider" id="flowSlider">
-        <div class="flow-card active">
-          <div class="flow-icon">📱</div>
-          <div class="flow-text">
-            <h3>1. QR Scan</h3>
-            <p>Customer table par lage QR code ko scan karke apne phone par digital menu kholta hai. Koi app install nahi chahiye.</p>
+      <div class="flow-grid">
+        <div class="phone-mock">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="flow-step active">
+              <div class="fs-head">
+                <div class="fs-logo">QR</div>
+                <div class="fs-head-text"><b>Spice Garden</b><span>Table 4 · Scan QR Menu</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">📱</div>
+                <div>
+                  <h4>QR Code Scan</h4>
+                  <p>Customer apne phone se table par lage<br/>QR code ko scan karta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">QR</div>
+                <div class="fs-head-text"><b>Spice Garden</b><span>Table 4 · Digital Menu</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">🛒</div>
+                <div>
+                  <h4>Order Place</h4>
+                  <p>Menu se dishes select karke<br/>cart mein add karke order place karta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">🍳</div>
+                <div class="fs-head-text"><b>Kitchen Display</b><span>New Order Received</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">👨‍🍳</div>
+                <div>
+                  <h4>Kitchen Ko Order Milta Hai</h4>
+                  <p>Order turant kitchen screen par<br/>dikh jata hai aur alert bajta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">🍳</div>
+                <div class="fs-head-text"><b>Kitchen Display</b><span>Table 4</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">🔥</div>
+                <div>
+                  <h4>Preparing</h4>
+                  <p>Chef order accept karke<br/>khana banana shuru kar deta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">QR</div>
+                <div class="fs-head-text"><b>Spice Garden</b><span>Table 4 · Order Status</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">🔔</div>
+                <div>
+                  <h4>Ready</h4>
+                  <p>Khana taiyar hone par kitchen se<br/>Ready mark hota hai, customer ko alert milta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">🍽️</div>
+                <div class="fs-head-text"><b>Staff Panel</b><span>Table 4</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">🍽️</div>
+                <div>
+                  <h4>Table Par Serve</h4>
+                  <p>Waiter khana table par serve karke<br/>order ko Served mark karta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">QR</div>
+                <div class="fs-head-text"><b>Spice Garden</b><span>Table 4 · Pay Bill</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">💸</div>
+                <div>
+                  <h4>UPI ya Cash Payment</h4>
+                  <p>Customer apne phone se UPI se pay<br/>ya Cash Counter par cash se payment karta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div><div class="fs-dot"></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-head">
+                <div class="fs-logo">💰</div>
+                <div class="fs-head-text"><b>Cashier Panel</b><span>Bill Collection</span></div>
+              </div>
+              <div class="fs-body">
+                <div class="fs-emoji">✅</div>
+                <div>
+                  <h4>Cashier Par Bill Submit</h4>
+                  <p>Cashier payment verify karke<br/>bill submit karke order close karta hai</p>
+                </div>
+              </div>
+              <div class="fs-bar">
+                <div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot"></div><div class="fs-dot active"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="flow-card">
-          <div class="flow-icon">🛒</div>
-          <div class="flow-text">
-            <h3>2. Order Place</h3>
-            <p>Customer menu se items select karke cart mein add karta hai aur confirm karke order place kar deta hai.</p>
+        <div class="flow-caption">
+          <div class="flow-caption-card active">
+            <span class="flow-caption-step">Step 1 of 8</span>
+            <h3>QR Scan karo</h3>
+            <p>Customer table par laga QR code scan karke seedha digital menu open karta hai. Koi app download karne ki zaroorat nahi hoti.</p>
           </div>
-        </div>
-        <div class="flow-card">
-          <div class="flow-icon">👨‍🍳</div>
-          <div class="flow-text">
-            <h3>3. Kitchen ko Order Milta Hai</h3>
-            <p>Order turant Kitchen Display par dikhta hai. Chef order accept karke khana banana shuru kar deta hai.</p>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 2 of 8</span>
+            <h3>Order Place karo</h3>
+            <p>Apni pasand ki dishes select karke cart mein add karta hai aur "Place Order" par click karke order bhej deta hai.</p>
           </div>
-        </div>
-        <div class="flow-card">
-          <div class="flow-icon">⏱️</div>
-          <div class="flow-text">
-            <h3>4. Preparing → Ready</h3>
-            <p>Jab khana taiyar ho jata hai, kitchen se Ready mark hota hai aur customer ko live status dikhta hai.</p>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 3 of 8</span>
+            <h3>Kitchen ko Order pahunchta hai</h3>
+            <p>Order turant Kitchen Display par show hota hai. Sound alert ke saath chef ko turant pata chal jata hai.</p>
           </div>
-        </div>
-        <div class="flow-card">
-          <div class="flow-icon">🍽️</div>
-          <div class="flow-text">
-            <h3>5. Table Par Serve</h3>
-            <p>Staff khana table par serve karta hai aur order ko Served mark kar deta hai.</p>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 4 of 8</span>
+            <h3>Preparing start hota hai</h3>
+            <p>Chef order accept karke status "Preparing" par set karta hai. Ab customer apne phone par live status dekh sakta hai.</p>
           </div>
-        </div>
-        <div class="flow-card">
-          <div class="flow-icon">💳</div>
-          <div class="flow-text">
-            <h3>6. UPI ya Cash se Payment</h3>
-            <p>Customer apne phone se UPI link par pay kar sakta hai ya Cash Counter par cash se payment kar sakta hai.</p>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 5 of 8</span>
+            <h3>Khana Ready ho jata hai</h3>
+            <p>Khana taiyar hone par chef "Ready" mark karta hai. Customer ko turant "Order Ready" ka notification milta hai.</p>
           </div>
-        </div>
-        <div class="flow-card">
-          <div class="flow-icon">✅</div>
-          <div class="flow-text">
-            <h3>7. Cashier par Bill Submit</h3>
-            <p>Cashier bill verify karke payment complete mark karta hai. Poora process paperless aur real-time hota hai.</p>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 6 of 8</span>
+            <h3>Table par Serve hota hai</h3>
+            <p>Waiter/order taker khana table par serve karke status "Served" mark karta hai.</p>
+          </div>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 7 of 8</span>
+            <h3>UPI ya Cash se Payment</h3>
+            <p>Customer apne phone se UPI QR/link par pay karta hai ya seedha Cash Counter par cash se payment karta hai.</p>
+          </div>
+          <div class="flow-caption-card">
+            <span class="flow-caption-step">Step 8 of 8</span>
+            <h3>Cashier par Bill Submit</h3>
+            <p>Cashier payment confirm karke bill submit karta hai aur order complete ho jata hai. Poora flow paperless hota hai.</p>
           </div>
         </div>
       </div>
-      <div class="flow-dots" id="flowDots"></div>
     </section>
 
     <main class="auth-main">
@@ -180,23 +321,17 @@
 
   <script>
     (function(){
-      const cards = document.querySelectorAll('.flow-card');
-      const dotsWrap = document.getElementById('flowDots');
-      if (!cards.length) return;
-      cards.forEach((_,i)=>{
-        const d = document.createElement('div');
-        d.className = 'flow-dot' + (i===0?' active':'');
-        dotsWrap.appendChild(d);
-      });
-      const dots = dotsWrap.querySelectorAll('.flow-dot');
+      const steps = document.querySelectorAll('.flow-step');
+      const caps = document.querySelectorAll('.flow-caption-card');
+      if (!steps.length) return;
       let idx = 0;
       setInterval(()=>{
-        cards[idx].classList.remove('active');
-        dots[idx].classList.remove('active');
-        idx = (idx+1)%cards.length;
-        cards[idx].classList.add('active');
-        dots[idx].classList.add('active');
-      }, 2800);
+        steps[idx].classList.remove('active');
+        caps[idx].classList.remove('active');
+        idx = (idx+1)%steps.length;
+        steps[idx].classList.add('active');
+        caps[idx].classList.add('active');
+      }, 2400);
     })();
   </script>
   <script src="/js/common.js"></script>
