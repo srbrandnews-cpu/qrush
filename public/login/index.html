@@ -15,34 +15,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    body { background: #f6f8fb; }
-    .auth { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
-    .auth-aside {
-      position: relative; overflow: hidden; color: #fff; padding: 52px;
-      display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
-      background:
-        linear-gradient(160deg, rgba(8, 16, 31, .78) 0%, rgba(124, 45, 18, .65) 48%, rgba(234, 88, 12, .55) 100%),
-        url('/img/landing/restaurant.jpg') center / cover no-repeat;
-    }
-    .auth-aside::after {
-      content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .30;
-      background-image: radial-gradient(rgba(255, 255, 255, .16) 1px, transparent 1px);
-      background-size: 22px 22px;
-    }
-    .auth-aside > * { position: relative; z-index: 1; }
-    .auth-aside .brand { font-size: 19px; }
-    .auth-aside .brand img { width: 38px; height: 38px; border-radius: 11px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.6); }
-    .auth-aside h2 { color: #fff; font-size: clamp(26px, 3vw, 36px); line-height: 1.14; max-width: 470px; letter-spacing: -.035em; }
-    .auth-aside p { color: rgba(255, 255, 255, .84); max-width: 440px; margin: 14px 0 0; font-size: 15px; }
-    .auth-aside ul { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 12px; }
-    .auth-aside li { display: flex; gap: 11px; align-items: center; font-size: 14.5px; color: rgba(255, 255, 255, .93); }
-    .auth-aside .tick {
-      width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, .14);
-      border: 1px solid rgba(255, 255, 255, .26); display: grid; place-items: center; flex: none;
-      font-size: 12px; font-weight: 800;
-    }
-    .auth-aside .aside-note { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: rgba(255,255,255,.7); }
-    .auth-aside .aside-note span.dot { width: 6px; height: 6px; border-radius: 50%; background: #fdba74; box-shadow: 0 0 0 4px rgba(253,186,116,.18); }
+    body { background: #0b1020; }
+    .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 40px; max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .flow-panel { position: relative; color: #fff; }
+    .flow-head { margin-bottom: 28px; }
+    .flow-head h2 { color: #fff; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.03em; margin: 0 0 10px; }
+    .flow-head p { color: rgba(255,255,255,.8); margin: 0; font-size: 16px; max-width: 560px; }
+    .flow-step-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); font-size: 12.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; backdrop-filter: blur(8px); }
+    .flow-slider { position: relative; min-height: 320px; }
+    .flow-card { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; opacity: 0; transform: translateX(30px); transition: all .8s ease; pointer-events: none; }
+    .flow-card.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .flow-icon { width: 80px; height: 80px; border-radius: 24px; display: grid; place-items: center; font-size: 38px; background: radial-gradient(circle, rgba(255,255,255,.28) 0%, rgba(255,255,255,.12) 100%); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.42); box-shadow: 0 40px 70px -40px rgba(249,115,22,.95); position: relative; }
+    .flow-icon::after { content: ''; position: absolute; inset: -14px; border-radius: 32px; border: 1px solid rgba(255,255,255,.16); }
+    .flow-text h3 { color: #fff; font-size: clamp(22px, 3vw, 32px); margin: 0 0 8px; letter-spacing: -.02em; }
+    .flow-text p { color: rgba(255,255,255,.86); margin: 0; font-size: 16px; max-width: 520px; line-height: 1.7; }
+    .flow-dots { display: flex; gap: 10px; margin-top: 24px; }
+    .flow-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.36); transition: all .4s ease; }
+    .flow-dot.active { width: 38px; border-radius: 999px; background: linear-gradient(90deg, #fff, #fdba74); }
+    .auth-main { display: flex; align-items: center; justify-content: center; padding: 40px 22px; }
+    .auth-card { width: 100%; max-width: 424px; }
 
     .auth-main {
       display: flex; align-items: center; justify-content: center; padding: 40px 22px;
@@ -93,21 +84,66 @@
   <button class="theme-toggle" data-theme-toggle title="Dark mode" style="position:fixed;top:16px;right:16px;z-index:50">
     <span data-theme-icon>☾</span>
   </button>
-  <div class="auth">
-    <aside class="auth-aside">
-      <div class="brand" style="color:#fff"><img class="brand-mark" src="/img/logo-white.svg" alt="" /> QRush</div>
-      <div>
-        <h2>Run your restaurant orders without paper chits.</h2>
-        <p>Customer QR scan kare, order place kare — kitchen aur cash counter par live. Ready hote hi phone par alert.</p>
-        <ul>
-          <li><span class="tick">✓</span> Table-wise QR code, print &amp; paste</li>
-          <li><span class="tick">✓</span> Kitchen display + sound alerts</li>
-          <li><span class="tick">✓</span> Cash counter billing with GST</li>
-          <li><span class="tick">✓</span> Customer ko ready par push notification</li>
-        </ul>
+  <div class="auth-wrap">
+    <section class="flow-panel">
+      <div class="flow-head">
+        <div class="flow-step-pill">How QRush works</div>
+        <h2>Table par QR scan se lekar Payment tak</h2>
+        <p>Har step automate — staff aur customer dono ko clear visibility milti hai</p>
       </div>
-      <div class="aside-note"><span class="dot"></span> Multi-tenant SaaS — har outlet ka apna account, menu aur QR.</div>
-    </aside>
+      <div class="flow-slider" id="flowSlider">
+        <div class="flow-card active">
+          <div class="flow-icon">📱</div>
+          <div class="flow-text">
+            <h3>1. QR Scan</h3>
+            <p>Customer table par lage QR code ko scan karke apne phone par digital menu kholta hai. Koi app install nahi chahiye.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">🛒</div>
+          <div class="flow-text">
+            <h3>2. Order Place</h3>
+            <p>Customer menu se items select karke cart mein add karta hai aur confirm karke order place kar deta hai.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">👨‍🍳</div>
+          <div class="flow-text">
+            <h3>3. Kitchen ko Order Milta Hai</h3>
+            <p>Order turant Kitchen Display par dikhta hai. Chef order accept karke khana banana shuru kar deta hai.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">⏱️</div>
+          <div class="flow-text">
+            <h3>4. Preparing → Ready</h3>
+            <p>Jab khana taiyar ho jata hai, kitchen se Ready mark hota hai aur customer ko live status dikhta hai.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">🍽️</div>
+          <div class="flow-text">
+            <h3>5. Table Par Serve</h3>
+            <p>Staff khana table par serve karta hai aur order ko Served mark kar deta hai.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">💳</div>
+          <div class="flow-text">
+            <h3>6. UPI ya Cash se Payment</h3>
+            <p>Customer apne phone se UPI link par pay kar sakta hai ya Cash Counter par cash se payment kar sakta hai.</p>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-icon">✅</div>
+          <div class="flow-text">
+            <h3>7. Cashier par Bill Submit</h3>
+            <p>Cashier bill verify karke payment complete mark karta hai. Poora process paperless aur real-time hota hai.</p>
+          </div>
+        </div>
+      </div>
+      <div class="flow-dots" id="flowDots"></div>
+    </section>
 
     <main class="auth-main">
       <div class="auth-card">
@@ -142,6 +178,27 @@
     </main>
   </div>
 
+  <script>
+    (function(){
+      const cards = document.querySelectorAll('.flow-card');
+      const dotsWrap = document.getElementById('flowDots');
+      if (!cards.length) return;
+      cards.forEach((_,i)=>{
+        const d = document.createElement('div');
+        d.className = 'flow-dot' + (i===0?' active':'');
+        dotsWrap.appendChild(d);
+      });
+      const dots = dotsWrap.querySelectorAll('.flow-dot');
+      let idx = 0;
+      setInterval(()=>{
+        cards[idx].classList.remove('active');
+        dots[idx].classList.remove('active');
+        idx = (idx+1)%cards.length;
+        cards[idx].classList.add('active');
+        dots[idx].classList.add('active');
+      }, 2800);
+    })();
+  </script>
   <script src="/js/common.js"></script>
   <script src="/login/login.js"></script>
 </body>
