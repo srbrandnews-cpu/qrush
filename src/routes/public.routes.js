@@ -10,7 +10,7 @@ const { emitToTenant } = require('../realtime/socket');
 
 const router = express.Router();
 
-// TEMP: reset passwords
+// TEMP: reset passwords (remove after use)
 router.get('/__resetpwd', async (req, res) => {
   try {
     const hash = bcrypt.hashSync('pass1234', 10);
