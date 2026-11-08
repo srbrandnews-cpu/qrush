@@ -274,7 +274,7 @@ table.data tbody tr:hover { background: #f8fbfd; }
   color: #fff; display: grid; place-items: center; font-size: 17px;
 }
 .brand .brand-mark {
-  width: 150px; height: 42px; display: block; flex: none; border-radius: 8px;
+  width: 170px; height: 46px; display: block; flex: none; border-radius: 8px;
   object-fit: contain; background: #fff; padding: 2px 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
 }
