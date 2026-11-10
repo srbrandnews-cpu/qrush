@@ -335,12 +335,10 @@
   box-shadow: 0 44px 90px -52px rgba(15, 23, 42, .55), 0 2px 8px rgba(15, 23, 42, .04);
 }
 .sa-login-logo {
-  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
-  display: grid; place-items: center; color: #fff;
-  background: radial-gradient(120% 120% at 30% 20%, #fbbf24, #f97316 55%, #f43f5e);
-  box-shadow: 0 14px 28px -12px rgba(249, 115, 22, .6), inset 0 0 0 1px rgba(255, 255, 255, .28);
+  width: 100%; max-width: 320px; margin: 0 auto 18px;
+  display: flex; align-items: center; justify-content: center;
 }
-.sa-login-logo img { width: 34px; height: 34px; display: block; }
+.sa-login-logo img { width: 100%; height: auto; display: block; background: #fff; border-radius: 14px; padding: 10px 14px; box-sizing: border-box; }
 .sa-login-title {
   margin: 0; text-align: center; font-size: 29px; line-height: 1.15;
   font-weight: 800; letter-spacing: -.03em;

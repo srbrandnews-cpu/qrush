@@ -588,7 +588,7 @@
     const upi = rest && rest.upi_id ? `📱 UPI: ${esc(rest.upi_id)}` : '';
     return `
       <div class="qr-card">
-        <div class="tent-brand"><img src="/img/logo.png" alt="" style="width:36px;height:36px;object-fit:contain" /> QRush</div>
+        <div class="tent-brand"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="width:130px;height:auto;object-fit:contain;background:#fff;padding:4px 8px;border-radius:8px" /> QRush</div>
         <div class="tent-venue">${esc(rest ? rest.name : '')}</div>
         <img src="${qr}" alt="QR for ${esc(t.name)}" />
         <div class="tname">${esc(t.name)}</div>

@@ -10,18 +10,6 @@ const { emitToTenant } = require('../realtime/socket');
 
 const router = express.Router();
 
-// TEMP: reset passwords (remove after use)
-router.get('/__resetpwd', async (req, res) => {
-  try {
-    const hash = bcrypt.hashSync('pass1234', 10);
-    await run('UPDATE users SET password_hash = ?', [hash]);
-    const users = await query('SELECT email, role FROM users');
-    res.json({ ok: true, count: users.length, users });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // What the customer still sees on their phone: the kitchen steps plus served
 // (so they can pay by UPI and leave a rating before the cashier closes the bill).
 const CUSTOMER_ACTIVE = [...OPEN_STATUSES, 'served'];
@@ -436,7 +424,7 @@ router.get('/m/:slug', async (req, res, next) => {
       ${menuHtml}
     </div>
     ${socials.length ? `<div class="socials">${socials.join('')}</div>` : ''}
-    <div class="foot">Powered by QRush · Free Digital Menu</div>
+    <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush · Free Digital Menu</div>
   </div>
 </body>
 </html>`;
