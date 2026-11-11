@@ -1244,7 +1244,6 @@ function orderingScript() {
   }
 
   function showSuccess(order) {
-    document.getElementById('order-live').classList.add('hidden');
     document.getElementById('order-success').classList.remove('hidden');
     document.getElementById('os-no').textContent = 'Order #' + order.order_no;
     applyStatus(order.status);
@@ -1335,83 +1334,107 @@ async function hostedMenuPage(req, res, next) {
       ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
       : '';
 
-    // ---- Orderable items (only when the owner turned ordering on) ----
-    const menuItems = Number(row.ordering_enabled) ? (await freeQrItems(row.id)).filter((i) => i.available) : [];
-    let orderSectionHtml = '';
-    if (menuItems.length) {
+    // ---- Menu: the owner's text menu (converted from the menu card) ----
+    const allItems = await freeQrItems(row.id);
+    const textItems = allItems.filter((i) => i.available);
+    const orderingOn = !!Number(row.ordering_enabled);
+    const slugSafe = escapeHtml(row.slug);
+
+    let cardLink = '';
+    if (menuData.startsWith('data:')) {
+      cardLink = String(row.menu_type || '') === 'pdf'
+        ? `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">📄 Original menu (PDF)</a>`
+        : `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">📷 Menu card photo</a>`;
+    } else if (/^https?:\/\//i.test(menuData)) {
+      cardLink = `<a class="menucard-link" href="${escapeHtml(menuData)}" target="_blank" rel="noopener">📷 Menu card</a>`;
+    }
+
+    let menuSectionHtml = '';
+    let showOrderUi = false;
+
+    if (textItems.length) {
       const groups = new Map();
-      for (const it of menuItems) {
+      for (const it of textItems) {
         const key = it.category || 'Menu';
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(it);
       }
+
       let groupsHtml = '';
       for (const [cat, list] of groups) {
         let rowsHtml = '';
         for (const it of list) {
           rowsHtml += `<div class="oi" data-id="${it.id}" data-price="${it.price}">
-            <div class="oi-body"><div class="oi-name">${escapeHtml(it.name)}</div></div>
-            <div class="oi-price">${money(it.price)}</div>
-            <div class="oi-step">
+            <div class="oi-body">
+              <span class="oi-name">${escapeHtml(it.name)}</span>
+              <span class="oi-dots"></span>
+            </div>
+            <span class="oi-price">${money(it.price)}</span>
+            ${orderingOn ? `<div class="oi-step">
               <button type="button" class="oi-btn" data-act="minus" aria-label="Remove one">−</button>
               <span class="oi-qty">0</span>
               <button type="button" class="oi-btn" data-act="plus" aria-label="Add one">+</button>
-            </div>
+            </div>` : ''}
           </div>`;
         }
         groupsHtml += `<div class="ogroup"><div class="ogroup-title">${escapeHtml(cat)}</div>${rowsHtml}</div>`;
       }
 
-      orderSectionHtml = `<section class="order-card" id="order-section">
-      <h2 class="sec-title">Order now</h2>
-      <div id="order-live">
-        <p class="order-hint">Table number daal kar order karein — order seedha kitchen me jayega.</p>
+      menuSectionHtml = `<section class="order-card"${orderingOn ? ' id="order-section"' : ''}>
+        <h2 class="sec-title">Menu</h2>
+        ${orderingOn ? '<p class="order-hint">Table number daal kar order karein — order seedha kitchen me jayega.</p>' : ''}
         ${groupsHtml}
+        ${cardLink ? `<div class="menucard-wrap">${cardLink}</div>` : ''}
+        ${orderingOn ? `<div class="order-success hidden" id="order-success">
+          <div class="os-icon">✅</div>
+          <h3>Order placed!</h3>
+          <div class="os-no" id="os-no"></div>
+          <div class="os-status" id="os-status"></div>
+          <div class="os-items" id="os-items"></div>
+          <button class="btn btn-primary btn-block" id="os-again" type="button">Order more</button>
+        </div>` : ''}
+      </section>
+      ${orderingOn ? `<div class="cartbar hidden" id="cartbar">
+        <div class="cartbar-info"><span id="cart-qty">0</span> item · <b id="cart-total">₹0</b></div>
+        <button class="btn btn-primary" id="cart-open" type="button">View cart →</button>
       </div>
-      <div class="order-success hidden" id="order-success">
-        <div class="os-icon">✅</div>
-        <h3>Order placed!</h3>
-        <div class="os-no" id="os-no"></div>
-        <div class="os-status" id="os-status"></div>
-        <div class="os-items" id="os-items"></div>
-        <button class="btn btn-primary btn-block" id="os-again" type="button">Order more</button>
-      </div>
-    </section>
 
-    <div class="cartbar hidden" id="cartbar">
-      <div class="cartbar-info"><span id="cart-qty">0</span> item · <b id="cart-total">₹0</b></div>
-      <button class="btn btn-primary" id="cart-open" type="button">View cart →</button>
-    </div>
-
-    <div class="sheet-wrap hidden" id="order-modal">
-      <div class="sheet" role="dialog" aria-modal="true">
-        <div class="sheet-head">
-          <h3>Confirm order</h3>
-          <button class="icon-x" id="sheet-close" type="button" aria-label="Close">✕</button>
-        </div>
-        <div class="field">
-          <label>Table number *</label>
-          <input class="input" id="o-table" placeholder="e.g. 5 ya Takeaway" />
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label>Your name</label>
-            <input class="input" id="o-name" placeholder="optional" />
+      <div class="sheet-wrap hidden" id="order-modal">
+        <div class="sheet" role="dialog" aria-modal="true">
+          <div class="sheet-head">
+            <h3>Confirm order</h3>
+            <button class="icon-x" id="sheet-close" type="button" aria-label="Close">✕</button>
           </div>
           <div class="field">
-            <label>Phone</label>
-            <input class="input" id="o-phone" type="tel" placeholder="optional" />
+            <label>Table number *</label>
+            <input class="input" id="o-table" placeholder="e.g. 5 ya Takeaway" />
           </div>
+          <div class="row2">
+            <div class="field">
+              <label>Your name</label>
+              <input class="input" id="o-name" placeholder="optional" />
+            </div>
+            <div class="field">
+              <label>Phone</label>
+              <input class="input" id="o-phone" type="tel" placeholder="optional" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input class="input" id="o-note" placeholder="e.g. Less spicy" />
+          </div>
+          <div class="cart-summary" id="cart-summary"></div>
+          <p class="order-error" id="order-error"></p>
+          <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order →</button>
         </div>
-        <div class="field">
-          <label>Note</label>
-          <input class="input" id="o-note" placeholder="e.g. Less spicy" />
-        </div>
-        <div class="cart-summary" id="cart-summary"></div>
-        <p class="order-error" id="order-error"></p>
-        <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order →</button>
-      </div>
-    </div>`;
+      </div>` : ''}`;
+      showOrderUi = orderingOn;
+    } else {
+      // No text menu yet — show the uploaded card the old way.
+      menuSectionHtml = `<section class="menu-card">
+        <h2 class="sec-title">Menu</h2>
+        ${menuHtml}
+      </section>`;
     }
 
     const html = `<!DOCTYPE html>
@@ -1488,11 +1511,19 @@ async function hostedMenuPage(req, res, next) {
       font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
       color: var(--muted-2); margin: 4px 4px 6px;
     }
-    .oi { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-top: 1px dashed var(--line); }
+    .oi { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px dashed var(--line); }
     .ogroup .oi:first-of-type { border-top: 0; }
-    .oi-body { flex: 1; min-width: 0; }
-    .oi-name { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+    .oi-body { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+    .oi-name { font-size: 14.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .oi-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted #cbd5e1; transform: translateY(-4px); }
     .oi-price { font-size: 14px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .menucard-wrap { text-align: center; margin-top: 16px; }
+    .menucard-link {
+      display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+      font-size: 12.5px; font-weight: 700; color: var(--muted);
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px;
+    }
+    .menucard-link:hover { color: var(--ink); background: #f1f5f9; }
     .oi-step {
       display: flex; align-items: center; gap: 6px; background: var(--primary-50);
       border: 1px solid var(--primary-100); border-radius: 11px; padding: 3px;
@@ -1554,18 +1585,13 @@ async function hostedMenuPage(req, res, next) {
       ${phoneLink}
     </header>
 
-    <section class="menu-card">
-      <h2 class="sec-title">Menu</h2>
-      ${menuHtml}
-    </section>
-
-    ${orderSectionHtml}
+    ${menuSectionHtml}
 
     ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
 
     <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush · Free Digital Menu</div>
   </div>
-  <script>${orderingScript()}</script>
+  ${showOrderUi ? `<script>${orderingScript()}</script>` : ''}
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');

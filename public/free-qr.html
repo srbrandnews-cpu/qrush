@@ -74,6 +74,19 @@
     }
     .menu-preview img { max-width: 100%; margin: 0 auto; border-radius: 10px; display: block; }
     .menu-preview iframe { width: 100%; height: 560px; border: 0; border-radius: 10px; background: #fff; }
+    .menu-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .ocr-status { font-size: 12px; color: var(--muted); margin: 8px 0 0; min-height: 16px; }
+    .menu-text-preview {
+      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fff;
+      padding: 14px 16px; margin-top: 8px; max-height: 340px; overflow: auto;
+    }
+    .menu-text-preview:empty { display: none; }
+    .pv-group + .pv-group { margin-top: 12px; }
+    .pv-cat { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 4px; }
+    .pv-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; }
+    .pv-name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+    .pv-dots { flex: 1; min-width: 10px; border-bottom: 1px dotted #cbd5e1; transform: translateY(-3px); }
+    .pv-price { font-size: 13px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
     #d-qr { display: flex; justify-content: center; margin-bottom: 14px; }
     #d-qr img, #d-qr canvas { display: block; border-radius: 10px; background: #fff; }
     .owner-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -195,6 +208,12 @@
           </div>
           <div class="menu-preview" id="d-menu-preview"></div>
           <p class="tiny muted" style="margin:10px 0 0">Yeh wahi image hai jo customer QR scan karne par dekhta hai. Replace karte hi turant update ho jayegi.</p>
+
+          <div class="menu-tools">
+            <button class="btn btn-primary btn-sm" id="d-ocr" type="button">✨ Convert image to text</button>
+            <span class="tiny muted">Menu card ka text nikal kar menu items auto-fill ho jayenge</span>
+          </div>
+          <p class="ocr-status" id="d-ocr-status"></p>
         </div>
 
         <div class="dash-card">
@@ -420,6 +439,7 @@
   <div id="toast"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const TOKEN_KEY = 'fq_token';
@@ -853,10 +873,110 @@
         revision = Date.now();
         renderDashboard();
         toast('✅ Naya menu live ho gaya!');
+        if (type === 'image') {
+          runMenuOcr(data);
+        }
       } catch (err) {
         toast(err.message, true);
       } finally {
         e.target.value = '';
+      }
+    });
+
+    /* ----------------------------- OCR Converter ----------------------------- */
+    function parseOcrText(text) {
+      const lines = String(text || '').split(/\r?\n/);
+      let currentCategory = 'Menu';
+      const items = [];
+      const noiseRe = /^(menu|welcome|tax|gst|service charge|phone|mobile|tel|address|contact|order|timing|pure veg|non veg|page \d+)$/i;
+
+      for (const rawLine of lines) {
+        let line = rawLine.trim().replace(/\s+/g, ' ');
+        if (!line || line.length < 2) continue;
+        if (noiseRe.test(line)) continue;
+
+        const priceMatch = /(?:(?:rs\.?|inr|₹)\s*)?(\d{2,5})(?:\s*[\/\-]{1,2})?\s*$/i.exec(line);
+
+        if (priceMatch) {
+          const price = Number(priceMatch[1]);
+          let namePart = line.slice(0, priceMatch.index).trim();
+          namePart = namePart.replace(/[\.\s\:\-\_\|]+$/, '').trim();
+          namePart = namePart.replace(/^(?:\d+[\.\)\-]|[\u2022\u2023\u25E6\u2043\u2219\*\-])\s*/, '').trim();
+
+          if (namePart && namePart.length >= 2 && !noiseRe.test(namePart) && price > 0 && price <= 50000) {
+            items.push({
+              name: namePart,
+              price: price,
+              category: currentCategory,
+              available: true,
+            });
+            continue;
+          }
+        }
+
+        if (!/\d/.test(line) && line.length <= 40) {
+          const cleanCat = line.replace(/^[\*\-\#\s]+|[\*\-\#\s]+$/g, '').trim();
+          if (cleanCat && cleanCat.length >= 3 && !noiseRe.test(cleanCat)) {
+            currentCategory = cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1);
+          }
+        }
+      }
+      return items;
+    }
+
+    async function runMenuOcr(imageUrl) {
+      const statusEl = $('d-ocr-status');
+      const btn = $('d-ocr');
+      if (!imageUrl || isPdf()) {
+        if (statusEl) statusEl.textContent = 'Image file zaroori hai OCR ke liye.';
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      if (statusEl) statusEl.textContent = '⏳ Image se menu text padh rahe hain (OCR)...';
+
+      try {
+        if (typeof Tesseract === 'undefined') {
+          throw new Error('Tesseract OCR library load nahi hui.');
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        const ret = await worker.recognize(imageUrl);
+        await worker.terminate();
+
+        const rawText = ret && ret.data && ret.data.text ? ret.data.text : '';
+        const parsed = parseOcrText(rawText);
+
+        if (parsed.length) {
+          const formattedText = itemsToText(parsed);
+          $('d-items').value = formattedText;
+          itemsDirty = false;
+
+          const out = await saveItems({ items: parsed, ordering_enabled: $('d-ordering').checked });
+          applyOwnerPayload(out);
+          renderDashboard();
+
+          if (statusEl) statusEl.textContent = '✅ Success! ' + parsed.length + ' items photo se text menu me convert ho gaye!';
+          toast('✨ Menu photo se ' + parsed.length + ' items text me convert ho gaye!');
+        } else if (rawText.trim()) {
+          $('d-items').value = rawText;
+          itemsDirty = true;
+          if (statusEl) statusEl.textContent = 'ℹ️ Text nikala gaya hai. Standard format (Naam, Price) me check karein.';
+        } else {
+          if (statusEl) statusEl.textContent = '⚠️ Image me text nahi mila. Clear image upload karein.';
+        }
+      } catch (err) {
+        if (statusEl) statusEl.textContent = '⚠️ OCR: ' + (err.message || 'Text nahi nikal paya.');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    $('d-ocr').addEventListener('click', () => {
+      if (current && current.menu_url) {
+        runMenuOcr(withRev(current.menu_url));
+      } else {
+        toast('Pehle menu image upload karein', true);
       }
     });
 
