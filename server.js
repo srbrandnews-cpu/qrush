@@ -78,6 +78,8 @@ app.get('/kitchen', page(path.join('kitchen', 'index.html')));
 app.get('/cashier', page(path.join('cashier', 'index.html')));
 app.get('/r/:slug', page(path.join('wait', 'index.html')));
 app.get('/menu', page(path.join('menu', 'index.html')));
+// Kitchen board for a free hosted menu (orders scanned from the free QR card).
+app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
 
 // --- 404 for unknown API calls, plain 404 page otherwise ---
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));

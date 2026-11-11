@@ -1,7 +1,7 @@
 'use strict';
 
 const { Server } = require('socket.io');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, verifyFreeQrToken } = require('../middleware/auth');
 const { get } = require('../config/db');
 
 let io = null;
@@ -36,6 +36,20 @@ function initSocket(httpServer) {
       socket.data.tenantId = user.tenantId;
       socket.join(`tenant:${user.tenantId}`);
       socket.emit('ready', { role: user.role });
+      return;
+    }
+
+    // ---- Free-QR owner screen (kitchen for hosted menu orders) ----
+    if (auth.freeqrToken) {
+      const fq = verifyFreeQrToken(auth.freeqrToken);
+      if (!fq) {
+        socket.emit('unauthorized', { reason: 'Session expire ho gaya' });
+        socket.disconnect(true);
+        return;
+      }
+      socket.data.freeqrId = fq.fq;
+      socket.join(`freeqr:${fq.fq}`);
+      socket.emit('ready', { freeqr: fq.slug });
       return;
     }
 
@@ -82,4 +96,10 @@ function emitToTenant(tenantId, event, payload) {
   io.to(`tenant:${tenantId}`).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, emitOrderUpdate, emitToTenant };
+/** Push a new/updated hosted-menu order to that restaurant's kitchen screen. */
+function emitToFreeQr(freeQrId, event, payload) {
+  if (!io) return;
+  io.to(`freeqr:${freeQrId}`).emit(event, payload);
+}
+
+module.exports = { initSocket, getIO, emitOrderUpdate, emitToTenant, emitToFreeQr };

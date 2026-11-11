@@ -135,6 +135,54 @@ const MIGRATIONS = [
       await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_events ON free_qr_events(free_qr_id, kind)');
     },
   },
+  {
+    // v2.5 — free QR ordering: the owner lists a few orderable items, the
+    // customer scans the QR and the order lands on the owner's kitchen screen.
+    name: '008-free-qr-ordering',
+    async up() {
+      await addColumn('free_qr_menus', 'ordering_enabled', 'INTEGER NOT NULL DEFAULT 1');
+
+      if (!(await tableExists('free_qr_items'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS free_qr_items (
+            id           ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            free_qr_id   INTEGER NOT NULL,
+            name         TEXT    NOT NULL,
+            price        ${dialect() === 'postgres' ? 'DOUBLE PRECISION' : 'REAL'} NOT NULL DEFAULT 0,
+            category     TEXT,
+            is_available INTEGER NOT NULL DEFAULT 1,
+            sort_order   INTEGER NOT NULL DEFAULT 0
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_items ON free_qr_items(free_qr_id)');
+      }
+
+      if (!(await tableExists('free_qr_orders'))) {
+        const created = dialect() === 'postgres'
+          ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+          : `datetime('now')`;
+        await exec(`
+          CREATE TABLE IF NOT EXISTS free_qr_orders (
+            id             ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            free_qr_id     INTEGER NOT NULL,
+            order_no       INTEGER NOT NULL,
+            public_token   TEXT    NOT NULL UNIQUE,
+            table_label    TEXT,
+            customer_name  TEXT,
+            customer_phone TEXT,
+            note           TEXT,
+            items_json     TEXT    NOT NULL,
+            total          ${dialect() === 'postgres' ? 'DOUBLE PRECISION' : 'REAL'} NOT NULL DEFAULT 0,
+            status         TEXT    NOT NULL DEFAULT 'new',
+            created_at     TEXT    NOT NULL DEFAULT (${created}),
+            updated_at     TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_orders ON free_qr_orders(free_qr_id, status)');
+        await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_orders_created ON free_qr_orders(free_qr_id, created_at)');
+      }
+    },
+  },
 ];
 
 /**

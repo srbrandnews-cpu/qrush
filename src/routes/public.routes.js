@@ -3,10 +3,10 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { query, get, run } = require('../config/db');
+const { query, get, run, transaction } = require('../config/db');
 const { createOrder, getCustomerOrder, decorateForCustomer, cleanPhone } = require('../services/orders');
 const { OPEN_STATUSES, REQUEST_TYPES, REQUEST_LABELS } = require('../utils/constants');
-const { emitToTenant } = require('../realtime/socket');
+const { emitToTenant, emitToFreeQr } = require('../realtime/socket');
 const { signFreeQrToken, verifyFreeQrToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -62,7 +62,78 @@ function publicFreeQr(row) {
     whatsapp: row.whatsapp,
     website: row.website,
     created_at: row.created_at,
+    ordering_enabled: row.ordering_enabled === undefined ? true : !!Number(row.ordering_enabled),
+    kitchen_url: `/m/${row.slug}/kitchen`,
   };
+}
+
+/** ₹299 / ₹49.50 */
+function money(n) {
+  const v = Number(n) || 0;
+  return '₹' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
+}
+
+/** Orderable items for one hosted menu. */
+async function freeQrItems(id) {
+  const rows = await query(
+    'SELECT * FROM free_qr_items WHERE free_qr_id = ? ORDER BY sort_order, id',
+    [id]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    price: Number(r.price) || 0,
+    category: r.category || '',
+    available: !!Number(r.is_available),
+  }));
+}
+
+/** Everything the owner dashboard needs in one payload. */
+async function freeQrOwnerPayload(row) {
+  return {
+    restaurant: publicFreeQr(row),
+    stats: await freeQrStats(row.id),
+    items: await freeQrItems(row.id),
+  };
+}
+
+/** Shape of an order as returned to the kitchen screen / customer. */
+function freeQrOrderOut(row) {
+  let items = [];
+  try { items = JSON.parse(row.items_json || '[]'); } catch (_) { items = []; }
+  return {
+    id: row.id,
+    order_no: Number(row.order_no) || 0,
+    token: row.public_token,
+    status: row.status,
+    table_label: row.table_label,
+    customer_name: row.customer_name,
+    customer_phone: row.customer_phone,
+    note: row.note,
+    items,
+    total: Number(row.total) || 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+const FREE_QR_ORDER_STATUSES = ['new', 'preparing', 'ready', 'done', 'cancelled'];
+const FREE_QR_NEXT_STATUS = { new: 'preparing', preparing: 'ready', ready: 'done' };
+
+// Simple spam guard for public ordering: 12 orders / 10 min per phone+IP.
+const orderAttempts = new Map();
+const ORDER_WINDOW = 10 * 60 * 1000;
+const ORDER_MAX = 12;
+
+function orderThrottled(key) {
+  const now = Date.now();
+  const rec = orderAttempts.get(key);
+  if (!rec || now > rec.reset) {
+    orderAttempts.set(key, { count: 1, reset: now + ORDER_WINDOW });
+    return false;
+  }
+  rec.count += 1;
+  return rec.count > ORDER_MAX;
 }
 
 /** Social networks we track clicks for. */
@@ -153,6 +224,16 @@ async function freeQrStats(id) {
     }
   }
   stats.views.unique = Number(uniq && uniq.c) || 0;
+
+  // Orders that came in through the QR menu today.
+  const ord = await get(
+    `SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s
+       FROM free_qr_orders
+      WHERE free_qr_id = ? AND status <> 'cancelled' AND created_at LIKE ?`,
+    [id, today]
+  );
+  stats.orders = { today: Number(ord && ord.c) || 0, sales: Number(ord && ord.s) || 0 };
+
   return stats;
 }
 
@@ -170,6 +251,13 @@ function freeQrThrottled(key) {
   }
   rec.count += 1;
   return rec.count > FREE_QR_MAX_TRIES;
+}
+
+/** Owner token from `Authorization: Bearer <free-qr token>`. */
+function freeQrAuth(req) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  return verifyFreeQrToken(token);
 }
 
 // What the customer still sees on their phone: the kitchen steps plus served
@@ -534,8 +622,7 @@ router.post('/free-qr', async (req, res, next) => {
       slug,
       url,
       token: passwordHash ? signFreeQrToken(row) : null,
-      restaurant: publicFreeQr(row),
-      stats: await freeQrStats(row.id),
+      ...(await freeQrOwnerPayload(row)),
     });
   } catch (err) {
     next(err);
@@ -577,8 +664,7 @@ router.post('/free-qr/login', async (req, res, next) => {
 
     res.json({
       token: signFreeQrToken(row),
-      restaurant: publicFreeQr(row),
-      stats: await freeQrStats(row.id),
+      ...(await freeQrOwnerPayload(row)),
     });
   } catch (err) {
     next(err);
@@ -590,13 +676,11 @@ router.post('/free-qr/login', async (req, res, next) => {
  */
 router.get('/free-qr/me', async (req, res, next) => {
   try {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-    const payload = verifyFreeQrToken(token);
+    const payload = freeQrAuth(req);
     if (!payload) return res.status(401).json({ error: 'Login required' });
     const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
     if (!row) return res.status(401).json({ error: 'Restaurant not found' });
-    res.json({ restaurant: publicFreeQr(row), stats: await freeQrStats(row.id) });
+    res.json(await freeQrOwnerPayload(row));
   } catch (err) {
     next(err);
   }
@@ -610,9 +694,7 @@ router.get('/free-qr/me', async (req, res, next) => {
  */
 router.patch('/free-qr/me', async (req, res, next) => {
   try {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-    const payload = verifyFreeQrToken(token);
+    const payload = freeQrAuth(req);
     if (!payload) return res.status(401).json({ error: 'Login required' });
 
     const current = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
@@ -620,6 +702,7 @@ router.patch('/free-qr/me', async (req, res, next) => {
 
     const b = req.body || {};
     const next_ = { ...current };
+    if (b.ordering_enabled !== undefined) next_.ordering_enabled = b.ordering_enabled ? 1 : 0;
 
     if (b.restaurant !== undefined) {
       const v = String(b.restaurant || '').trim().slice(0, 120);
@@ -658,7 +741,8 @@ router.patch('/free-qr/me', async (req, res, next) => {
     await run(
       `UPDATE free_qr_menus
          SET restaurant = ?, owner_name = ?, phone = ?, password_hash = ?, logo_url = ?,
-             menu_data = ?, menu_type = ?, instagram = ?, facebook = ?, whatsapp = ?, website = ?
+             menu_data = ?, menu_type = ?, instagram = ?, facebook = ?, whatsapp = ?, website = ?,
+             ordering_enabled = ?
        WHERE id = ?`,
       [
         next_.restaurant,
@@ -672,12 +756,251 @@ router.patch('/free-qr/me', async (req, res, next) => {
         next_.facebook,
         next_.whatsapp,
         next_.website,
+        next_.ordering_enabled === undefined ? 1 : (next_.ordering_enabled ? 1 : 0),
         current.id,
       ]
     );
 
     const updated = await get('SELECT * FROM free_qr_menus WHERE id = ?', [current.id]);
-    res.json({ restaurant: publicFreeQr(updated), stats: await freeQrStats(updated.id) });
+    res.json(await freeQrOwnerPayload(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET  /api/public/free-qr/items — the owner's orderable menu.
+ * PUT  /api/public/free-qr/items — replace it (bulk paste from the dashboard).
+ *      body: { ordering_enabled, items: [{ name, price, category, available }] }
+ */
+router.get('/free-qr/items', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+    res.json({ items: await freeQrItems(row.id), ordering_enabled: !!Number(row.ordering_enabled) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/free-qr/items', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+
+    const b = req.body || {};
+    const incoming = Array.isArray(b.items) ? b.items : [];
+    if (incoming.length > 200) {
+      return res.status(400).json({ error: 'Ek baar me max 200 items.' });
+    }
+
+    const clean = [];
+    for (const raw of incoming) {
+      const name = String((raw && raw.name) || '').trim().slice(0, 120);
+      if (!name) continue;
+      const price = Math.max(0, Math.min(1000000, Number(raw.price) || 0));
+      const category = String((raw && raw.category) || '').trim().slice(0, 60) || null;
+      clean.push({ name, price, category, available: raw.available === false ? 0 : 1 });
+    }
+
+    const enabled = b.ordering_enabled === undefined
+      ? (row.ordering_enabled ? 1 : 0)
+      : (b.ordering_enabled ? 1 : 0);
+
+    await transaction(async () => {
+      await run('DELETE FROM free_qr_items WHERE free_qr_id = ?', [row.id]);
+      let sort = 0;
+      for (const it of clean) {
+        // eslint-disable-next-line no-await-in-loop
+        await run(
+          'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+          [row.id, it.name, it.price, it.category, it.available, sort++]
+        );
+      }
+      await run('UPDATE free_qr_menus SET ordering_enabled = ? WHERE id = ?', [enabled, row.id]);
+    });
+
+    const updated = await get('SELECT * FROM free_qr_menus WHERE id = ?', [row.id]);
+    res.json(await freeQrOwnerPayload(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET   /api/public/free-qr/kitchen/orders — live board for the owner.
+ * PATCH /api/public/free-qr/kitchen/orders/:id — advance/cancel an order.
+ */
+router.get('/free-qr/kitchen/orders', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+
+    const active = await query(
+      `SELECT * FROM free_qr_orders
+        WHERE free_qr_id = ? AND status IN ('new','preparing','ready')
+        ORDER BY created_at ASC, id ASC`,
+      [row.id]
+    );
+    const today = new Date().toISOString().slice(0, 10) + '%';
+    const summary = await get(
+      `SELECT COUNT(*) AS orders, COALESCE(SUM(total), 0) AS sales
+         FROM free_qr_orders
+        WHERE free_qr_id = ? AND status <> 'cancelled' AND created_at LIKE ?`,
+      [row.id, today]
+    );
+
+    res.json({
+      restaurant: { name: row.restaurant, slug: row.slug, phone: row.phone },
+      orders: active.map(freeQrOrderOut),
+      summary: {
+        orders: Number(summary && summary.orders) || 0,
+        sales: Number(summary && summary.sales) || 0,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/free-qr/kitchen/orders/:id', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const order = await get(
+      'SELECT * FROM free_qr_orders WHERE id = ? AND free_qr_id = ?',
+      [Number(req.params.id) || 0, payload.fq]
+    );
+    if (!order) return res.status(404).json({ error: 'Order nahi mila' });
+
+    const wanted = String((req.body || {}).status || '').toLowerCase();
+    // Cancel is allowed from any open state; every other move must be the
+    // single legal next step (new → preparing → ready → done).
+    const allowed = wanted === 'cancelled'
+      ? ['new', 'preparing', 'ready'].includes(order.status)
+      : wanted === FREE_QR_NEXT_STATUS[order.status];
+    if (!allowed) {
+      return res.status(400).json({ error: 'Yeh status change allowed nahi hai.' });
+    }
+
+    await run(
+      'UPDATE free_qr_orders SET status = ?, updated_at = ? WHERE id = ?',
+      [wanted, new Date().toISOString().slice(0, 19).replace('T', ' '), order.id]
+    );
+    const updated = await get('SELECT * FROM free_qr_orders WHERE id = ?', [order.id]);
+    const out = freeQrOrderOut(updated);
+    emitToFreeQr(payload.fq, 'freeqr:order', { order: out, reason: 'status' });
+    res.json({ order: out });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/public/m/:slug/order/:token — customer's own order status.
+ */
+router.get('/m/:slug/order/:token', async (req, res, next) => {
+  try {
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    if (!row) return res.status(404).json({ error: 'Menu not found' });
+    const order = await get(
+      'SELECT * FROM free_qr_orders WHERE free_qr_id = ? AND public_token = ?',
+      [row.id, String(req.params.token)]
+    );
+    if (!order) return res.status(404).json({ error: 'Order nahi mila' });
+    res.json({
+      order: freeQrOrderOut(order),
+      restaurant: { name: row.restaurant, phone: row.phone },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/public/m/:slug/order — place an order straight from the QR menu.
+ * body: { table, name, phone, note, items: [{ id, qty }] }
+ */
+router.post('/m/:slug/order', async (req, res, next) => {
+  try {
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    if (!row) return res.status(404).json({ error: 'Menu not found' });
+    if (!Number(row.ordering_enabled)) {
+      return res.status(403).json({ error: 'Is restaurant ne abhi online order band rakha hai.' });
+    }
+
+    const b = req.body || {};
+    const table = String(b.table || '').trim().slice(0, 30);
+    if (!table) return res.status(400).json({ error: 'Table number likhna zaroori hai.' });
+
+    const wanted = Array.isArray(b.items) ? b.items : [];
+    if (!wanted.length) return res.status(400).json({ error: 'Koi item select karein.' });
+    if (wanted.length > 60) return res.status(400).json({ error: 'Bahut zyada items.' });
+
+    const menu = await freeQrItems(row.id);
+    const byId = new Map(menu.map((i) => [Number(i.id), i]));
+
+    const lines = [];
+    let total = 0;
+    let qtySum = 0;
+    for (const raw of wanted) {
+      const item = byId.get(Number(raw && raw.id));
+      const qty = Math.max(0, Math.min(50, Math.floor(Number(raw && raw.qty) || 0)));
+      if (!item || !qty) continue;
+      if (!item.available) return res.status(400).json({ error: `${item.name} abhi available nahi hai.` });
+      const lineTotal = Math.round((item.price * qty + Number.EPSILON) * 100) / 100;
+      lines.push({ id: item.id, name: item.name, price: item.price, qty, line_total: lineTotal });
+      total += lineTotal;
+      qtySum += qty;
+    }
+    if (!lines.length) return res.status(400).json({ error: 'Koi valid item select karein.' });
+    if (qtySum > 200) return res.status(400).json({ error: 'Ek order me max 200 quantity.' });
+
+    const throttleKey = `${req.ip || 'ip'}:${row.id}`;
+    if (orderThrottled(throttleKey)) {
+      return res.status(429).json({ error: 'Bahut zyada orders. Thodi der baad try karein.' });
+    }
+
+    const today = new Date().toISOString().slice(0, 10) + '%';
+    const countRow = await get(
+      'SELECT COUNT(*) AS c FROM free_qr_orders WHERE free_qr_id = ? AND created_at LIKE ?',
+      [row.id, today]
+    );
+    const orderNo = (Number(countRow && countRow.c) || 0) + 1;
+    const token = crypto.randomBytes(12).toString('hex');
+    total = Math.round((total + Number.EPSILON) * 100) / 100;
+
+    await run(
+      `INSERT INTO free_qr_orders
+         (free_qr_id, order_no, public_token, table_label, customer_name, customer_phone, note, items_json, total, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')`,
+      [
+        row.id,
+        orderNo,
+        token,
+        table,
+        String(b.name || '').trim().slice(0, 80) || null,
+        phoneDigits(b.phone).slice(0, 20) || null,
+        String(b.note || '').trim().slice(0, 300) || null,
+        JSON.stringify(lines),
+        total,
+      ]
+    );
+
+    const saved = await get('SELECT * FROM free_qr_orders WHERE public_token = ?', [token]);
+    const out = freeQrOrderOut(saved);
+
+    // Straight to the kitchen screen (and this is what makes the tablet beep).
+    emitToFreeQr(row.id, 'freeqr:order', { order: out, reason: 'new' });
+    await logFreeQrEvent(row.id, 'order', visitorId(req));
+
+    res.status(201).json({ order: out, restaurant: { name: row.restaurant, phone: row.phone } });
   } catch (err) {
     next(err);
   }
@@ -739,6 +1062,231 @@ async function hostedMenuGo(req, res, next) {
 }
 
 /**
+ * Client-side cart for the hosted menu page. Kept as a plain string with no
+ * template placeholders so it can be inlined into the server-rendered HTML.
+ */
+function orderingScript() {
+  return `
+(function () {
+  var section = document.getElementById('order-section');
+  if (!section) return;
+  var slug = (location.pathname.split('/')[2] || '');
+  var base = '/api/public/m/' + slug;
+  var cart = {};
+  var modal = document.getElementById('order-modal');
+  var cartbar = document.getElementById('cartbar');
+  var pollTimer = null;
+
+  function rupees(n) {
+    var v = Number(n) || 0;
+    return '\u20B9' + (v % 1 === 0 ? v : v.toFixed(2));
+  }
+
+  function rows() { return section.querySelectorAll('.oi'); }
+
+  function cartItems() {
+    var all = rows();
+    var out = [];
+    for (var i = 0; i < all.length; i++) {
+      var id = all[i].getAttribute('data-id');
+      var qty = cart[id] || 0;
+      if (qty > 0) {
+        out.push({
+          id: Number(id),
+          qty: qty,
+          name: all[i].querySelector('.oi-name').textContent,
+          price: Number(all[i].getAttribute('data-price')) || 0
+        });
+      }
+    }
+    return out;
+  }
+
+  function renderCart() {
+    var all = rows();
+    var count = 0;
+    var total = 0;
+    for (var i = 0; i < all.length; i++) {
+      var id = all[i].getAttribute('data-id');
+      var q = cart[id] || 0;
+      all[i].querySelector('.oi-qty').textContent = q;
+      count += q;
+      total += q * (Number(all[i].getAttribute('data-price')) || 0);
+    }
+    document.getElementById('cart-qty').textContent = count;
+    document.getElementById('cart-total').textContent = rupees(total);
+    if (count > 0) {
+      cartbar.classList.remove('hidden');
+      document.body.classList.add('has-cart');
+    } else {
+      cartbar.classList.add('hidden');
+      document.body.classList.remove('has-cart');
+    }
+  }
+
+  section.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!btn) return;
+    var row = btn.closest('.oi');
+    if (!row) return;
+    var id = row.getAttribute('data-id');
+    var q = cart[id] || 0;
+    if (btn.getAttribute('data-act') === 'plus') q += 1;
+    else q = Math.max(0, q - 1);
+    cart[id] = q;
+    renderCart();
+  });
+
+  function openModal() {
+    var list = cartItems();
+    if (!list.length) return;
+    var box = document.getElementById('cart-summary');
+    box.innerHTML = '';
+    var total = 0;
+    for (var i = 0; i < list.length; i++) {
+      var line = document.createElement('div');
+      line.className = 'cs-line';
+      var left = document.createElement('span');
+      left.textContent = list[i].qty + ' x ' + list[i].name;
+      var right = document.createElement('span');
+      var lt = list[i].qty * list[i].price;
+      total += lt;
+      right.textContent = rupees(lt);
+      line.appendChild(left);
+      line.appendChild(right);
+      box.appendChild(line);
+    }
+    var tr = document.createElement('div');
+    tr.className = 'cs-total';
+    var tl = document.createElement('span');
+    tl.textContent = 'Total';
+    var tv = document.createElement('span');
+    tv.textContent = rupees(total);
+    tr.appendChild(tl);
+    tr.appendChild(tv);
+    box.appendChild(tr);
+
+    document.getElementById('order-error').textContent = '';
+    modal.classList.remove('hidden');
+    setTimeout(function () { document.getElementById('o-table').focus(); }, 80);
+  }
+
+  function closeModal() { modal.classList.add('hidden'); }
+
+  document.getElementById('cart-open').addEventListener('click', openModal);
+  document.getElementById('sheet-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+  document.getElementById('o-submit').addEventListener('click', async function () {
+    var btn = this;
+    var err = document.getElementById('order-error');
+    var table = document.getElementById('o-table').value.trim();
+    if (!table) { err.textContent = 'Table number likhein.'; return; }
+    var list = cartItems();
+    if (!list.length) { err.textContent = 'Koi item select karein.'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Order bhej rahe hain...';
+    err.textContent = '';
+    try {
+      var payload = {
+        table: table,
+        name: document.getElementById('o-name').value.trim(),
+        phone: document.getElementById('o-phone').value.trim(),
+        note: document.getElementById('o-note').value.trim(),
+        items: []
+      };
+      for (var i = 0; i < list.length; i++) payload.items.push({ id: list[i].id, qty: list[i].qty });
+
+      var res = await fetch(base + '/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Order nahi gaya');
+      closeModal();
+      showSuccess(data.order);
+    } catch (e2) {
+      err.textContent = e2.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Place order \u2192';
+    }
+  });
+
+  var STATUS_TEXT = {
+    new: 'Kitchen ne order receive kar liya \uD83C\uDF73',
+    preparing: 'Aapka order ban raha hai \uD83D\uDC68\u200D\uD83C\uDF73',
+    ready: 'Ready! Table par serve ho raha hai \u2705',
+    done: 'Order complete \u2014 dhanyavaad! \uD83C\uDF89',
+    cancelled: 'Order cancel ho gaya'
+  };
+
+  function applyStatus(status) {
+    var el = document.getElementById('os-status');
+    if (el) el.textContent = STATUS_TEXT[status] || status;
+    if (status === 'done' || status === 'cancelled') {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+  }
+
+  function startPolling(token) {
+    if (pollTimer) clearInterval(pollTimer);
+    var tick = function () {
+      fetch(base + '/order/' + token, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d && d.order) applyStatus(d.order.status); })
+        .catch(function () {});
+    };
+    tick();
+    pollTimer = setInterval(tick, 5000);
+  }
+
+  function showSuccess(order) {
+    document.getElementById('order-live').classList.add('hidden');
+    document.getElementById('order-success').classList.remove('hidden');
+    document.getElementById('os-no').textContent = 'Order #' + order.order_no;
+    applyStatus(order.status);
+
+    var box = document.getElementById('os-items');
+    box.innerHTML = '';
+    for (var i = 0; i < order.items.length; i++) {
+      var line = document.createElement('div');
+      line.className = 'cs-line';
+      var l = document.createElement('span');
+      l.textContent = order.items[i].qty + ' x ' + order.items[i].name;
+      var r = document.createElement('span');
+      r.textContent = rupees(order.items[i].line_total);
+      line.appendChild(l);
+      line.appendChild(r);
+      box.appendChild(line);
+    }
+    var tr = document.createElement('div');
+    tr.className = 'cs-total';
+    var tl = document.createElement('span');
+    tl.textContent = 'Total';
+    var tv = document.createElement('span');
+    tv.textContent = rupees(order.total);
+    tr.appendChild(tl);
+    tr.appendChild(tv);
+    box.appendChild(tr);
+
+    cartbar.classList.add('hidden');
+    document.body.classList.remove('has-cart');
+    cart = {};
+    startPolling(order.token);
+    document.getElementById('order-success').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  document.getElementById('os-again').addEventListener('click', function () { location.reload(); });
+
+  renderCart();
+})();
+`;
+}
+
+/**
  * GET /m/:slug — serves the uploaded free menu.
  * Exported as `hostedMenuPage` so server.js can mount it at the site root
  * (`/m/<slug>`), which is what the generated QR code points to.
@@ -786,6 +1334,85 @@ async function hostedMenuPage(req, res, next) {
     const phoneLink = row.phone
       ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
       : '';
+
+    // ---- Orderable items (only when the owner turned ordering on) ----
+    const menuItems = Number(row.ordering_enabled) ? (await freeQrItems(row.id)).filter((i) => i.available) : [];
+    let orderSectionHtml = '';
+    if (menuItems.length) {
+      const groups = new Map();
+      for (const it of menuItems) {
+        const key = it.category || 'Menu';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(it);
+      }
+      let groupsHtml = '';
+      for (const [cat, list] of groups) {
+        let rowsHtml = '';
+        for (const it of list) {
+          rowsHtml += `<div class="oi" data-id="${it.id}" data-price="${it.price}">
+            <div class="oi-body"><div class="oi-name">${escapeHtml(it.name)}</div></div>
+            <div class="oi-price">${money(it.price)}</div>
+            <div class="oi-step">
+              <button type="button" class="oi-btn" data-act="minus" aria-label="Remove one">−</button>
+              <span class="oi-qty">0</span>
+              <button type="button" class="oi-btn" data-act="plus" aria-label="Add one">+</button>
+            </div>
+          </div>`;
+        }
+        groupsHtml += `<div class="ogroup"><div class="ogroup-title">${escapeHtml(cat)}</div>${rowsHtml}</div>`;
+      }
+
+      orderSectionHtml = `<section class="order-card" id="order-section">
+      <h2 class="sec-title">Order now</h2>
+      <div id="order-live">
+        <p class="order-hint">Table number daal kar order karein — order seedha kitchen me jayega.</p>
+        ${groupsHtml}
+      </div>
+      <div class="order-success hidden" id="order-success">
+        <div class="os-icon">✅</div>
+        <h3>Order placed!</h3>
+        <div class="os-no" id="os-no"></div>
+        <div class="os-status" id="os-status"></div>
+        <div class="os-items" id="os-items"></div>
+        <button class="btn btn-primary btn-block" id="os-again" type="button">Order more</button>
+      </div>
+    </section>
+
+    <div class="cartbar hidden" id="cartbar">
+      <div class="cartbar-info"><span id="cart-qty">0</span> item · <b id="cart-total">₹0</b></div>
+      <button class="btn btn-primary" id="cart-open" type="button">View cart →</button>
+    </div>
+
+    <div class="sheet-wrap hidden" id="order-modal">
+      <div class="sheet" role="dialog" aria-modal="true">
+        <div class="sheet-head">
+          <h3>Confirm order</h3>
+          <button class="icon-x" id="sheet-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div class="field">
+          <label>Table number *</label>
+          <input class="input" id="o-table" placeholder="e.g. 5 ya Takeaway" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Your name</label>
+            <input class="input" id="o-name" placeholder="optional" />
+          </div>
+          <div class="field">
+            <label>Phone</label>
+            <input class="input" id="o-phone" type="tel" placeholder="optional" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <input class="input" id="o-note" placeholder="e.g. Less spicy" />
+        </div>
+        <div class="cart-summary" id="cart-summary"></div>
+        <p class="order-error" id="order-error"></p>
+        <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order →</button>
+      </div>
+    </div>`;
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -848,6 +1475,74 @@ async function hostedMenuPage(req, res, next) {
     .soc:active { transform: scale(.985); }
 
     .foot { text-align: center; margin-top: 34px; font-size: 11px; color: var(--muted-2); }
+
+    /* 2b — ordering */
+    body.has-cart .mwrap { padding-bottom: 120px; }
+    .order-card {
+      margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 22px;
+      padding: 16px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35);
+    }
+    .order-hint { margin: -4px 4px 12px; font-size: 12.5px; color: var(--muted); }
+    .ogroup + .ogroup { margin-top: 14px; }
+    .ogroup-title {
+      font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted-2); margin: 4px 4px 6px;
+    }
+    .oi { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-top: 1px dashed var(--line); }
+    .ogroup .oi:first-of-type { border-top: 0; }
+    .oi-body { flex: 1; min-width: 0; }
+    .oi-name { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+    .oi-price { font-size: 14px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .oi-step {
+      display: flex; align-items: center; gap: 6px; background: var(--primary-50);
+      border: 1px solid var(--primary-100); border-radius: 11px; padding: 3px;
+    }
+    .oi-btn {
+      width: 30px; height: 30px; border: 0; background: #fff; color: var(--primary-700);
+      border-radius: 8px; font-size: 17px; font-weight: 800; cursor: pointer; line-height: 1;
+      box-shadow: var(--shadow-xs);
+    }
+    .oi-btn:active { transform: scale(.94); }
+    .oi-qty { min-width: 20px; text-align: center; font-weight: 800; font-size: 14px; color: var(--primary-700); }
+
+    .cartbar {
+      position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+      width: min(560px, calc(100% - 24px)); z-index: 60;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: #0f172a; color: #fff; border-radius: 16px; padding: 9px 10px 9px 18px;
+      box-shadow: 0 20px 50px -18px rgba(15, 23, 42, .75);
+    }
+    .cartbar-info { font-size: 13.5px; }
+    .cartbar-info b { font-size: 16px; }
+
+    .sheet-wrap {
+      position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, .5);
+      backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center;
+    }
+    .sheet {
+      width: 100%; max-width: 520px; background: #fff; border-radius: 22px 22px 0 0;
+      padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+      max-height: 92vh; overflow: auto;
+    }
+    @media (min-width: 640px) { .sheet-wrap { align-items: center; } .sheet { border-radius: 22px; } }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sheet-head h3 { margin: 0; font-size: 17px; }
+    .icon-x { border: 0; background: transparent; font-size: 18px; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+    .icon-x:hover { background: #f1f5f9; color: var(--ink); }
+    .sheet .field { margin-bottom: 12px; }
+    .sheet .input { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; margin-top: 5px; font: inherit; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cart-summary { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 12px; margin-bottom: 10px; }
+    .cs-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 3px 0; color: var(--ink-2); }
+    .cs-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+    .order-error { color: var(--red); font-size: 12.5px; min-height: 16px; margin: 0 0 8px; }
+
+    .order-success { text-align: center; padding: 6px 4px 4px; }
+    .os-icon { font-size: 34px; }
+    .order-success h3 { margin: 4px 0 2px; font-size: 19px; }
+    .os-no { font-size: 26px; font-weight: 800; color: var(--primary-700); margin: 2px 0 6px; }
+    .os-status { font-size: 13.5px; color: var(--muted); margin: 0 0 14px; }
+    .os-items { text-align: left; border-top: 1px dashed var(--line); padding-top: 10px; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -864,10 +1559,13 @@ async function hostedMenuPage(req, res, next) {
       ${menuHtml}
     </section>
 
+    ${orderSectionHtml}
+
     ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
 
     <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush · Free Digital Menu</div>
   </div>
+  <script>${orderingScript()}</script>
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');

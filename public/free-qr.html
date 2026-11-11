@@ -167,6 +167,16 @@
           <div class="stat-foot" id="s-click-today">0 today</div>
         </div>
         <div class="stat">
+          <div class="stat-label">🧾 Orders today</div>
+          <div class="stat-value" id="s-orders">0</div>
+          <div class="stat-foot">QR se aaye orders</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">💰 Sales today</div>
+          <div class="stat-value" id="s-sales">₹0</div>
+          <div class="stat-foot">cancelled chhod kar</div>
+        </div>
+        <div class="stat">
           <div class="stat-label">📅 Menu live since</div>
           <div class="stat-value" id="s-live" style="font-size:20px">—</div>
           <div class="stat-foot">aapka free QR</div>
@@ -174,6 +184,7 @@
       </div>
 
       <div class="dash-cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
         <div class="dash-card">
           <div class="dash-card-head">
             <h3>Your uploaded menu</h3>
@@ -184,6 +195,26 @@
           </div>
           <div class="menu-preview" id="d-menu-preview"></div>
           <p class="tiny muted" style="margin:10px 0 0">Yeh wahi image hai jo customer QR scan karne par dekhta hai. Replace karte hi turant update ho jayegi.</p>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <h3>🍳 QR ordering</h3>
+            <label style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer">
+              <input type="checkbox" id="d-ordering" style="width:16px;height:16px;accent-color:#ea580c" /> Accept orders
+            </label>
+          </div>
+          <p class="tiny muted" style="margin:0 0 12px">Customer QR scan karke order karega — order seedha kitchen screen par pahunchega.</p>
+
+          <label style="font-size:12.5px;font-weight:700;color:var(--ink-2)">Orderable items</label>
+          <textarea class="input" id="d-items" rows="7" spellcheck="false" style="margin-top:6px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px" placeholder="Chicken Tikka, 299, Starters&#10;Butter Naan, 55, Breads&#10;Masala Chai, 40, Drinks"></textarea>
+          <p class="tiny muted" style="margin:6px 0 12px">Ek line me ek item: <b>Naam, Price, Category</b> (category optional). Menu photo waisi hi rahegi — yeh sirf order list hai.</p>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" id="d-items-save" type="button">💾 Save items</button>
+            <a class="btn btn-outline btn-sm" id="d-kitchen" target="_blank" rel="noopener">🍳 Open kitchen screen</a>
+          </div>
+        </div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:18px">
@@ -398,6 +429,8 @@
     let revision = 0;          // cache-buster for logo/menu previews
     let pendingLogo = null;    // data-URI chosen in the modal
     let pendingMenu = null;    // { data, type } chosen in the modal
+    let currentItems = [];     // orderable items (free_qr_items)
+    let itemsDirty = false;    // true while the owner is typing in the items box
 
     function setToken(t) {
       ownerToken = t || '';
@@ -455,6 +488,72 @@
       const d = new Date(String(value).replace(' ', 'T') + 'Z');
       if (isNaN(d.getTime())) return '—';
       return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    /* --------------------------- orderable items --------------------------- */
+    function rupees(n) {
+      const v = Number(n) || 0;
+      return '₹' + (v % 1 === 0 ? String(v) : v.toFixed(2));
+    }
+
+    // "Chicken Tikka, 299, Starters" -> { name, price, category }
+    // Also accepts tabs / pipes and "Chicken Tikka 299" without a delimiter.
+    function parseItemsText(text) {
+      const out = [];
+      String(text || '').split(/\r?\n/).forEach((line) => {
+        const raw = line.trim();
+        if (!raw) return;
+        const parts = raw.split(/\s*[,\t|]\s*/).filter((p) => p !== '');
+        if (!parts.length) return;
+
+        let priceIdx = -1;
+        for (let i = 1; i < parts.length; i += 1) {
+          if (/^(?:₹|rs\.?|inr)?\s*\d+(?:\.\d+)?$/i.test(parts[i])) { priceIdx = i; break; }
+        }
+
+        let name;
+        let price;
+        let category;
+        if (priceIdx >= 0) {
+          name = parts.slice(0, priceIdx).join(', ');
+          price = Number(String(parts[priceIdx]).replace(/[^\d.]/g, '')) || 0;
+          category = parts.slice(priceIdx + 1).join(', ');
+        } else {
+          const tail = /^(.*?)\s+[₹]?\s*(\d+(?:\.\d+)?)$/.exec(raw);
+          if (tail) {
+            name = tail[1];
+            price = Number(tail[2]) || 0;
+          } else {
+            name = raw;
+            price = 0;
+          }
+          category = '';
+        }
+
+        name = String(name || '').trim();
+        if (!name) return;
+        out.push({
+          name: name.slice(0, 120),
+          price: Math.max(0, Math.min(1000000, price)),
+          category: String(category || '').trim().slice(0, 60),
+          available: true,
+        });
+      });
+      return out;
+    }
+
+    function itemsToText(items) {
+      return (items || []).map((it) => {
+        const bits = [it.name, it.price];
+        if (it.category) bits.push(it.category);
+        return bits.join(', ');
+      }).join('\n');
+    }
+
+    function updateKitchenLink() {
+      if (!current) return;
+      const base = absoluteMenuUrl(current).replace(/\/+$/, '');
+      $('d-kitchen').href = base + '/kitchen#t=' + encodeURIComponent(ownerToken || '');
     }
 
     /* ------------------------------ QR code -------------------------------- */
@@ -534,6 +633,16 @@
       $('s-click-today').textContent = (clickTotal.today || 0) + ' today';
       $('s-live').textContent = fmtDate(current.created_at);
 
+      // Orders that arrived through the QR menu today.
+      const ord = s.orders || { today: 0, sales: 0 };
+      $('s-orders').textContent = ord.today || 0;
+      $('s-sales').textContent = rupees(ord.sales);
+
+      // Ordering card — items list + on/off switch.
+      $('d-ordering').checked = current.ordering_enabled !== false;
+      if (!itemsDirty) $('d-items').value = itemsToText(currentItems);
+      updateKitchenLink();
+
       // Per-network click breakdown
       const nets = [
         { key: 'whatsapp', label: 'WhatsApp', color: '#25d366', on: !!current.whatsapp },
@@ -567,9 +676,11 @@
       $('g-open-menu').href = absoluteMenuUrl(current);
     }
 
-    function showOwner(restaurant, stats) {
+    function showOwner(restaurant, stats, items) {
       current = restaurant;
       currentStats = stats || null;
+      currentItems = Array.isArray(items) ? items : [];
+      itemsDirty = false;
       revision = Date.now();
 
       $('login-card').classList.add('hidden');
@@ -585,6 +696,8 @@
     function showLogin() {
       current = null;
       currentStats = null;
+      currentItems = [];
+      itemsDirty = false;
       $('dashboard').classList.add('hidden');
       $('generator-panel').classList.remove('hidden');
       $('side-panel').classList.remove('hidden');
@@ -668,6 +781,28 @@
       return data;
     }
 
+    // The owner endpoints all return { restaurant, stats, items }.
+    function applyOwnerPayload(data) {
+      if (!data) return;
+      if (data.restaurant) current = data.restaurant;
+      if (data.stats) currentStats = data.stats;
+      if (Array.isArray(data.items)) currentItems = data.items;
+    }
+
+    async function saveItems(payload) {
+      const res = await fetch('/api/public/free-qr/items', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ownerToken,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Items save nahi hue');
+      return data;
+    }
+
     $('m-save').addEventListener('click', async () => {
       const rest = $('m-rest').value.trim();
       if (!rest) { $('m-error').textContent = 'Restaurant ka naam zaroori hai.'; return; }
@@ -691,8 +826,7 @@
       $('m-save').textContent = 'Saving...';
       try {
         const data = await patchOwner(body);
-        current = data.restaurant;
-        currentStats = data.stats || currentStats;
+        applyOwnerPayload(data);
         revision = Date.now();
         renderDashboard();
         closeEdit();
@@ -715,8 +849,7 @@
         const type = /pdf/i.test(file.type) ? 'pdf' : 'image';
         toast('Menu upload ho raha hai...');
         const out = await patchOwner({ menu_data: data, menu_type: type });
-        current = out.restaurant;
-        currentStats = out.stats || currentStats;
+        applyOwnerPayload(out);
         revision = Date.now();
         renderDashboard();
         toast('✅ Naya menu live ho gaya!');
@@ -724,6 +857,52 @@
         toast(err.message, true);
       } finally {
         e.target.value = '';
+      }
+    });
+
+    /* ----------------------------- ordering --------------------------------- */
+    $('d-items').addEventListener('input', () => { itemsDirty = true; });
+
+    $('d-items-save').addEventListener('click', async () => {
+      const items = parseItemsText($('d-items').value);
+      if (!items.length) {
+        toast('Kam se kam ek item likhein: Naam, Price, Category', true);
+        return;
+      }
+      $('d-items-save').disabled = true;
+      $('d-items-save').textContent = 'Saving...';
+      try {
+        const out = await saveItems({ items, ordering_enabled: $('d-ordering').checked });
+        applyOwnerPayload(out);
+        itemsDirty = false;
+        renderDashboard();
+        toast('✅ ' + items.length + ' items live ho gaye!');
+      } catch (err) {
+        toast(err.message, true);
+      } finally {
+        $('d-items-save').disabled = false;
+        $('d-items-save').textContent = '💾 Save items';
+      }
+    });
+
+    $('d-ordering').addEventListener('change', async () => {
+      const want = $('d-ordering').checked;
+      try {
+        const out = await patchOwner({ ordering_enabled: want });
+        applyOwnerPayload(out);
+        renderDashboard();
+        toast(want ? '✅ Online ordering on hai' : '⏸️ Online ordering band hai');
+      } catch (err) {
+        $('d-ordering').checked = !want;
+        toast(err.message, true);
+      }
+    });
+
+    $('d-kitchen').addEventListener('click', () => {
+      if (ownerToken) {
+        updateKitchenLink();
+      } else {
+        toast('Kitchen screen ke liye pehle login karein', true);
       }
     });
 
@@ -820,7 +999,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
         setToken(data.token);
-        showOwner(data.restaurant, data.stats);
+        showOwner(data.restaurant, data.stats, data.items);
         $('l-pass').value = '';
       } catch (err) {
         $('login-error').textContent = err.message;
@@ -877,7 +1056,7 @@
         // The owner just proved the password, so open their dashboard too.
         if (data.token && data.restaurant) {
           setToken(data.token);
-          showOwner(data.restaurant, data.stats);
+          showOwner(data.restaurant, data.stats, data.items);
           toast('🎉 QR ready! Yeh raha aapka dashboard.');
         } else {
           $('qr-container').scrollIntoView({ behavior: 'smooth' });
@@ -903,7 +1082,7 @@
         if (!res.ok) throw new Error('expired');
         const data = await res.json();
         setToken(token);
-        showOwner(data.restaurant, data.stats);
+        showOwner(data.restaurant, data.stats, data.items);
       } catch (_) {
         setToken('');
         showLogin();
