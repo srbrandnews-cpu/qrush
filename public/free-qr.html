@@ -622,7 +622,9 @@
         fallback.textContent = (current.restaurant || 'R').charAt(0).toUpperCase();
       }
 
-      // Per-network click breakdown
+      // Stats
+      const s = currentStats || {};
+      const views = s.views || { total: 0, today: 0, unique: 0 };
       const clicks = s.clicks || {};
       const clickTotal = s.click_total || { total: 0, today: 0 };
       $('s-view-total').textContent = views.total || 0;

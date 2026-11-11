@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const express = require('express');
 const crypto = require('crypto');
@@ -67,10 +67,10 @@ function publicFreeQr(row) {
   };
 }
 
-/** ₹299 / ₹49.50 */
+/** â‚¹299 / â‚¹49.50 */
 function money(n) {
   const v = Number(n) || 0;
-  return '₹' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
+  return 'â‚¹' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
 }
 
 /** Orderable items for one hosted menu. */
@@ -158,7 +158,7 @@ function visitorId(req) {
 }
 
 // One "view" per visitor per 30 minutes (refreshing the page shouldn't inflate
-// the scan count). In-memory only — good enough for a free analytics tile.
+// the scan count). In-memory only â€” good enough for a free analytics tile.
 const viewSeen = new Map();
 const VIEW_WINDOW = 30 * 60 * 1000;
 
@@ -174,7 +174,7 @@ function shouldCountView(id, visitor) {
   return true;
 }
 
-/** Record one analytics event. Never throws — analytics must not break a page. */
+/** Record one analytics event. Never throws â€” analytics must not break a page. */
 async function logFreeQrEvent(id, kind, visitor) {
   try {
     await run('INSERT INTO free_qr_events (free_qr_id, kind, visitor) VALUES (?, ?, ?)', [id, kind, visitor || null]);
@@ -339,7 +339,7 @@ router.get('/menu', async (req, res, next) => {
       restaurant: {
         name: table.restaurant,
         slug: table.slug,
-        currency: table.currency || '₹',
+        currency: table.currency || 'â‚¹',
         gst_percent: table.gst_percent,
         phone: table.phone,
         address: table.address,
@@ -412,7 +412,7 @@ router.get('/orders/:id', async (req, res, next) => {
 /**
  * GET /api/public/tables/:token/orders?phone=...&deviceId=...
  * This guest's open orders on the table. Lets a customer reopen the page
- * later and still track their food — without exposing another guest's bill.
+ * later and still track their food â€” without exposing another guest's bill.
  */
 router.get('/tables/:token/orders', async (req, res, next) => {
   try {
@@ -563,7 +563,7 @@ router.get('/venue/:slug', async (req, res, next) => {
     const eta = queue === 0 ? 0 : Math.max(2, Math.round((queue / Math.max(1, tables)) * prep + prep / 2));
 
     res.json({
-      restaurant: { name: tn.name, slug: tn.slug, phone: tn.phone, address: tn.address, currency: tn.currency || '₹' },
+      restaurant: { name: tn.name, slug: tn.slug, phone: tn.phone, address: tn.address, currency: tn.currency || 'â‚¹' },
       queue,
       tables,
       eta_minutes: eta,
@@ -672,7 +672,7 @@ router.post('/free-qr/login', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/free-qr/me — owner dashboard data from a free-QR token.
+ * GET /api/public/free-qr/me â€” owner dashboard data from a free-QR token.
  */
 router.get('/free-qr/me', async (req, res, next) => {
   try {
@@ -687,7 +687,7 @@ router.get('/free-qr/me', async (req, res, next) => {
 });
 
 /**
- * PATCH /api/public/free-qr/me — owner edits their own hosted page.
+ * PATCH /api/public/free-qr/me â€” owner edits their own hosted page.
  * body: { restaurant, owner_name, phone, logo_url, menu_data, menu_type,
  *         instagram, facebook, whatsapp, website, password }
  * Every field is optional; only what's sent gets updated.
@@ -769,8 +769,8 @@ router.patch('/free-qr/me', async (req, res, next) => {
 });
 
 /**
- * GET  /api/public/free-qr/items — the owner's orderable menu.
- * PUT  /api/public/free-qr/items — replace it (bulk paste from the dashboard).
+ * GET  /api/public/free-qr/items â€” the owner's orderable menu.
+ * PUT  /api/public/free-qr/items â€” replace it (bulk paste from the dashboard).
  *      body: { ordering_enabled, items: [{ name, price, category, available }] }
  */
 router.get('/free-qr/items', async (req, res, next) => {
@@ -832,8 +832,8 @@ router.put('/free-qr/items', async (req, res, next) => {
 });
 
 /**
- * GET   /api/public/free-qr/kitchen/orders — live board for the owner.
- * PATCH /api/public/free-qr/kitchen/orders/:id — advance/cancel an order.
+ * GET   /api/public/free-qr/kitchen/orders â€” live board for the owner.
+ * PATCH /api/public/free-qr/kitchen/orders/:id â€” advance/cancel an order.
  */
 router.get('/free-qr/kitchen/orders', async (req, res, next) => {
   try {
@@ -881,7 +881,7 @@ router.patch('/free-qr/kitchen/orders/:id', async (req, res, next) => {
 
     const wanted = String((req.body || {}).status || '').toLowerCase();
     // Cancel is allowed from any open state; every other move must be the
-    // single legal next step (new → preparing → ready → done).
+    // single legal next step (new â†’ preparing â†’ ready â†’ done).
     const allowed = wanted === 'cancelled'
       ? ['new', 'preparing', 'ready'].includes(order.status)
       : wanted === FREE_QR_NEXT_STATUS[order.status];
@@ -903,7 +903,7 @@ router.patch('/free-qr/kitchen/orders/:id', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/m/:slug/order/:token — customer's own order status.
+ * GET /api/public/m/:slug/order/:token â€” customer's own order status.
  */
 router.get('/m/:slug/order/:token', async (req, res, next) => {
   try {
@@ -924,7 +924,7 @@ router.get('/m/:slug/order/:token', async (req, res, next) => {
 });
 
 /**
- * POST /api/public/m/:slug/order — place an order straight from the QR menu.
+ * POST /api/public/m/:slug/order â€” place an order straight from the QR menu.
  * body: { table, name, phone, note, items: [{ id, qty }] }
  */
 router.post('/m/:slug/order', async (req, res, next) => {
@@ -1007,7 +1007,7 @@ router.post('/m/:slug/order', async (req, res, next) => {
 });
 
 /**
- * GET /m/:slug/logo and /m/:slug/menu — serve the uploaded files.
+ * GET /m/:slug/logo and /m/:slug/menu â€” serve the uploaded files.
  * Stored as data-URIs in the DB, but browsers get a normal, cacheable image
  * URL (and external links simply redirect).
  */
@@ -1043,7 +1043,7 @@ const hostedMenuLogo = freeQrAsset('logo');
 const hostedMenuMenu = freeQrAsset('menu');
 
 /**
- * GET /m/:slug/go/:network — tracked redirect for a social button.
+ * GET /m/:slug/go/:network â€” tracked redirect for a social button.
  * Logs the click, then forwards the visitor to the real destination.
  */
 async function hostedMenuGo(req, res, next) {
@@ -1286,7 +1286,7 @@ function orderingScript() {
 }
 
 /**
- * GET /m/:slug — serves the uploaded free menu.
+ * GET /m/:slug â€” serves the uploaded free menu.
  * Exported as `hostedMenuPage` so server.js can mount it at the site root
  * (`/m/<slug>`), which is what the generated QR code points to.
  */
@@ -1314,7 +1314,7 @@ async function hostedMenuPage(req, res, next) {
     let menuHtml = '';
     if (menuData.startsWith('data:')) {
       if (String(row.menu_type || '') === 'pdf') {
-        menuHtml = `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu" target="_blank" rel="noopener">📄 View Menu (PDF)</a>`;
+        menuHtml = `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu" target="_blank" rel="noopener">ðŸ“„ View Menu (PDF)</a>`;
       } else {
         menuHtml = `<img src="/m/${escapeHtml(row.slug)}/menu" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
       }
@@ -1331,7 +1331,7 @@ async function hostedMenuPage(req, res, next) {
     if (row.website) socials.push(socialBtn('website', 'Website', '#ea580c'));
 
     const phoneLink = row.phone
-      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
+      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">ðŸ“ž ${escapeHtml(prettyPhone(row.phone))}</a>`
       : '';
 
     // ---- Menu: the owner's text menu (converted from the menu card) ----
@@ -1343,15 +1343,24 @@ async function hostedMenuPage(req, res, next) {
     let cardLink = '';
     if (menuData.startsWith('data:')) {
       cardLink = String(row.menu_type || '') === 'pdf'
-        ? `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">📄 Original menu (PDF)</a>`
-        : `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">📷 Menu card photo</a>`;
+        ? `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">ðŸ“„ Original menu (PDF)</a>`
+        : `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">ðŸ“· Menu card photo</a>`;
     } else if (/^https?:\/\//i.test(menuData)) {
-      cardLink = `<a class="menucard-link" href="${escapeHtml(menuData)}" target="_blank" rel="noopener">📷 Menu card</a>`;
+      cardLink = `<a class="menucard-link" href="${escapeHtml(menuData)}" target="_blank" rel="noopener">ðŸ“· Menu card</a>`;
     }
 
     let menuSectionHtml = '';
     let showOrderUi = false;
 
+    // 1) Uploaded menu card is ALWAYS shown first (image/PDF).
+    if (menuData.startsWith('data:') || /^https?:\/\//i.test(menuData)) {
+      menuSectionHtml += `<section class="menu-card">
+        <h2 class="sec-title">Menu card</h2>
+        ${menuHtml}
+      </section>`;
+    }
+
+    // 2) Optional text menu â€” only if the owner converted the card.
     if (textItems.length) {
       const groups = new Map();
       for (const it of textItems) {
@@ -1371,7 +1380,7 @@ async function hostedMenuPage(req, res, next) {
             </div>
             <span class="oi-price">${money(it.price)}</span>
             ${orderingOn ? `<div class="oi-step">
-              <button type="button" class="oi-btn" data-act="minus" aria-label="Remove one">−</button>
+              <button type="button" class="oi-btn" data-act="minus" aria-label="Remove one">âˆ’</button>
               <span class="oi-qty">0</span>
               <button type="button" class="oi-btn" data-act="plus" aria-label="Add one">+</button>
             </div>` : ''}
@@ -1380,13 +1389,12 @@ async function hostedMenuPage(req, res, next) {
         groupsHtml += `<div class="ogroup"><div class="ogroup-title">${escapeHtml(cat)}</div>${rowsHtml}</div>`;
       }
 
-      menuSectionHtml = `<section class="order-card"${orderingOn ? ' id="order-section"' : ''}>
+      menuSectionHtml += `<section class="order-card"${orderingOn ? ' id="order-section"' : ''}>
         <h2 class="sec-title">Menu</h2>
-        ${orderingOn ? '<p class="order-hint">Table number daal kar order karein — order seedha kitchen me jayega.</p>' : ''}
+        ${orderingOn ? '<p class="order-hint">Table number daal kar order karein â€” order seedha kitchen me jayega.</p>' : ''}
         ${groupsHtml}
-        ${cardLink ? `<div class="menucard-wrap">${cardLink}</div>` : ''}
         ${orderingOn ? `<div class="order-success hidden" id="order-success">
-          <div class="os-icon">✅</div>
+          <div class="os-icon">âœ…</div>
           <h3>Order placed!</h3>
           <div class="os-no" id="os-no"></div>
           <div class="os-status" id="os-status"></div>
@@ -1395,15 +1403,15 @@ async function hostedMenuPage(req, res, next) {
         </div>` : ''}
       </section>
       ${orderingOn ? `<div class="cartbar hidden" id="cartbar">
-        <div class="cartbar-info"><span id="cart-qty">0</span> item · <b id="cart-total">₹0</b></div>
-        <button class="btn btn-primary" id="cart-open" type="button">View cart →</button>
+        <div class="cartbar-info"><span id="cart-qty">0</span> item Â· <b id="cart-total">â‚¹0</b></div>
+        <button class="btn btn-primary" id="cart-open" type="button">View cart â†’</button>
       </div>
 
       <div class="sheet-wrap hidden" id="order-modal">
         <div class="sheet" role="dialog" aria-modal="true">
           <div class="sheet-head">
             <h3>Confirm order</h3>
-            <button class="icon-x" id="sheet-close" type="button" aria-label="Close">✕</button>
+            <button class="icon-x" id="sheet-close" type="button" aria-label="Close">âœ•</button>
           </div>
           <div class="field">
             <label>Table number *</label>
@@ -1425,16 +1433,12 @@ async function hostedMenuPage(req, res, next) {
           </div>
           <div class="cart-summary" id="cart-summary"></div>
           <p class="order-error" id="order-error"></p>
-          <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order →</button>
+          <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order â†’</button>
         </div>
       </div>` : ''}`;
       showOrderUi = orderingOn;
-    } else {
-      // No text menu yet — show the uploaded card the old way.
-      menuSectionHtml = `<section class="menu-card">
-        <h2 class="sec-title">Menu</h2>
-        ${menuHtml}
-      </section>`;
+    } else if (!menuData.startsWith('data:') && !/^https?:\/\//i.test(menuData)) {
+      menuSectionHtml = `<section class="menu-card"><h2 class="sec-title">Menu</h2><p class="muted tiny">Koi menu upload nahi hua.</p></section>`;
     }
 
     const html = `<!DOCTYPE html>
@@ -1443,14 +1447,14 @@ async function hostedMenuPage(req, res, next) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ea580c" />
-  <title>${escapeHtml(row.restaurant)} — Menu</title>
+  <title>${escapeHtml(row.restaurant)} â€” Menu</title>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
     body { background: linear-gradient(180deg, #fff7ed 0%, #f6f8fb 340px); margin:0; padding:0; font-family: var(--font); }
     .mwrap { max-width: 620px; margin: 0 auto; padding: 22px 16px 56px; }
 
-    /* 1 — restaurant logo, right at the top */
+    /* 1 â€” restaurant logo, right at the top */
     .mhead { text-align: center; padding: 8px 0 22px; }
     .mlogo {
       display: inline-flex; align-items: center; justify-content: center;
@@ -1472,7 +1476,7 @@ async function hostedMenuPage(req, res, next) {
       border: 1px solid var(--primary-100); text-decoration: none;
     }
 
-    /* 2 — the uploaded menu */
+    /* 2 â€” the uploaded menu */
     .menu-card {
       background: #fff; border: 1px solid var(--line); border-radius: 22px;
       padding: 14px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35); text-align: center;
@@ -1486,7 +1490,7 @@ async function hostedMenuPage(req, res, next) {
     .menu-card .sec-title { padding: 4px 4px 0; }
     .menu-card img { display: block; margin: 0 auto; }
 
-    /* 3 — social links */
+    /* 3 â€” social links */
     .socials { margin-top: 26px; }
     .socials .sec-title { padding: 0 4px; }
     .soc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
@@ -1499,7 +1503,7 @@ async function hostedMenuPage(req, res, next) {
 
     .foot { text-align: center; margin-top: 34px; font-size: 11px; color: var(--muted-2); }
 
-    /* 2b — ordering */
+    /* 2b â€” ordering */
     body.has-cart .mwrap { padding-bottom: 120px; }
     .order-card {
       margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 22px;
@@ -1589,7 +1593,7 @@ async function hostedMenuPage(req, res, next) {
 
     ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
 
-    <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush · Free Digital Menu</div>
+    <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush Â· Free Digital Menu</div>
   </div>
   ${showOrderUi ? `<script>${orderingScript()}</script>` : ''}
 </body>
