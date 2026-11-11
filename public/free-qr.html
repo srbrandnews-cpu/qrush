@@ -622,9 +622,7 @@
         fallback.textContent = (current.restaurant || 'R').charAt(0).toUpperCase();
       }
 
-      // Stats
-      const s = currentStats || {};
-      const views = s.views || { total: 0, today: 0, unique: 0 };
+      // Per-network click breakdown
       const clicks = s.clicks || {};
       const clickTotal = s.click_total || { total: 0, today: 0 };
       $('s-view-total').textContent = views.total || 0;
@@ -638,11 +636,6 @@
       const ord = s.orders || { today: 0, sales: 0 };
       $('s-orders').textContent = ord.today || 0;
       $('s-sales').textContent = rupees(ord.sales);
-
-      // Ordering card — items list + on/off switch.
-      $('d-ordering').checked = current.ordering_enabled !== false;
-      if (!itemsDirty) $('d-items').value = itemsToText(currentItems);
-      updateKitchenLink();
 
       // Per-network click breakdown
       const nets = [
@@ -929,20 +922,14 @@
         const parsed = parseOcrText(rawText);
 
         if (parsed.length) {
-          const formattedText = itemsToText(parsed);
-          $('d-items').value = formattedText;
-          itemsDirty = false;
-
-          const out = await saveItems({ items: parsed, ordering_enabled: $('d-ordering').checked });
+          const out = await saveItems({ items: parsed });
           applyOwnerPayload(out);
           renderDashboard();
 
           if (statusEl) statusEl.textContent = '✅ Success! ' + parsed.length + ' items photo se text menu me convert ho gaye!';
           toast('✨ Menu photo se ' + parsed.length + ' items text me convert ho gaye!');
         } else if (rawText.trim()) {
-          $('d-items').value = rawText;
-          itemsDirty = true;
-          if (statusEl) statusEl.textContent = 'ℹ️ Text nikala gaya hai. Standard format (Naam, Price) me check karein.';
+          if (statusEl) statusEl.textContent = 'ℹ️ Text nikala gaya hai lekin items nahi pehchane. Image clear upload karein.';
         } else {
           if (statusEl) statusEl.textContent = '⚠️ Image me text nahi mila. Clear image upload karein.';
         }
@@ -958,52 +945,6 @@
         runMenuOcr(withRev(current.menu_url));
       } else {
         toast('Pehle menu image upload karein', true);
-      }
-    });
-
-    /* ----------------------------- ordering --------------------------------- */
-    $('d-items').addEventListener('input', () => { itemsDirty = true; });
-
-    $('d-items-save').addEventListener('click', async () => {
-      const items = parseItemsText($('d-items').value);
-      if (!items.length) {
-        toast('Kam se kam ek item likhein: Naam, Price, Category', true);
-        return;
-      }
-      $('d-items-save').disabled = true;
-      $('d-items-save').textContent = 'Saving...';
-      try {
-        const out = await saveItems({ items, ordering_enabled: $('d-ordering').checked });
-        applyOwnerPayload(out);
-        itemsDirty = false;
-        renderDashboard();
-        toast('✅ ' + items.length + ' items live ho gaye!');
-      } catch (err) {
-        toast(err.message, true);
-      } finally {
-        $('d-items-save').disabled = false;
-        $('d-items-save').textContent = '💾 Save items';
-      }
-    });
-
-    $('d-ordering').addEventListener('change', async () => {
-      const want = $('d-ordering').checked;
-      try {
-        const out = await patchOwner({ ordering_enabled: want });
-        applyOwnerPayload(out);
-        renderDashboard();
-        toast(want ? '✅ Online ordering on hai' : '⏸️ Online ordering band hai');
-      } catch (err) {
-        $('d-ordering').checked = !want;
-        toast(err.message, true);
-      }
-    });
-
-    $('d-kitchen').addEventListener('click', () => {
-      if (ownerToken) {
-        updateKitchenLink();
-      } else {
-        toast('Kitchen screen ke liye pehle login karein', true);
       }
     });
 
