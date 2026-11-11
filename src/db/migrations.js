@@ -114,6 +114,27 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    // v2.4 — free QR analytics: menu page visits + social link clicks.
+    // kind = 'view' | 'whatsapp' | 'instagram' | 'facebook' | 'website'
+    name: '007-free-qr-events',
+    async up() {
+      if (await tableExists('free_qr_events')) return;
+      const created = dialect() === 'postgres'
+        ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+        : `datetime('now')`;
+      await exec(`
+        CREATE TABLE IF NOT EXISTS free_qr_events (
+          id         ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+          free_qr_id INTEGER NOT NULL,
+          kind       TEXT    NOT NULL,
+          visitor    TEXT,
+          created_at TEXT    NOT NULL DEFAULT (${created})
+        )
+      `);
+      await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_events ON free_qr_events(free_qr_id, kind)');
+    },
+  },
 ];
 
 /**

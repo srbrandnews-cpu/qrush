@@ -37,30 +37,87 @@
     .side .panel { padding: 22px; }
     .side h3 { font-size: 16px; margin: 0 0 4px; }
     .side .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.55; }
-
-    .owner-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .owner-logo {
-      width: 54px; height: 54px; border-radius: 14px; object-fit: contain;
-      background: #fff; border: 1px solid var(--line); padding: 4px; flex: none;
-    }
-    .owner-fallback {
-      width: 54px; height: 54px; border-radius: 14px; flex: none;
-      display: grid; place-items: center; font-size: 22px; font-weight: 800; color: #fff;
-      background: linear-gradient(135deg, #ea580c, #f97316);
-    }
-    .owner-name { font-weight: 800; font-size: 15.5px; line-height: 1.25; }
-    .owner-phone { font-size: 12.5px; color: var(--muted); }
-    #owner-qr { display: flex; justify-content: center; margin: 4px auto 16px; }
-    #owner-qr img, #owner-qr canvas { border-radius: 10px; background: #fff; display: block; }
-    .owner-actions { display: flex; flex-direction: column; gap: 8px; }
     .login-error { color: var(--red); font-size: 12.5px; margin: 0 0 10px; min-height: 16px; }
     .divider-or { display: flex; align-items: center; gap: 10px; color: var(--muted-2); font-size: 11.5px; margin: 18px 0 14px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
     .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    /* ------------------------------- dashboard ------------------------------ */
+    .dash { grid-column: 1 / -1; padding: 26px; }
+    .dash-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .dash-id { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .dash-logo, .dash-logo-fallback {
+      width: 68px; height: 68px; border-radius: 18px; flex: none;
+    }
+    .dash-logo { object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 5px; }
+    .dash-logo-fallback {
+      display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff;
+      background: linear-gradient(135deg, #ea580c, #f97316);
+    }
+    .dash-id h2 { margin: 0; font-size: 22px; letter-spacing: -.025em; line-height: 1.15; }
+    .dash-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin: 22px 0; }
+    .stat { background: linear-gradient(180deg, #fff, #fffaf6); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+    .stat-label { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+    .stat-value { font-size: 30px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); margin: 3px 0 0; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .stat-foot { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+    .dash-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
+    .dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .dash-card-head h3 { margin: 0; font-size: 15px; }
+    .menu-preview {
+      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fbfcfe;
+      padding: 12px; min-height: 150px; max-height: 560px; overflow: auto;
+      display: flex; align-items: flex-start; justify-content: center;
+    }
+    .menu-preview img { max-width: 100%; margin: 0 auto; border-radius: 10px; display: block; }
+    .menu-preview iframe { width: 100%; height: 560px; border: 0; border-radius: 10px; background: #fff; }
+    #d-qr { display: flex; justify-content: center; margin-bottom: 14px; }
+    #d-qr img, #d-qr canvas { display: block; border-radius: 10px; background: #fff; }
+    .owner-actions { display: flex; flex-direction: column; gap: 8px; }
+
+    .click-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+    .click-row { display: flex; align-items: center; gap: 10px; }
+    .click-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .click-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .click-count { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px; }
+    .click-today { font-size: 11px; color: var(--muted); min-width: 46px; text-align: right; }
+    .click-row.off { opacity: .45; }
+
+    /* --------------------------------- modal -------------------------------- */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 110; background: rgba(15, 23, 42, .45);
+      backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center;
+      padding: 26px 14px; overflow: auto;
+    }
+    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 620px; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .6); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .modal-head h3 { margin: 0; font-size: 18px; }
+    .icon-btn { border: 0; background: transparent; font-size: 20px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 8px; }
+    .icon-btn:hover { background: #f1f5f9; color: var(--ink); }
+    .modal-body { padding: 20px 22px; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); position: sticky; bottom: 0; background: #fff; border-radius: 0 0 20px 20px; }
+    .edit-asset { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
+    .edit-logo { width: 64px; height: 64px; border-radius: 14px; object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 4px; flex: none; }
+    .edit-menu-thumb { width: 64px; height: 64px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; }
+    .edit-menu-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+      background: #0f172a; color: #fff; padding: 11px 18px; border-radius: 12px;
+      font-size: 13.5px; font-weight: 600; box-shadow: 0 16px 40px -16px rgba(15, 23, 42, .7);
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #toast.err { background: #b91c1c; }
 
     @media (max-width: 980px) {
       .gen-layout { grid-template-columns: 1fr; }
       .side { position: static; }
       .row { grid-template-columns: 1fr; }
+      .dash-cols { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -76,8 +133,87 @@
   </header>
 
   <div class="gen-layout">
+    <!-- --------------------------- Owner dashboard --------------------------- -->
+    <section class="panel dash hidden" id="dashboard">
+      <div class="dash-head">
+        <div class="dash-id">
+          <img class="dash-logo hidden" id="d-logo" alt="Restaurant logo" />
+          <div class="dash-logo-fallback" id="d-fallback">R</div>
+          <div style="min-width:0">
+            <h2 id="d-name">My Restaurant</h2>
+            <div class="dash-sub" id="d-sub"></div>
+          </div>
+        </div>
+        <div class="dash-actions">
+          <button class="btn btn-primary btn-sm" id="d-edit" type="button">✏️ Edit my page</button>
+          <button class="btn btn-ghost btn-sm" id="d-logout" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-label">👀 Total scans</div>
+          <div class="stat-value" id="s-view-total">0</div>
+          <div class="stat-foot" id="s-view-today">0 today</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">🧑 Unique visitors</div>
+          <div class="stat-value" id="s-view-unique">0</div>
+          <div class="stat-foot">all time</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">🔗 Social clicks</div>
+          <div class="stat-value" id="s-click-total">0</div>
+          <div class="stat-foot" id="s-click-today">0 today</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">📅 Menu live since</div>
+          <div class="stat-value" id="s-live" style="font-size:20px">—</div>
+          <div class="stat-foot">aapka free QR</div>
+        </div>
+      </div>
+
+      <div class="dash-cols">
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <h3>Your uploaded menu</h3>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer">
+              🔄 Replace menu
+              <input type="file" id="d-menu-file" accept="image/*,application/pdf" style="display:none" />
+            </label>
+          </div>
+          <div class="menu-preview" id="d-menu-preview"></div>
+          <p class="tiny muted" style="margin:10px 0 0">Yeh wahi image hai jo customer QR scan karne par dekhta hai. Replace karte hi turant update ho jayegi.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Your QR code</h3>
+              <span class="badge" style="background:var(--primary-50);color:var(--primary-700)">Printable</span>
+            </div>
+            <div id="d-qr"></div>
+            <div class="owner-actions">
+              <a class="btn btn-primary btn-block" id="d-open" target="_blank" rel="noopener">Open my menu →</a>
+              <button class="btn btn-outline btn-block" id="d-copy" type="button">📋 Copy menu link</button>
+              <button class="btn btn-outline btn-block" id="d-download" type="button">⬇️ Download QR (PNG)</button>
+              <button class="btn btn-ghost btn-block" id="d-print" type="button">🖨️ Print QR</button>
+            </div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Social link clicks</h3>
+            </div>
+            <ul class="click-list" id="d-click-list"></ul>
+            <p class="tiny muted" style="margin:12px 0 0">Har button par kitne logon ne click kiya.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ------------------------------ Generator ------------------------------ -->
-    <div class="panel">
+    <div class="panel" id="generator-panel">
       <h2 style="margin:0">🍽️ Free Digital QR Menu Generator</h2>
       <p class="muted" style="margin-top:6px;margin-bottom:24px">Apni restaurant details bhariye aur instant free QR code banayein.</p>
 
@@ -150,8 +286,7 @@
     </div>
 
     <!-- --------------------------- Owner side panel --------------------------- -->
-    <aside class="side">
-      <!-- Login -->
+    <aside class="side" id="side-panel">
       <div class="panel" id="login-card">
         <h3>Restaurant Owner Login</h3>
         <p class="hint">Pehle QR banaya tha? Apna contact number aur password daal kar apni restaurant dekhein.</p>
@@ -171,32 +306,98 @@
         <p class="tiny muted" style="margin:0">Naya restaurant? Left side form bhar kar free QR banayein.</p>
         <p class="tiny muted" style="margin:10px 0 0">Restaurant staff? <a href="/login" style="color:var(--primary-700);font-weight:700">Staff login →</a></p>
       </div>
-
-      <!-- Logged-in owner dashboard -->
-      <div class="panel hidden" id="owner-card">
-        <div class="owner-head">
-          <img class="owner-logo hidden" id="ow-logo" alt="Restaurant logo" />
-          <div class="owner-fallback" id="ow-fallback">R</div>
-          <div>
-            <div class="owner-name" id="ow-name">My Restaurant</div>
-            <div class="owner-phone" id="ow-phone"></div>
-          </div>
-        </div>
-        <div id="owner-qr"></div>
-        <div class="owner-actions">
-          <a class="btn btn-primary btn-block" id="ow-open" target="_blank" rel="noopener">Open my menu →</a>
-          <button class="btn btn-outline btn-block" id="ow-copy" type="button">📋 Copy menu link</button>
-          <button class="btn btn-ghost btn-block" id="ow-logout" type="button">Logout</button>
-        </div>
-      </div>
     </aside>
   </div>
+
+  <!-- ------------------------------ Edit modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="edit-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <div class="modal-head">
+        <h3 id="edit-title">✏️ Edit your page</h3>
+        <button class="icon-btn" id="m-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Restaurant name</label>
+          <input class="input" id="m-rest" placeholder="Restaurant name" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Owner name</label>
+            <input class="input" id="m-owner" placeholder="Owner name" />
+          </div>
+          <div class="field">
+            <label>Contact number</label>
+            <input class="input" id="m-phone" type="tel" placeholder="9876543210" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Restaurant logo</label>
+          <div class="edit-asset">
+            <img class="edit-logo" id="m-logo" alt="Logo preview" />
+            <div>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                🔄 Change logo
+                <input type="file" id="m-logo-file" accept="image/*" style="display:none" />
+              </label>
+              <p class="tiny muted" style="margin:6px 0 0">PNG / JPG, max 5MB.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Menu photo / PDF</label>
+          <div class="edit-asset">
+            <div class="edit-menu-thumb" id="m-menu-thumb"></div>
+            <div>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                🔄 Change menu
+                <input type="file" id="m-menu-file" accept="image/*,application/pdf" style="display:none" />
+              </label>
+              <p class="tiny muted" style="margin:6px 0 0">Naya menu upload karte hi customer ko dikhega.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Social media links</label>
+          <div class="row">
+            <input class="input" id="m-whatsapp" placeholder="WhatsApp number" />
+            <input class="input" id="m-instagram" placeholder="Instagram URL" />
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input class="input" id="m-facebook" placeholder="Facebook URL" />
+            <input class="input" id="m-website" placeholder="Website URL" />
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label>New password <span class="tiny muted">(optional)</span></label>
+          <input class="input" id="m-pass" type="password" placeholder="Khali chhodein to purana hi rahega" autocomplete="new-password" />
+        </div>
+
+        <p class="login-error" id="m-error" style="margin-top:12px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="m-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="m-save" type="button">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const TOKEN_KEY = 'fq_token';
     let ownerToken = '';
+    let current = null;        // publicFreeQr() payload
+    let currentStats = null;   // stats payload
+    let revision = 0;          // cache-buster for logo/menu previews
+    let pendingLogo = null;    // data-URI chosen in the modal
+    let pendingMenu = null;    // { data, type } chosen in the modal
 
     function setToken(t) {
       ownerToken = t || '';
@@ -210,28 +411,17 @@
       try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
     }
 
-    /* ---------------------------- file uploads ---------------------------- */
-    $('g-logo-file').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
-      const reader = new FileReader();
-      reader.onload = (ev) => { $('g-logo').value = ev.target.result; };
-      reader.readAsDataURL(file);
-    });
+    function toast(msg, isError) {
+      const el = $('toast');
+      el.textContent = msg;
+      el.className = 'show' + (isError ? ' err' : '');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => { el.className = ''; }, 2600);
+    }
 
-    $('g-menu-file').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
-      const reader = new FileReader();
-      reader.onload = (ev) => { $('g-menu').value = ev.target.result; };
-      reader.readAsDataURL(file);
-    });
-
-    /* --------------------------- owner dashboard --------------------------- */
+    /* ---------------------------- small helpers ---------------------------- */
     function absoluteMenuUrl(restaurant) {
-      const rel = restaurant.url || ('/m/' + restaurant.slug);
+      const rel = (restaurant && (restaurant.url || ('/m/' + restaurant.slug))) || '/';
       return rel.startsWith('http') ? rel : location.origin + rel;
     }
 
@@ -242,68 +432,375 @@
       return String(value || '');
     }
 
-    function showOwner(restaurant) {
-      $('login-card').classList.add('hidden');
-      $('owner-card').classList.remove('hidden');
+    function withRev(url) {
+      if (!url || !String(url).startsWith('/')) return url || '';
+      return url + (String(url).includes('?') ? '&' : '?') + 'v=' + revision;
+    }
 
-      $('ow-name').textContent = restaurant.restaurant || 'My Restaurant';
-      $('ow-phone').textContent = restaurant.phone ? '📞 ' + prettyPhone(restaurant.phone) : '';
+    function isPdf() {
+      return !!(current && (current.menu_type === 'pdf' || /\.pdf$/i.test(current.menu_url || '')));
+    }
 
-      const logo = $('ow-logo');
-      const fallback = $('ow-fallback');
-      if (restaurant.logo_url) {
-        logo.src = restaurant.logo_url;
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    function fmtDate(value) {
+      if (!value) return '—';
+      const d = new Date(String(value).replace(' ', 'T') + 'Z');
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    /* ------------------------------ QR code -------------------------------- */
+    function makeQr(container, text, size) {
+      container.innerHTML = '';
+      new QRCode(container, {
+        text,
+        width: size,
+        height: size,
+        colorDark: '#0b1220',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+      return container.querySelector('canvas');
+    }
+
+    function qrDataUrl(size) {
+      const tmp = document.createElement('div');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '-9999px';
+      tmp.style.top = '0';
+      document.body.appendChild(tmp);
+      let url = '';
+      try {
+        const canvas = makeQr(tmp, absoluteMenuUrl(current), size);
+        if (canvas) {
+          const pad = Math.round(size * 0.07);
+          const out = document.createElement('canvas');
+          out.width = size + pad * 2;
+          out.height = size + pad * 2;
+          const ctx = out.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, out.width, out.height);
+          ctx.drawImage(canvas, pad, pad);
+          url = out.toDataURL('image/png');
+        } else {
+          const img = tmp.querySelector('img');
+          url = img ? img.src : '';
+        }
+      } finally {
+        document.body.removeChild(tmp);
+      }
+      return url;
+    }
+
+    /* ---------------------------- dashboard render -------------------------- */
+    function renderDashboard() {
+      if (!current) return;
+
+      $('d-name').textContent = current.restaurant || 'My Restaurant';
+      const bits = [];
+      if (current.owner_name) bits.push('By ' + current.owner_name);
+      if (current.phone) bits.push('📞 ' + prettyPhone(current.phone));
+      $('d-sub').textContent = bits.join(' · ');
+
+      const logo = $('d-logo');
+      const fallback = $('d-fallback');
+      if (current.logo_url) {
+        logo.src = withRev(current.logo_url);
         logo.classList.remove('hidden');
         fallback.classList.add('hidden');
       } else {
         logo.classList.add('hidden');
         fallback.classList.remove('hidden');
-        fallback.textContent = (restaurant.restaurant || 'R').charAt(0).toUpperCase();
+        fallback.textContent = (current.restaurant || 'R').charAt(0).toUpperCase();
       }
 
-      $('ow-open').href = absoluteMenuUrl(restaurant);
-      $('g-open-menu').href = absoluteMenuUrl(restaurant);
+      // Stats
+      const s = currentStats || {};
+      const views = s.views || { total: 0, today: 0, unique: 0 };
+      const clicks = s.clicks || {};
+      const clickTotal = s.click_total || { total: 0, today: 0 };
+      $('s-view-total').textContent = views.total || 0;
+      $('s-view-today').textContent = (views.today || 0) + ' today';
+      $('s-view-unique').textContent = views.unique || 0;
+      $('s-click-total').textContent = clickTotal.total || 0;
+      $('s-click-today').textContent = (clickTotal.today || 0) + ' today';
+      $('s-live').textContent = fmtDate(current.created_at);
 
-      const box = $('owner-qr');
-      box.innerHTML = '';
-      new QRCode(box, {
-        text: absoluteMenuUrl(restaurant),
-        width: 160,
-        height: 160,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H,
-      });
+      // Per-network click breakdown
+      const nets = [
+        { key: 'whatsapp', label: 'WhatsApp', color: '#25d366', on: !!current.whatsapp },
+        { key: 'instagram', label: 'Instagram', color: '#dc2743', on: !!current.instagram },
+        { key: 'facebook', label: 'Facebook', color: '#1877f2', on: !!current.facebook },
+        { key: 'website', label: 'Website', color: '#ea580c', on: !!current.website },
+      ];
+      $('d-click-list').innerHTML = nets.map((n) => {
+        const c = clicks[n.key] || { total: 0, today: 0 };
+        return '<li class="click-row' + (n.on ? '' : ' off') + '">' +
+          '<span class="click-dot" style="background:' + n.color + '"></span>' +
+          '<span class="click-name">' + n.label + (n.on ? '' : ' <span class="tiny">(not set)</span>') + '</span>' +
+          '<span class="click-count">' + (c.total || 0) + '</span>' +
+          '<span class="click-today">' + (c.today || 0) + ' today</span>' +
+          '</li>';
+      }).join('');
+
+      // Menu preview
+      const preview = $('d-menu-preview');
+      if (!current.menu_url) {
+        preview.innerHTML = '<p class="muted tiny">Koi menu upload nahi hua.</p>';
+      } else if (isPdf()) {
+        preview.innerHTML = '<iframe src="' + withRev(current.menu_url) + '" title="Menu PDF"></iframe>';
+      } else {
+        preview.innerHTML = '<img src="' + withRev(current.menu_url) + '" alt="Uploaded menu" />';
+      }
+
+      // QR
+      $('d-open').href = absoluteMenuUrl(current);
+      makeQr($('d-qr'), absoluteMenuUrl(current), 200);
+      $('g-open-menu').href = absoluteMenuUrl(current);
+    }
+
+    function showOwner(restaurant, stats) {
+      current = restaurant;
+      currentStats = stats || null;
+      revision = Date.now();
+
+      $('login-card').classList.add('hidden');
+      $('side-panel').classList.add('hidden');
+      $('generator-panel').classList.add('hidden');
+      $('dashboard').classList.remove('hidden');
+      $('jump-login').classList.add('hidden');
+
+      renderDashboard();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function showLogin() {
-      $('owner-card').classList.add('hidden');
+      current = null;
+      currentStats = null;
+      $('dashboard').classList.add('hidden');
+      $('generator-panel').classList.remove('hidden');
+      $('side-panel').classList.remove('hidden');
       $('login-card').classList.remove('hidden');
+      $('jump-login').classList.remove('hidden');
     }
 
-    $('ow-copy').addEventListener('click', async () => {
-      const link = $('ow-open').href;
+    /* ------------------------------- edit modal ----------------------------- */
+    function openEdit() {
+      if (!current) return;
+      pendingLogo = null;
+      pendingMenu = null;
+      $('m-error').textContent = '';
+      $('m-pass').value = '';
+
+      $('m-rest').value = current.restaurant || '';
+      $('m-owner').value = current.owner_name || '';
+      $('m-phone').value = current.phone || '';
+      $('m-whatsapp').value = current.whatsapp || '';
+      $('m-instagram').value = current.instagram || '';
+      $('m-facebook').value = current.facebook || '';
+      $('m-website').value = current.website || '';
+
+      $('m-logo').src = current.logo_url ? withRev(current.logo_url) : '';
+      $('m-logo').style.visibility = current.logo_url ? 'visible' : 'hidden';
+
+      const thumb = $('m-menu-thumb');
+      if (!current.menu_url) thumb.innerHTML = '<span class="tiny muted">No file</span>';
+      else if (isPdf()) thumb.innerHTML = '<span style="font-size:22px">📄</span>';
+      else thumb.innerHTML = '<img src="' + withRev(current.menu_url) + '" alt="Menu" />';
+
+      $('edit-modal').classList.remove('hidden');
+      setTimeout(() => $('m-rest').focus(), 60);
+    }
+
+    function closeEdit() {
+      $('edit-modal').classList.add('hidden');
+    }
+
+    $('d-edit').addEventListener('click', openEdit);
+    $('m-close').addEventListener('click', closeEdit);
+    $('m-cancel').addEventListener('click', closeEdit);
+    $('edit-modal').addEventListener('click', (e) => {
+      if (e.target === $('edit-modal')) closeEdit();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('edit-modal').classList.contains('hidden')) closeEdit();
+    });
+
+    $('m-logo-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); return; }
+      pendingLogo = await readFileAsDataUrl(file);
+      $('m-logo').src = pendingLogo;
+      $('m-logo').style.visibility = 'visible';
+    });
+
+    $('m-menu-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); return; }
+      const data = await readFileAsDataUrl(file);
+      pendingMenu = { data, type: /pdf/i.test(file.type) ? 'pdf' : 'image' };
+      $('m-menu-thumb').innerHTML = pendingMenu.type === 'pdf'
+        ? '<span style="font-size:22px">📄</span>'
+        : '<img src="' + data + '" alt="Menu" />';
+    });
+
+    async function patchOwner(body) {
+      const res = await fetch('/api/public/free-qr/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ownerToken,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Save nahi hua');
+      return data;
+    }
+
+    $('m-save').addEventListener('click', async () => {
+      const rest = $('m-rest').value.trim();
+      if (!rest) { $('m-error').textContent = 'Restaurant ka naam zaroori hai.'; return; }
+
+      const body = {
+        restaurant: rest,
+        owner_name: $('m-owner').value.trim(),
+        phone: $('m-phone').value.trim(),
+        whatsapp: $('m-whatsapp').value.trim(),
+        instagram: $('m-instagram').value.trim(),
+        facebook: $('m-facebook').value.trim(),
+        website: $('m-website').value.trim(),
+      };
+      if (pendingLogo) body.logo_url = pendingLogo;
+      if (pendingMenu) { body.menu_data = pendingMenu.data; body.menu_type = pendingMenu.type; }
+      const pw = $('m-pass').value;
+      if (pw) body.password = pw;
+
+      $('m-error').textContent = '';
+      $('m-save').disabled = true;
+      $('m-save').textContent = 'Saving...';
+      try {
+        const data = await patchOwner(body);
+        current = data.restaurant;
+        currentStats = data.stats || currentStats;
+        revision = Date.now();
+        renderDashboard();
+        closeEdit();
+        toast('✅ Page update ho gaya!');
+      } catch (err) {
+        $('m-error').textContent = err.message;
+      } finally {
+        $('m-save').disabled = false;
+        $('m-save').textContent = 'Save changes';
+      }
+    });
+
+    // One-click menu replace straight from the dashboard.
+    $('d-menu-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); e.target.value = ''; return; }
+      try {
+        const data = await readFileAsDataUrl(file);
+        const type = /pdf/i.test(file.type) ? 'pdf' : 'image';
+        toast('Menu upload ho raha hai...');
+        const out = await patchOwner({ menu_data: data, menu_type: type });
+        current = out.restaurant;
+        currentStats = out.stats || currentStats;
+        revision = Date.now();
+        renderDashboard();
+        toast('✅ Naya menu live ho gaya!');
+      } catch (err) {
+        toast(err.message, true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    /* ------------------------------- actions -------------------------------- */
+    $('d-copy').addEventListener('click', async () => {
+      const link = absoluteMenuUrl(current);
       try {
         await navigator.clipboard.writeText(link);
-        $('ow-copy').textContent = '✅ Link copied!';
-        setTimeout(() => { $('ow-copy').textContent = '📋 Copy menu link'; }, 1800);
+        $('d-copy').textContent = '✅ Link copied!';
+        setTimeout(() => { $('d-copy').textContent = '📋 Copy menu link'; }, 1800);
       } catch (_) {
         window.prompt('Copy this link:', link);
       }
     });
 
-    $('ow-logout').addEventListener('click', () => {
+    $('d-download').addEventListener('click', () => {
+      const url = qrDataUrl(720);
+      if (!url) { toast('QR banane mein problem hui', true); return; }
+      const a = document.createElement('a');
+      const name = (current.restaurant || 'menu').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      a.download = name + '-qr.png';
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast('⬇️ QR download ho gaya');
+    });
+
+    $('d-print').addEventListener('click', () => {
+      const url = qrDataUrl(720);
+      if (!url) { toast('QR banane mein problem hui', true); return; }
+      const name = current.restaurant || 'My Restaurant';
+      const w = window.open('', '_blank', 'width=520,height=720');
+      if (!w) { toast('Popup blocked — download QR use karein', true); return; }
+      w.document.write(
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR — ' + name.replace(/[<>&]/g, '') + '</title>' +
+        '<style>body{font-family:Arial,sans-serif;text-align:center;padding:34px;margin:0}</style></head>' +
+        '<body onload="window.focus();window.print()">' +
+        '<h2 style="margin:0 0 4px">' + name.replace(/[<>&]/g, '') + '</h2>' +
+        '<p style="color:#64748b;margin:0 0 18px">Scan to view the menu</p>' +
+        '<img src="' + url + '" style="width:360px;height:360px" />' +
+        '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Powered by QRush · Free Digital Menu</p>' +
+        '</body></html>'
+      );
+      w.document.close();
+    });
+
+    $('d-logout').addEventListener('click', () => {
       setToken('');
       showLogin();
+      $('l-pass').value = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     $('jump-login').addEventListener('click', () => {
-      showLogin();
       $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => $('l-phone').focus(), 350);
     });
 
-    /* -------------------------------- login -------------------------------- */
+    /* ---------------------------- generator files --------------------------- */
+    $('g-logo-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
+      $('g-logo').value = await readFileAsDataUrl(file);
+    });
+
+    let generatorMenuType = 'image';
+    $('g-menu-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
+      generatorMenuType = /pdf/i.test(file.type) ? 'pdf' : 'image';
+      $('g-menu').value = await readFileAsDataUrl(file);
+    });
+
+    /* -------------------------------- login --------------------------------- */
     $('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const phone = $('l-phone').value.trim();
@@ -323,7 +820,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
         setToken(data.token);
-        showOwner(data.restaurant);
+        showOwner(data.restaurant, data.stats);
         $('l-pass').value = '';
       } catch (err) {
         $('login-error').textContent = err.message;
@@ -333,7 +830,7 @@
       }
     });
 
-    /* ------------------------------ generate ------------------------------- */
+    /* ------------------------------- generate -------------------------------- */
     $('g-gen').addEventListener('click', async () => {
       const rest = $('g-rest').value.trim();
       const owner = $('g-owner').value.trim();
@@ -361,7 +858,7 @@
             password: pass,
             logo_url: logo || null,
             menu_data: menu,
-            menu_type: 'image',
+            menu_type: generatorMenuType,
             whatsapp: $('g-whatsapp').value.trim() || null,
             instagram: $('g-instagram').value.trim() || null,
             facebook: $('g-facebook').value.trim() || null,
@@ -372,25 +869,18 @@
         if (!res.ok) throw new Error(data.error || 'Failed');
 
         $('qr-code').innerHTML = '';
-        $('qr-subtitle').textContent = `${rest} • Owner: ${owner}`;
-
-        new QRCode($('qr-code'), {
-          text: data.url,
-          width: 220,
-          height: 220,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.H
-        });
-
+        $('qr-subtitle').textContent = rest + ' • Owner: ' + owner;
+        makeQr($('qr-code'), data.url, 220);
         $('g-open-menu').classList.remove('hidden');
         $('qr-container').classList.remove('hidden');
-        $('qr-container').scrollIntoView({ behavior: 'smooth' });
 
         // The owner just proved the password, so open their dashboard too.
         if (data.token && data.restaurant) {
           setToken(data.token);
-          showOwner(data.restaurant);
+          showOwner(data.restaurant, data.stats);
+          toast('🎉 QR ready! Yeh raha aapka dashboard.');
+        } else {
+          $('qr-container').scrollIntoView({ behavior: 'smooth' });
         }
       } catch (err) {
         alert('Error: ' + err.message);
@@ -400,9 +890,7 @@
       }
     });
 
-    $('g-print').addEventListener('click', () => {
-      window.print();
-    });
+    $('g-print').addEventListener('click', () => window.print());
 
     /* --------------------- restore a saved owner session -------------------- */
     (async function restore() {
@@ -415,7 +903,7 @@
         if (!res.ok) throw new Error('expired');
         const data = await res.json();
         setToken(token);
-        showOwner(data.restaurant);
+        showOwner(data.restaurant, data.stats);
       } catch (_) {
         setToken('');
         showLogin();

@@ -41,6 +41,9 @@ app.use('/api/public', publicRouter);
 // Public hosted free-menu page. The QR code points at /m/<slug>, so this has
 // to live at the site root (not under /api/public).
 app.get('/m/:slug', publicRouter.hostedMenuPage);
+app.get('/m/:slug/logo', publicRouter.hostedMenuLogo);
+app.get('/m/:slug/menu', publicRouter.hostedMenuMenu);
+app.get('/m/:slug/go/:network', publicRouter.hostedMenuGo);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));
 

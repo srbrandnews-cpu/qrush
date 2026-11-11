@@ -38,13 +38,24 @@ function prettyPhone(value) {
 
 /** What the owner is allowed to see about their free menu. */
 function publicFreeQr(row) {
+  const data = typeof row.menu_data === 'string' ? row.menu_data : '';
+  const menuIsFile = data.startsWith('data:');
+  const logoIsFile = typeof row.logo_url === 'string' && row.logo_url.startsWith('data:');
   return {
     slug: row.slug,
     url: `/m/${row.slug}`,
     restaurant: row.restaurant,
     owner_name: row.owner_name,
     phone: row.phone,
-    logo_url: row.logo_url,
+    // Inline data-URIs would make the JSON payload megabytes wide, so serve
+    // uploaded files from their own cached URL instead.
+    logo_url: logoIsFile
+      ? `/m/${row.slug}/logo`
+      : (/^https?:\/\//i.test(row.logo_url || '') ? row.logo_url : null),
+    menu_url: menuIsFile
+      ? `/m/${row.slug}/menu`
+      : (/^https?:\/\//i.test(data) ? data : null),
+    menu_is_file: menuIsFile,
     menu_type: row.menu_type,
     instagram: row.instagram,
     facebook: row.facebook,
@@ -52,6 +63,97 @@ function publicFreeQr(row) {
     website: row.website,
     created_at: row.created_at,
   };
+}
+
+/** Social networks we track clicks for. */
+const SOCIAL_KINDS = ['whatsapp', 'instagram', 'facebook', 'website'];
+
+/** Real destination for a tracked social button. */
+function socialUrl(row, network) {
+  if (network === 'whatsapp') {
+    const digits = phoneDigits(row.whatsapp);
+    return digits ? `https://wa.me/${digits}` : '';
+  }
+  if (network === 'instagram') return row.instagram ? ensureUrl(row.instagram) : '';
+  if (network === 'facebook') return row.facebook ? ensureUrl(row.facebook) : '';
+  if (network === 'website') return row.website ? ensureUrl(row.website) : '';
+  return '';
+}
+
+/** Short non-reversible visitor id so we can count unique people. */
+function visitorId(req) {
+  const ip = (req.ip || req.connection && req.connection.remoteAddress || 'unknown').toString();
+  return crypto.createHash('sha256').update('fq:' + ip).digest('hex').slice(0, 20);
+}
+
+// One "view" per visitor per 30 minutes (refreshing the page shouldn't inflate
+// the scan count). In-memory only — good enough for a free analytics tile.
+const viewSeen = new Map();
+const VIEW_WINDOW = 30 * 60 * 1000;
+
+function shouldCountView(id, visitor) {
+  const key = `${id}:${visitor}`;
+  const now = Date.now();
+  const last = viewSeen.get(key);
+  if (last && now - last < VIEW_WINDOW) return false;
+  viewSeen.set(key, now);
+  if (viewSeen.size > 5000) {
+    for (const [k, t] of viewSeen) if (now - t > VIEW_WINDOW) viewSeen.delete(k);
+  }
+  return true;
+}
+
+/** Record one analytics event. Never throws — analytics must not break a page. */
+async function logFreeQrEvent(id, kind, visitor) {
+  try {
+    await run('INSERT INTO free_qr_events (free_qr_id, kind, visitor) VALUES (?, ?, ?)', [id, kind, visitor || null]);
+  } catch (err) {
+    console.warn('[free-qr] event log failed:', err.message);
+  }
+}
+
+/** Totals + today's numbers for the owner dashboard. */
+async function freeQrStats(id) {
+  const today = new Date().toISOString().slice(0, 10) + '%';
+  const zero = () => ({ total: 0, today: 0 });
+  const stats = {
+    views: { total: 0, today: 0, unique: 0 },
+    clicks: {},
+    click_total: { total: 0, today: 0 },
+  };
+  for (const k of SOCIAL_KINDS) stats.clicks[k] = zero();
+
+  const totals = await query(
+    'SELECT kind, COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? GROUP BY kind',
+    [id]
+  );
+  const todays = await query(
+    'SELECT kind, COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND created_at LIKE ? GROUP BY kind',
+    [id, today]
+  );
+  const uniq = await get(
+    'SELECT COUNT(DISTINCT visitor) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind = ?',
+    [id, 'view']
+  );
+
+  for (const r of totals) {
+    const c = Number(r.c) || 0;
+    if (r.kind === 'view') stats.views.total = c;
+    else if (stats.clicks[r.kind]) {
+      stats.clicks[r.kind].total = c;
+      stats.click_total.total += c;
+    }
+  }
+  for (const r of todays) {
+    const c = Number(r.c) || 0;
+    if (r.kind === 'view') stats.views.today = c;
+    else if (stats.clicks[r.kind]) {
+      stats.clicks[r.kind].today = c;
+      stats.click_total.today += c;
+    }
+  }
+  stats.views.unique = Number(uniq && uniq.c) || 0;
+  return stats;
 }
 
 // Very light brute-force guard for the free-menu login (no extra dependency).
@@ -403,6 +505,9 @@ router.post('/free-qr', async (req, res, next) => {
       passwordHash = await bcrypt.hash(String(b.password), 10);
     }
     const phone = phoneDigits(b.phone).slice(0, 20) || null;
+    const menuType = b.menu_type
+      ? String(b.menu_type).slice(0, 20)
+      : (menuData.startsWith('data:application/pdf') ? 'pdf' : 'image');
     await run(
       `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type, instagram, facebook, whatsapp, website)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -414,34 +519,23 @@ router.post('/free-qr', async (req, res, next) => {
         passwordHash,
         b.logo_url || null,
         menuData,
-        (b.menu_type || 'image').toString().slice(0, 20),
+        menuType,
         (b.instagram || '').toString().slice(0, 200) || null,
         (b.facebook || '').toString().slice(0, 200) || null,
         (b.whatsapp || '').toString().slice(0, 200) || null,
         (b.website || '').toString().slice(0, 200) || null,
       ]
     );
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [slug]);
     const host = req.get('host');
     const proto = req.protocol;
     const url = `${proto}://${host}/m/${slug}`;
-    const row = {
-      id: (await get('SELECT id FROM free_qr_menus WHERE slug = ?', [slug])).id,
-      slug,
-      restaurant,
-      owner_name: (b.owner_name || '').toString().slice(0, 120) || null,
-      phone,
-      logo_url: b.logo_url || null,
-      menu_type: (b.menu_type || 'image').toString().slice(0, 20),
-      instagram: (b.instagram || '').toString().slice(0, 200) || null,
-      facebook: (b.facebook || '').toString().slice(0, 200) || null,
-      whatsapp: (b.whatsapp || '').toString().slice(0, 200) || null,
-      website: (b.website || '').toString().slice(0, 200) || null,
-    };
     res.status(201).json({
       slug,
       url,
       token: passwordHash ? signFreeQrToken(row) : null,
       restaurant: publicFreeQr(row),
+      stats: await freeQrStats(row.id),
     });
   } catch (err) {
     next(err);
@@ -481,7 +575,11 @@ router.post('/free-qr/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Password galat hai.' });
     }
 
-    res.json({ token: signFreeQrToken(row), restaurant: publicFreeQr(row) });
+    res.json({
+      token: signFreeQrToken(row),
+      restaurant: publicFreeQr(row),
+      stats: await freeQrStats(row.id),
+    });
   } catch (err) {
     next(err);
   }
@@ -498,11 +596,147 @@ router.get('/free-qr/me', async (req, res, next) => {
     if (!payload) return res.status(401).json({ error: 'Login required' });
     const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
     if (!row) return res.status(401).json({ error: 'Restaurant not found' });
-    res.json({ restaurant: publicFreeQr(row) });
+    res.json({ restaurant: publicFreeQr(row), stats: await freeQrStats(row.id) });
   } catch (err) {
     next(err);
   }
 });
+
+/**
+ * PATCH /api/public/free-qr/me — owner edits their own hosted page.
+ * body: { restaurant, owner_name, phone, logo_url, menu_data, menu_type,
+ *         instagram, facebook, whatsapp, website, password }
+ * Every field is optional; only what's sent gets updated.
+ */
+router.patch('/free-qr/me', async (req, res, next) => {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const payload = verifyFreeQrToken(token);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+
+    const current = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!current) return res.status(401).json({ error: 'Restaurant not found' });
+
+    const b = req.body || {};
+    const next_ = { ...current };
+
+    if (b.restaurant !== undefined) {
+      const v = String(b.restaurant || '').trim().slice(0, 120);
+      if (!v) return res.status(400).json({ error: 'Restaurant ka naam khali nahi ho sakta.' });
+      next_.restaurant = v;
+    }
+    if (b.owner_name !== undefined) next_.owner_name = String(b.owner_name || '').trim().slice(0, 120) || null;
+    if (b.phone !== undefined) next_.phone = phoneDigits(b.phone).slice(0, 20) || null;
+    if (b.logo_url !== undefined) next_.logo_url = String(b.logo_url || '').trim() || null;
+    if (b.menu_data !== undefined) {
+      const v = String(b.menu_data || '').trim();
+      if (!v) return res.status(400).json({ error: 'Menu khali nahi ho sakta.' });
+      next_.menu_data = v;
+      if (b.menu_type === undefined) {
+        next_.menu_type = v.startsWith('data:application/pdf') ? 'pdf' : 'image';
+      }
+    }
+    if (b.menu_type !== undefined) next_.menu_type = String(b.menu_type || 'image').slice(0, 20);
+    if (b.instagram !== undefined) next_.instagram = String(b.instagram || '').trim().slice(0, 200) || null;
+    if (b.facebook !== undefined) next_.facebook = String(b.facebook || '').trim().slice(0, 200) || null;
+    if (b.whatsapp !== undefined) next_.whatsapp = String(b.whatsapp || '').trim().slice(0, 200) || null;
+    if (b.website !== undefined) next_.website = String(b.website || '').trim().slice(0, 200) || null;
+
+    let passwordHash = current.password_hash;
+    if (b.password) {
+      const pw = String(b.password);
+      if (pw.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 characters ka ho.' });
+      passwordHash = await bcrypt.hash(pw, 10);
+    }
+
+    // Guard against someone typing a menu URL where an image file is expected.
+    if (String(next_.menu_data || '').length > 5 * 1024 * 1024 * 1.4) {
+      return res.status(413).json({ error: 'Menu file bahut badi hai (max 5MB).' });
+    }
+
+    await run(
+      `UPDATE free_qr_menus
+         SET restaurant = ?, owner_name = ?, phone = ?, password_hash = ?, logo_url = ?,
+             menu_data = ?, menu_type = ?, instagram = ?, facebook = ?, whatsapp = ?, website = ?
+       WHERE id = ?`,
+      [
+        next_.restaurant,
+        next_.owner_name,
+        next_.phone,
+        passwordHash,
+        next_.logo_url,
+        next_.menu_data,
+        next_.menu_type || 'image',
+        next_.instagram,
+        next_.facebook,
+        next_.whatsapp,
+        next_.website,
+        current.id,
+      ]
+    );
+
+    const updated = await get('SELECT * FROM free_qr_menus WHERE id = ?', [current.id]);
+    res.json({ restaurant: publicFreeQr(updated), stats: await freeQrStats(updated.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /m/:slug/logo and /m/:slug/menu — serve the uploaded files.
+ * Stored as data-URIs in the DB, but browsers get a normal, cacheable image
+ * URL (and external links simply redirect).
+ */
+function freeQrAsset(kind) {
+  return async function hostedMenuAsset(req, res, next) {
+    try {
+      const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+      if (!row) return res.status(404).send('Menu not found');
+      const value = String((kind === 'logo' ? row.logo_url : row.menu_data) || '');
+      if (!value) return res.status(404).send('Not found');
+
+      if (!value.startsWith('data:')) return res.redirect(302, value);
+
+      const match = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(value);
+      if (!match) return res.status(404).send('Not found');
+      let buf;
+      try {
+        buf = match[2] ? Buffer.from(match[3], 'base64') : Buffer.from(decodeURIComponent(match[3]), 'binary');
+      } catch (_) {
+        return res.status(404).send('Not found');
+      }
+      res.set('Content-Type', match[1] || 'application/octet-stream');
+      res.set('Cache-Control', 'no-cache, must-revalidate');
+      res.set('Content-Length', String(buf.length));
+      res.send(buf);
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+const hostedMenuLogo = freeQrAsset('logo');
+const hostedMenuMenu = freeQrAsset('menu');
+
+/**
+ * GET /m/:slug/go/:network — tracked redirect for a social button.
+ * Logs the click, then forwards the visitor to the real destination.
+ */
+async function hostedMenuGo(req, res, next) {
+  try {
+    const network = String(req.params.network || '').toLowerCase();
+    if (!SOCIAL_KINDS.includes(network)) return res.status(404).send('Not found');
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    if (!row) return res.status(404).send('Menu not found');
+    const target = socialUrl(row, network);
+    if (!target) return res.status(404).send('Not found');
+    await logFreeQrEvent(row.id, network, visitorId(req));
+    res.redirect(302, target);
+  } catch (err) {
+    next(err);
+  }
+}
 
 /**
  * GET /m/:slug — serves the uploaded free menu.
@@ -514,25 +748,40 @@ async function hostedMenuPage(req, res, next) {
     const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
     if (!row) return res.status(404).send('Menu not found');
 
-    const logoHtml = row.logo_url
-      ? `<img class="menu-logo" src="${escapeHtml(row.logo_url)}" alt="${escapeHtml(row.restaurant)}" />`
+    // Count the visit (max once per visitor per 30 min).
+    const visitor = visitorId(req);
+    if (row.id && shouldCountView(row.id, visitor)) {
+      await logFreeQrEvent(row.id, 'view', visitor);
+    }
+
+    const logoSrc = row.logo_url
+      ? (String(row.logo_url).startsWith('data:')
+        ? `/m/${row.slug}/logo`
+        : (/^https?:\/\//i.test(row.logo_url) ? row.logo_url : null))
+      : null;
+    const logoHtml = logoSrc
+      ? `<img class="menu-logo" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(row.restaurant)}" />`
       : `<div class="menu-logo menu-logo-fallback">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
 
-    const menuData = row.menu_data;
+    const menuData = String(row.menu_data || '');
     let menuHtml = '';
-    if (typeof menuData === 'string' && menuData.startsWith('data:')) {
-      menuHtml = `<img src="${menuData}" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
-    } else {
+    if (menuData.startsWith('data:')) {
+      if (String(row.menu_type || '') === 'pdf') {
+        menuHtml = `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu" target="_blank" rel="noopener">📄 View Menu (PDF)</a>`;
+      } else {
+        menuHtml = `<img src="/m/${escapeHtml(row.slug)}/menu" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
+      }
+    } else if (/^https?:\/\//i.test(menuData)) {
       menuHtml = `<a href="${escapeHtml(menuData)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
     }
 
     const socials = [];
-    const socialBtn = (href, label, bg) =>
-      `<a class="soc" href="${escapeHtml(href)}" target="_blank" rel="noopener" style="background:${bg}">${label}</a>`;
-    if (row.whatsapp) socials.push(socialBtn(`https://wa.me/${phoneDigits(row.whatsapp)}`, 'WhatsApp', '#25d366'));
-    if (row.instagram) socials.push(socialBtn(ensureUrl(row.instagram), 'Instagram', 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)'));
-    if (row.facebook) socials.push(socialBtn(ensureUrl(row.facebook), 'Facebook', '#1877f2'));
-    if (row.website) socials.push(socialBtn(ensureUrl(row.website), 'Website', '#ea580c'));
+    const socialBtn = (network, label, bg) =>
+      `<a class="soc" href="/m/${escapeHtml(row.slug)}/go/${network}" target="_blank" rel="noopener" style="background:${bg}">${label}</a>`;
+    if (row.whatsapp && phoneDigits(row.whatsapp)) socials.push(socialBtn('whatsapp', 'WhatsApp', '#25d366'));
+    if (row.instagram) socials.push(socialBtn('instagram', 'Instagram', 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)'));
+    if (row.facebook) socials.push(socialBtn('facebook', 'Facebook', '#1877f2'));
+    if (row.website) socials.push(socialBtn('website', 'Website', '#ea580c'));
 
     const phoneLink = row.phone
       ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
@@ -622,6 +871,7 @@ async function hostedMenuPage(req, res, next) {
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
     res.send(html);
   } catch (err) {
     next(err);
@@ -629,6 +879,9 @@ async function hostedMenuPage(req, res, next) {
 }
 
 router.get('/m/:slug', hostedMenuPage);
+router.get('/m/:slug/logo', hostedMenuLogo);
+router.get('/m/:slug/menu', hostedMenuMenu);
+router.get('/m/:slug/go/:network', hostedMenuGo);
 
 // tiny html escape helper
 function escapeHtml(s) {
@@ -645,3 +898,6 @@ function ensureUrl(value) {
 
 module.exports = router;
 module.exports.hostedMenuPage = hostedMenuPage;
+module.exports.hostedMenuLogo = hostedMenuLogo;
+module.exports.hostedMenuMenu = hostedMenuMenu;
+module.exports.hostedMenuGo = hostedMenuGo;
