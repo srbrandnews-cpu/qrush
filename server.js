@@ -43,6 +43,7 @@ app.use('/api/public', publicRouter);
 app.get('/m/:slug', publicRouter.hostedMenuPage);
 app.get('/m/:slug/logo', publicRouter.hostedMenuLogo);
 app.get('/m/:slug/menu', publicRouter.hostedMenuMenu);
+app.get('/m/:slug/menu/:idx', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/go/:network', publicRouter.hostedMenuGo);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));

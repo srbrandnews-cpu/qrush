@@ -37,24 +37,38 @@ function prettyPhone(value) {
 }
 
 /** What the owner is allowed to see about their free menu. */
+/** Parse menu_data into an array of data-URI strings (supports legacy single). */
+function parseMenuImages(data) {
+  const s = typeof data === 'string' ? data.trim() : '';
+  if (!s) return [];
+  if (s.startsWith('[')) {
+    try {
+      const arr = JSON.parse(s);
+      if (Array.isArray(arr)) return arr.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim());
+    } catch (_) { /* fall through */ }
+  }
+  return [s];
+}
+
 function publicFreeQr(row) {
   const data = typeof row.menu_data === 'string' ? row.menu_data : '';
-  const menuIsFile = data.startsWith('data:');
+  const images = parseMenuImages(data);
+  const menuIsFile = images.length > 0 && images[0].startsWith('data:');
   const logoIsFile = typeof row.logo_url === 'string' && row.logo_url.startsWith('data:');
+  const menuUrls = images.map((img, i) =>
+    img.startsWith('data:') ? `/m/${row.slug}/menu/${i}` : (/^https?:\/\//i.test(img) ? img : null)
+  ).filter(Boolean);
   return {
     slug: row.slug,
     url: `/m/${row.slug}`,
     restaurant: row.restaurant,
     owner_name: row.owner_name,
     phone: row.phone,
-    // Inline data-URIs would make the JSON payload megabytes wide, so serve
-    // uploaded files from their own cached URL instead.
     logo_url: logoIsFile
       ? `/m/${row.slug}/logo`
       : (/^https?:\/\//i.test(row.logo_url || '') ? row.logo_url : null),
-    menu_url: menuIsFile
-      ? `/m/${row.slug}/menu`
-      : (/^https?:\/\//i.test(data) ? data : null),
+    menu_url: menuUrls.length ? menuUrls[0] : null,
+    menu_urls: menuUrls,
     menu_is_file: menuIsFile,
     menu_type: row.menu_type,
     instagram: row.instagram,
@@ -714,9 +728,8 @@ router.patch('/free-qr/me', async (req, res, next) => {
     if (b.logo_url !== undefined) next_.logo_url = String(b.logo_url || '').trim() || null;
     if (b.menu_data !== undefined) {
       const v = String(b.menu_data || '').trim();
-      if (!v) return res.status(400).json({ error: 'Menu khali nahi ho sakta.' });
-      next_.menu_data = v;
-      if (b.menu_type === undefined) {
+      next_.menu_data = v || null;
+      if (v && b.menu_type === undefined) {
         next_.menu_type = v.startsWith('data:application/pdf') ? 'pdf' : 'image';
       }
     }
@@ -773,6 +786,18 @@ router.patch('/free-qr/me', async (req, res, next) => {
  * PUT  /api/public/free-qr/items â€” replace it (bulk paste from the dashboard).
  *      body: { ordering_enabled, items: [{ name, price, category, available }] }
  */
+router.get('/free-qr/menu-data', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT menu_data FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+    res.json({ images: parseMenuImages(row.menu_data) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/free-qr/items', async (req, res, next) => {
   try {
     const payload = freeQrAuth(req);
@@ -1040,7 +1065,32 @@ function freeQrAsset(kind) {
 }
 
 const hostedMenuLogo = freeQrAsset('logo');
-const hostedMenuMenu = freeQrAsset('menu');
+
+async function hostedMenuMenu(req, res, next) {
+  try {
+    const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    const images = parseMenuImages(row.menu_data);
+    const idx = Math.max(0, Math.min(images.length - 1, Number(req.params.idx) || 0));
+    const value = String(images[idx] || '');
+    if (!value) return res.status(404).send('Not found');
+    if (!value.startsWith('data:')) return res.redirect(302, value);
+
+    const match = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(value);
+    if (!match) return res.status(404).send('Not found');
+    let buf;
+    try {
+      buf = match[2] ? Buffer.from(match[3], 'base64') : Buffer.from(decodeURIComponent(match[3]), 'binary');
+    } catch (_) {
+      return res.status(404).send('Not found');
+    }
+    res.set('Content-Type', match[1] || 'application/octet-stream');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
+    res.set('Content-Length', String(buf.length));
+    res.send(buf);
+  } catch (err) {
+    next(err);
+  }
+}
 
 /**
  * GET /m/:slug/go/:network â€” tracked redirect for a social button.
@@ -1311,15 +1361,26 @@ async function hostedMenuPage(req, res, next) {
       : `<div class="menu-logo menu-logo-fallback">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
 
     const menuData = String(row.menu_data || '');
+    const menuImages = parseMenuImages(menuData);
     let menuHtml = '';
-    if (menuData.startsWith('data:')) {
-      if (String(row.menu_type || '') === 'pdf') {
-        menuHtml = `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu" target="_blank" rel="noopener">ðŸ“„ View Menu (PDF)</a>`;
-      } else {
-        menuHtml = `<img src="/m/${escapeHtml(row.slug)}/menu?v=${Date.now()}" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
-      }
-    } else if (/^https?:\/\//i.test(menuData)) {
-      menuHtml = `<a href="${escapeHtml(menuData)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
+    const imgCacheBust = Date.now();
+    if (menuImages.length) {
+      const imgs = menuImages.map((img, i) => {
+        if (img.startsWith('data:')) {
+          if (String(row.menu_type || '') === 'pdf' && i === 0) {
+            return `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu/${i}" target="_blank" rel="noopener">View Menu (PDF)</a>`;
+          }
+          return `<img src="/m/${escapeHtml(row.slug)}/menu/${i}?v=${imgCacheBust}" alt="Menu page ${i + 1}" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35);margin-bottom:12px;display:block" />`;
+        }
+        if (img.startsWith('/')) {
+          return `<img src="${escapeHtml(img)}?v=${imgCacheBust}" alt="Menu page ${i + 1}" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35);margin-bottom:12px;display:block" />`;
+        }
+        if (/^https?:\/\//i.test(img)) {
+          return `<a href="${escapeHtml(img)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
+        }
+        return '';
+      }).join('');
+      menuHtml = imgs;
     }
 
     const socials = [];
@@ -1337,30 +1398,18 @@ async function hostedMenuPage(req, res, next) {
     // ---- Menu: the owner's text menu (converted from the menu card) ----
     const allItems = await freeQrItems(row.id);
     const textItems = allItems.filter((i) => i.available);
-    const orderingOn = !!Number(row.ordering_enabled);
-    const slugSafe = escapeHtml(row.slug);
-
-    let cardLink = '';
-    if (menuData.startsWith('data:')) {
-      cardLink = String(row.menu_type || '') === 'pdf'
-        ? `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">ðŸ“„ Original menu (PDF)</a>`
-        : `<a class="menucard-link" href="/m/${slugSafe}/menu" target="_blank" rel="noopener">ðŸ“· Menu card photo</a>`;
-    } else if (/^https?:\/\//i.test(menuData)) {
-      cardLink = `<a class="menucard-link" href="${escapeHtml(menuData)}" target="_blank" rel="noopener">ðŸ“· Menu card</a>`;
-    }
 
     let menuSectionHtml = '';
-    let showOrderUi = false;
 
     // 1) Uploaded menu card is ALWAYS shown first (image/PDF).
-    if (menuData.startsWith('data:') || /^https?:\/\//i.test(menuData)) {
+    if (menuImages.length) {
       menuSectionHtml += `<section class="menu-card">
         <h2 class="sec-title">Menu card</h2>
         ${menuHtml}
       </section>`;
     }
 
-    // 2) Optional text menu â€” only if the owner converted the card.
+        // 2) Optional text menu — only if the owner converted the card.
     if (textItems.length) {
       const groups = new Map();
       for (const it of textItems) {
@@ -1368,77 +1417,17 @@ async function hostedMenuPage(req, res, next) {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(it);
       }
-
       let groupsHtml = '';
       for (const [cat, list] of groups) {
         let rowsHtml = '';
         for (const it of list) {
-          rowsHtml += `<div class="oi" data-id="${it.id}" data-price="${it.price}">
-            <div class="oi-body">
-              <span class="oi-name">${escapeHtml(it.name)}</span>
-              <span class="oi-dots"></span>
-            </div>
-            <span class="oi-price">${money(it.price)}</span>
-            ${orderingOn ? `<div class="oi-step">
-              <button type="button" class="oi-btn" data-act="minus" aria-label="Remove one">âˆ’</button>
-              <span class="oi-qty">0</span>
-              <button type="button" class="oi-btn" data-act="plus" aria-label="Add one">+</button>
-            </div>` : ''}
-          </div>`;
+          rowsHtml += '<div class="oi"><div class="oi-body"><span class="oi-name">' + escapeHtml(it.name) + '</span><span class="oi-dots"></span></div><span class="oi-price">' + money(it.price) + '</span></div>';
         }
-        groupsHtml += `<div class="ogroup"><div class="ogroup-title">${escapeHtml(cat)}</div>${rowsHtml}</div>`;
+        groupsHtml += '<div class="ogroup"><div class="ogroup-title">' + escapeHtml(cat) + '</div>' + rowsHtml + '</div>';
       }
-
-      menuSectionHtml += `<section class="order-card"${orderingOn ? ' id="order-section"' : ''}>
-        <h2 class="sec-title">Menu</h2>
-        ${orderingOn ? '<p class="order-hint">Table number daal kar order karein â€” order seedha kitchen me jayega.</p>' : ''}
-        ${groupsHtml}
-        ${orderingOn ? `<div class="order-success hidden" id="order-success">
-          <div class="os-icon">âœ…</div>
-          <h3>Order placed!</h3>
-          <div class="os-no" id="os-no"></div>
-          <div class="os-status" id="os-status"></div>
-          <div class="os-items" id="os-items"></div>
-          <button class="btn btn-primary btn-block" id="os-again" type="button">Order more</button>
-        </div>` : ''}
-      </section>
-      ${orderingOn ? `<div class="cartbar hidden" id="cartbar">
-        <div class="cartbar-info"><span id="cart-qty">0</span> item Â· <b id="cart-total">â‚¹0</b></div>
-        <button class="btn btn-primary" id="cart-open" type="button">View cart â†’</button>
-      </div>
-
-      <div class="sheet-wrap hidden" id="order-modal">
-        <div class="sheet" role="dialog" aria-modal="true">
-          <div class="sheet-head">
-            <h3>Confirm order</h3>
-            <button class="icon-x" id="sheet-close" type="button" aria-label="Close">âœ•</button>
-          </div>
-          <div class="field">
-            <label>Table number *</label>
-            <input class="input" id="o-table" placeholder="e.g. 5 ya Takeaway" />
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>Your name</label>
-              <input class="input" id="o-name" placeholder="optional" />
-            </div>
-            <div class="field">
-              <label>Phone</label>
-              <input class="input" id="o-phone" type="tel" placeholder="optional" />
-            </div>
-          </div>
-          <div class="field">
-            <label>Note</label>
-            <input class="input" id="o-note" placeholder="e.g. Less spicy" />
-          </div>
-          <div class="cart-summary" id="cart-summary"></div>
-          <p class="order-error" id="order-error"></p>
-          <button class="btn btn-primary btn-block btn-lg" id="o-submit" type="button">Place order â†’</button>
-        </div>
-      </div>` : ''}`;
-      showOrderUi = orderingOn;
-    } else if (!menuData.startsWith('data:') && !/^https?:\/\//i.test(menuData)) {
-      menuSectionHtml = `<section class="menu-card"><h2 class="sec-title">Menu</h2><p class="muted tiny">Koi menu upload nahi hua.</p></section>`;
+      menuSectionHtml += '<section class="menu-card"><h2 class="sec-title">Menu</h2>' + groupsHtml + '</section>';
+    } else if (menuImages.length === 0) {
+      menuSectionHtml += '<section class="menu-card"><h2 class="sec-title">Menu</h2><p class="muted tiny">Koi menu upload nahi hua.</p></section>';
     }
 
     const html = `<!DOCTYPE html>
@@ -1595,7 +1584,6 @@ async function hostedMenuPage(req, res, next) {
 
     <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush Â· Free Digital Menu</div>
   </div>
-  ${showOrderUi ? `<script>${orderingScript()}</script>` : ''}
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');
@@ -1609,6 +1597,7 @@ async function hostedMenuPage(req, res, next) {
 router.get('/m/:slug', hostedMenuPage);
 router.get('/m/:slug/logo', hostedMenuLogo);
 router.get('/m/:slug/menu', hostedMenuMenu);
+router.get('/m/:slug/menu/:idx', hostedMenuMenu);
 router.get('/m/:slug/go/:network', hostedMenuGo);
 
 // tiny html escape helper

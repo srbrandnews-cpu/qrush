@@ -74,6 +74,12 @@
     }
     .menu-preview img { max-width: 100%; margin: 0 auto; border-radius: 10px; display: block; }
     .menu-preview iframe { width: 100%; height: 560px; border: 0; border-radius: 10px; background: #fff; }
+    .menu-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
+    .menu-gallery-item { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fbfcfe; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; }
+    .menu-gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .menu-gallery-item .mg-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(15,23,42,.75); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+    .menu-gallery-item .mg-remove:hover { background: #dc2626; }
+    .menu-gallery-empty { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 12.5px; padding: 24px 8px; border: 1px dashed var(--line-strong); border-radius: 12px; }
     .menu-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .ocr-status { font-size: 12px; color: var(--muted); margin: 8px 0 0; min-height: 16px; }
     .menu-text-preview {
@@ -202,16 +208,16 @@
           <div class="dash-card-head">
             <h3>Your uploaded menu</h3>
             <label class="btn btn-outline btn-sm" style="cursor:pointer">
-              🔄 Replace menu
-              <input type="file" id="d-menu-file" accept="image/*,application/pdf" style="display:none" />
+              ➕ Add images
+              <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
             </label>
           </div>
-          <div class="menu-preview" id="d-menu-preview"></div>
-          <p class="tiny muted" style="margin:10px 0 0">Yeh wahi image hai jo customer QR scan karne par dekhta hai. Replace karte hi turant update ho jayegi.</p>
+          <div class="menu-gallery" id="d-menu-gallery"></div>
+          <p class="tiny muted" style="margin:10px 0 0">Ek se zyada images upload kar sakte hain (page 1, 2...). Replace karne ke liye nayi images add karein, purani remove karein.</p>
 
           <div class="menu-tools">
             <button class="btn btn-primary btn-sm" id="d-ocr" type="button">✨ Convert image to text</button>
-            <span class="tiny muted">Menu card ka text nikal kar menu items auto-fill ho jayenge</span>
+            <span class="tiny muted">Pehli image se items auto-fill ho jayenge</span>
           </div>
           <p class="ocr-status" id="d-ocr-status"></p>
         </div>
@@ -656,18 +662,28 @@
           '</li>';
       }).join('');
 
-      // Menu preview
-      const preview = $('d-menu-preview');
-      if (!current.menu_url) {
-        preview.innerHTML = '<p class="muted tiny">Koi menu upload nahi hua.</p>';
-      } else if (isPdf()) {
-        preview.innerHTML = '<iframe src="' + withRev(current.menu_url) + '" title="Menu PDF"></iframe>';
-      } else {
-        preview.innerHTML = '<img src="' + withRev(current.menu_url) + '" alt="Uploaded menu" />';
+      // Menu gallery (supports multiple uploaded images)
+      const gallery = $('d-menu-gallery');
+      if (gallery) {
+        const urls = Array.isArray(current.menu_urls) ? current.menu_urls : (current.menu_url ? [current.menu_url] : []);
+        if (!urls.length) {
+          gallery.innerHTML = '<div class="menu-gallery-empty">Koi menu upload nahi hua. Upar se images add karein.</div>';
+        } else {
+          gallery.innerHTML = urls.map((u, i) =>
+            '<div class="menu-gallery-item" data-idx="' + i + '">' +
+            '<img src="' + withRev(u) + '" alt="Menu ' + (i + 1) + '" />' +
+            '<button class="mg-remove" type="button" data-act="remove-image" data-idx="' + i + '" title="Remove">✕</button>' +
+            '</div>'
+          ).join('');
+        }
       }
 
-      // QR
-      $('d-open').href = absoluteMenuUrl(current);
+      // OCR button — only for image menus.
+      const ocrBtn = $('d-ocr');
+      if (ocrBtn) {
+        const hasImage = !!(current.menu_urls && current.menu_urls.length) || (current.menu_url && !isPdf());
+        ocrBtn.style.display = hasImage ? '' : 'none';
+      }
       makeQr($('d-qr'), absoluteMenuUrl(current), 200);
       $('g-open-menu').href = absoluteMenuUrl(current);
     }
@@ -835,24 +851,55 @@
       }
     });
 
-    // One-click menu replace straight from the dashboard.
+    // Add one or more menu images (appended to the existing ones).
     $('d-menu-file').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); e.target.value = ''; return; }
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      for (const f of files) {
+        if (f.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); e.target.value = ''; return; }
+      }
+      toast('Images upload ho rahi hain...');
       try {
-        const data = await readFileAsDataUrl(file);
-        const type = /pdf/i.test(file.type) ? 'pdf' : 'image';
-        toast('Menu upload ho raha hai...');
-        const out = await patchOwner({ menu_data: data, menu_type: type });
+        const newUrls = await Promise.all(files.map(readFileAsDataUrl));
+        const type = files[0] && /pdf/i.test(files[0].type) ? 'pdf' : 'image';
+
+        const exRes = await fetch('/api/public/free-qr/menu-data', { headers: { Authorization: 'Bearer ' + ownerToken } });
+        const exData = await exRes.json();
+        const existing = Array.isArray(exData.images) ? exData.images : [];
+        const combined = existing.concat(newUrls);
+
+        const out = await patchOwner({ menu_data: JSON.stringify(combined), menu_type: type });
         applyOwnerPayload(out);
         revision = Date.now();
         renderDashboard();
-        toast('✅ Naya menu live ho gaya!');
+        toast('✅ ' + newUrls.length + ' image(s) add ho gayi!');
       } catch (err) {
         toast(err.message, true);
       } finally {
         e.target.value = '';
+      }
+    });
+
+    // Remove a single image from the gallery.
+    $('d-menu-gallery').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-act="remove-image"]');
+      if (!btn) return;
+      const idx = Number(btn.getAttribute('data-idx'));
+      if (!Number.isFinite(idx)) return;
+      toast('Removing image...');
+      try {
+        const exRes = await fetch('/api/public/free-qr/menu-data', { headers: { Authorization: 'Bearer ' + ownerToken } });
+        const exData = await exRes.json();
+        const existing = Array.isArray(exData.images) ? exData.images : [];
+        existing.splice(idx, 1);
+        const type = existing.length ? 'image' : (current.menu_type || 'image');
+        const out = await patchOwner({ menu_data: existing.length ? JSON.stringify(existing) : '', menu_type: type });
+        applyOwnerPayload(out);
+        revision = Date.now();
+        renderDashboard();
+        toast(existing.length ? '✅ Image remove ho gayi' : '✅ All images removed');
+      } catch (err) {
+        toast(err.message, true);
       }
     });
 
