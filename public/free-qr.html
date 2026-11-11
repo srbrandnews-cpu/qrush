@@ -164,7 +164,7 @@
           </div>
         </div>
         <div class="dash-actions">
-          <a class="btn btn-ghost btn-sm" href="/free-qr.html" target="_blank" rel="noopener">➕ Naya QR</a>
+          <button class="btn btn-ghost btn-sm" id="d-newqr" type="button">➕ Naya QR</button>
           <button class="btn btn-primary btn-sm" id="d-edit" type="button">✏️ Edit my page</button>
           <button class="btn btn-ghost btn-sm" id="d-logout" type="button">Logout</button>
         </div>
@@ -1029,6 +1029,14 @@
       showLogin();
       $('l-pass').value = '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    $('d-newqr').addEventListener('click', () => {
+      // Reveal the generator panel so a new QR can be created without logging out.
+      $('generator-panel').classList.remove('hidden');
+      $('side-panel').classList.remove('hidden');
+      $('generator-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => { const el = $('g-rest'); if (el) el.focus(); }, 400);
     });
 
     $('jump-login').addEventListener('click', () => {
