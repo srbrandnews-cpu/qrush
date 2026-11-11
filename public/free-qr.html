@@ -849,9 +849,6 @@
         revision = Date.now();
         renderDashboard();
         toast('✅ Naya menu live ho gaya!');
-        if (type === 'image') {
-          runMenuOcr(data);
-        }
       } catch (err) {
         toast(err.message, true);
       } finally {

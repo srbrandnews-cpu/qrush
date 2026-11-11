@@ -1307,7 +1307,7 @@ async function hostedMenuPage(req, res, next) {
         : (/^https?:\/\//i.test(row.logo_url) ? row.logo_url : null))
       : null;
     const logoHtml = logoSrc
-      ? `<img class="menu-logo" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(row.restaurant)}" />`
+      ? `<img class="menu-logo" src="${escapeHtml(logoSrc)}${String(logoSrc).startsWith('/') ? '?v=' + Date.now() : ''}" alt="${escapeHtml(row.restaurant)}" />`
       : `<div class="menu-logo menu-logo-fallback">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
 
     const menuData = String(row.menu_data || '');
@@ -1316,7 +1316,7 @@ async function hostedMenuPage(req, res, next) {
       if (String(row.menu_type || '') === 'pdf') {
         menuHtml = `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu" target="_blank" rel="noopener">ðŸ“„ View Menu (PDF)</a>`;
       } else {
-        menuHtml = `<img src="/m/${escapeHtml(row.slug)}/menu" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
+        menuHtml = `<img src="/m/${escapeHtml(row.slug)}/menu?v=${Date.now()}" alt="Menu" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35)" />`;
       }
     } else if (/^https?:\/\//i.test(menuData)) {
       menuHtml = `<a href="${escapeHtml(menuData)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
