@@ -35,7 +35,12 @@ app.use('/api/requests', require('./src/routes/request.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
 app.use('/api/push', require('./src/routes/push.routes'));
 app.use('/api/voice', require('./src/routes/voice.routes'));
-app.use('/api/public', require('./src/routes/public.routes'));
+const publicRouter = require('./src/routes/public.routes');
+app.use('/api/public', publicRouter);
+
+// Public hosted free-menu page. The QR code points at /m/<slug>, so this has
+// to live at the site root (not under /api/public).
+app.get('/m/:slug', publicRouter.hostedMenuPage);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));
 

@@ -22,6 +22,25 @@ function verifyToken(token) {
   }
 }
 
+/**
+ * Free-QR menu owners are not staff users — they live in `free_qr_menus`.
+ * They get their own long-lived token so the generator page can show
+ * "my restaurant" without touching the staff auth flow.
+ */
+function signFreeQrToken(row) {
+  return jwt.sign({ scope: 'freeqr', fq: row.id, slug: row.slug }, SECRET, { expiresIn: '180d' });
+}
+
+function verifyFreeQrToken(token) {
+  try {
+    const payload = jwt.verify(token, SECRET);
+    if (!payload || payload.scope !== 'freeqr' || !payload.fq) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
 // Pull token from `Authorization: Bearer ...`. The cookie is deliberately not
 // used: it is shared by every screen on the browser, so it would leak one
 // role's session into another role's tab.
@@ -87,4 +106,5 @@ function requireSuperAdmin(req, res, next) {
 module.exports = {
   signToken, verifyToken, requireAuth, requireRole, requireSuperAdmin,
   isSuperAdmin, SUPER_ADMIN_EMAILS, COOKIE_NAME, SECRET,
+  signFreeQrToken, verifyFreeQrToken,
 };

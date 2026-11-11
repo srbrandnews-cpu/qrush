@@ -3,26 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ea580c" />
   <title>Free QR Menu Generator — QRush</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    body { background: var(--bg); }
-    .gen-wrap { max-width: 640px; margin: 40px auto; padding: 20px; }
-    .panel { background: #fff; padding: 32px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
+    body { background: linear-gradient(180deg, #fff7ed 0%, var(--bg) 420px); }
+    .gen-top {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(255, 255, 255, .9); backdrop-filter: saturate(140%) blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .gen-top .inner {
+      max-width: 1080px; margin: 0 auto; padding: 0 20px; height: 62px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .gen-top .brand { font-size: 19px; }
+    .gen-top nav { display: flex; align-items: center; gap: 8px; }
+
+    .gen-layout {
+      max-width: 1080px; margin: 26px auto 0; padding: 0 20px 64px;
+      display: grid; grid-template-columns: minmax(0, 1fr) 344px; gap: 20px; align-items: start;
+    }
+    .panel { background: #fff; padding: 28px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
     .field { margin-bottom: 18px; }
     .input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; font: inherit; }
     textarea.input { resize: vertical; min-height: 80px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 24px; padding: 24px; background: var(--primary-50); border-radius: 16px; border: 1px solid var(--primary-100); text-align: center; }
     #qr-code { background: #fff; padding: 16px; border-radius: 12px; box-shadow: var(--shadow-xs); margin: 16px 0; }
+
+    .side { position: sticky; top: 82px; display: flex; flex-direction: column; gap: 16px; }
+    .side .panel { padding: 22px; }
+    .side h3 { font-size: 16px; margin: 0 0 4px; }
+    .side .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.55; }
+
+    .owner-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .owner-logo {
+      width: 54px; height: 54px; border-radius: 14px; object-fit: contain;
+      background: #fff; border: 1px solid var(--line); padding: 4px; flex: none;
+    }
+    .owner-fallback {
+      width: 54px; height: 54px; border-radius: 14px; flex: none;
+      display: grid; place-items: center; font-size: 22px; font-weight: 800; color: #fff;
+      background: linear-gradient(135deg, #ea580c, #f97316);
+    }
+    .owner-name { font-weight: 800; font-size: 15.5px; line-height: 1.25; }
+    .owner-phone { font-size: 12.5px; color: var(--muted); }
+    #owner-qr { display: flex; justify-content: center; margin: 4px auto 16px; }
+    #owner-qr img, #owner-qr canvas { border-radius: 10px; background: #fff; display: block; }
+    .owner-actions { display: flex; flex-direction: column; gap: 8px; }
+    .login-error { color: var(--red); font-size: 12.5px; margin: 0 0 10px; min-height: 16px; }
+    .divider-or { display: flex; align-items: center; gap: 10px; color: var(--muted-2); font-size: 11.5px; margin: 18px 0 14px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    @media (max-width: 980px) {
+      .gen-layout { grid-template-columns: 1fr; }
+      .side { position: static; }
+      .row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="gen-wrap">
+  <header class="gen-top">
+    <div class="inner">
+      <a class="brand" href="/"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" /> <span class="brand-name">QRush</span></a>
+      <nav>
+        <a class="btn btn-ghost btn-sm" href="/">Home</a>
+        <button class="btn btn-outline btn-sm" id="jump-login" type="button">🔐 Owner Login</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="gen-layout">
+    <!-- ------------------------------ Generator ------------------------------ -->
     <div class="panel">
-      <h2>🍽️ Free Digital QR Menu Generator</h2>
+      <h2 style="margin:0">🍽️ Free Digital QR Menu Generator</h2>
       <p class="muted" style="margin-top:6px;margin-bottom:24px">Apni restaurant details bhariye aur instant free QR code banayein.</p>
-      
+
       <div class="field">
         <label>Restaurant Name <span style="color:var(--red)">*</span></label>
         <input class="input" id="g-rest" placeholder="e.g. Spice Garden" />
@@ -84,39 +142,198 @@
         <p class="tiny muted" id="qr-subtitle" style="margin:4px 0 12px"></p>
         <div id="qr-code"></div>
         <p class="tiny muted">Is QR code ko save karke apne restaurant ke tables par print karwa lein.</p>
-        <button class="btn btn-outline btn-sm" id="g-print" style="margin-top:12px">🖨️ Print QR Code</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" id="g-print" type="button">🖨️ Print QR Code</button>
+          <a class="btn btn-ghost btn-sm hidden" id="g-open-menu" target="_blank" rel="noopener">👀 Open my menu</a>
+        </div>
       </div>
     </div>
+
+    <!-- --------------------------- Owner side panel --------------------------- -->
+    <aside class="side">
+      <!-- Login -->
+      <div class="panel" id="login-card">
+        <h3>Restaurant Owner Login</h3>
+        <p class="hint">Pehle QR banaya tha? Apna contact number aur password daal kar apni restaurant dekhein.</p>
+        <form id="login-form" autocomplete="on">
+          <div class="field" style="margin-bottom:12px">
+            <label for="l-phone">Contact Number</label>
+            <input class="input" id="l-phone" type="tel" placeholder="9876543210" required />
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label for="l-pass">Password</label>
+            <input class="input" id="l-pass" type="password" placeholder="••••••••" required />
+          </div>
+          <p class="login-error" id="login-error"></p>
+          <button class="btn btn-primary btn-block" id="login-submit" type="submit">Login</button>
+        </form>
+        <div class="divider-or">or</div>
+        <p class="tiny muted" style="margin:0">Naya restaurant? Left side form bhar kar free QR banayein.</p>
+        <p class="tiny muted" style="margin:10px 0 0">Restaurant staff? <a href="/login" style="color:var(--primary-700);font-weight:700">Staff login →</a></p>
+      </div>
+
+      <!-- Logged-in owner dashboard -->
+      <div class="panel hidden" id="owner-card">
+        <div class="owner-head">
+          <img class="owner-logo hidden" id="ow-logo" alt="Restaurant logo" />
+          <div class="owner-fallback" id="ow-fallback">R</div>
+          <div>
+            <div class="owner-name" id="ow-name">My Restaurant</div>
+            <div class="owner-phone" id="ow-phone"></div>
+          </div>
+        </div>
+        <div id="owner-qr"></div>
+        <div class="owner-actions">
+          <a class="btn btn-primary btn-block" id="ow-open" target="_blank" rel="noopener">Open my menu →</a>
+          <button class="btn btn-outline btn-block" id="ow-copy" type="button">📋 Copy menu link</button>
+          <button class="btn btn-ghost btn-block" id="ow-logout" type="button">Logout</button>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
+    const TOKEN_KEY = 'fq_token';
+    let ownerToken = '';
 
-    // Handle logo file upload to base64
+    function setToken(t) {
+      ownerToken = t || '';
+      try {
+        if (t) localStorage.setItem(TOKEN_KEY, t);
+        else localStorage.removeItem(TOKEN_KEY);
+      } catch (_) { /* private mode */ }
+    }
+
+    function getStoredToken() {
+      try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
+    }
+
+    /* ---------------------------- file uploads ---------------------------- */
     $('g-logo-file').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        $('g-logo').value = ev.target.result;
-      };
+      reader.onload = (ev) => { $('g-logo').value = ev.target.result; };
       reader.readAsDataURL(file);
     });
 
-    // Handle menu file upload to base64
     $('g-menu-file').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        $('g-menu').value = ev.target.result;
-      };
+      reader.onload = (ev) => { $('g-menu').value = ev.target.result; };
       reader.readAsDataURL(file);
     });
 
+    /* --------------------------- owner dashboard --------------------------- */
+    function absoluteMenuUrl(restaurant) {
+      const rel = restaurant.url || ('/m/' + restaurant.slug);
+      return rel.startsWith('http') ? rel : location.origin + rel;
+    }
+
+    function prettyPhone(value) {
+      const d = String(value || '').replace(/\D/g, '');
+      if (d.length === 12 && d.startsWith('91')) return '+91 ' + d.slice(2, 7) + ' ' + d.slice(7);
+      if (d.length === 10) return '+91 ' + d.slice(0, 5) + ' ' + d.slice(5);
+      return String(value || '');
+    }
+
+    function showOwner(restaurant) {
+      $('login-card').classList.add('hidden');
+      $('owner-card').classList.remove('hidden');
+
+      $('ow-name').textContent = restaurant.restaurant || 'My Restaurant';
+      $('ow-phone').textContent = restaurant.phone ? '📞 ' + prettyPhone(restaurant.phone) : '';
+
+      const logo = $('ow-logo');
+      const fallback = $('ow-fallback');
+      if (restaurant.logo_url) {
+        logo.src = restaurant.logo_url;
+        logo.classList.remove('hidden');
+        fallback.classList.add('hidden');
+      } else {
+        logo.classList.add('hidden');
+        fallback.classList.remove('hidden');
+        fallback.textContent = (restaurant.restaurant || 'R').charAt(0).toUpperCase();
+      }
+
+      $('ow-open').href = absoluteMenuUrl(restaurant);
+      $('g-open-menu').href = absoluteMenuUrl(restaurant);
+
+      const box = $('owner-qr');
+      box.innerHTML = '';
+      new QRCode(box, {
+        text: absoluteMenuUrl(restaurant),
+        width: 160,
+        height: 160,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    }
+
+    function showLogin() {
+      $('owner-card').classList.add('hidden');
+      $('login-card').classList.remove('hidden');
+    }
+
+    $('ow-copy').addEventListener('click', async () => {
+      const link = $('ow-open').href;
+      try {
+        await navigator.clipboard.writeText(link);
+        $('ow-copy').textContent = '✅ Link copied!';
+        setTimeout(() => { $('ow-copy').textContent = '📋 Copy menu link'; }, 1800);
+      } catch (_) {
+        window.prompt('Copy this link:', link);
+      }
+    });
+
+    $('ow-logout').addEventListener('click', () => {
+      setToken('');
+      showLogin();
+    });
+
+    $('jump-login').addEventListener('click', () => {
+      showLogin();
+      $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => $('l-phone').focus(), 350);
+    });
+
+    /* -------------------------------- login -------------------------------- */
+    $('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phone = $('l-phone').value.trim();
+      const password = $('l-pass').value;
+      if (!phone || !password) return;
+
+      $('login-error').textContent = '';
+      $('login-submit').disabled = true;
+      $('login-submit').textContent = 'Logging in...';
+
+      try {
+        const res = await fetch('/api/public/free-qr/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        setToken(data.token);
+        showOwner(data.restaurant);
+        $('l-pass').value = '';
+      } catch (err) {
+        $('login-error').textContent = err.message;
+      } finally {
+        $('login-submit').disabled = false;
+        $('login-submit').textContent = 'Login';
+      }
+    });
+
+    /* ------------------------------ generate ------------------------------- */
     $('g-gen').addEventListener('click', async () => {
       const rest = $('g-rest').value.trim();
       const owner = $('g-owner').value.trim();
@@ -156,18 +373,25 @@
 
         $('qr-code').innerHTML = '';
         $('qr-subtitle').textContent = `${rest} • Owner: ${owner}`;
-        
+
         new QRCode($('qr-code'), {
           text: data.url,
           width: 220,
           height: 220,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
+          colorDark: '#000000',
+          colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.H
         });
 
+        $('g-open-menu').classList.remove('hidden');
         $('qr-container').classList.remove('hidden');
         $('qr-container').scrollIntoView({ behavior: 'smooth' });
+
+        // The owner just proved the password, so open their dashboard too.
+        if (data.token && data.restaurant) {
+          setToken(data.token);
+          showOwner(data.restaurant);
+        }
       } catch (err) {
         alert('Error: ' + err.message);
       } finally {
@@ -179,6 +403,24 @@
     $('g-print').addEventListener('click', () => {
       window.print();
     });
+
+    /* --------------------- restore a saved owner session -------------------- */
+    (async function restore() {
+      const token = getStoredToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/public/free-qr/me', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) throw new Error('expired');
+        const data = await res.json();
+        setToken(token);
+        showOwner(data.restaurant);
+      } catch (_) {
+        setToken('');
+        showLogin();
+      }
+    })();
   </script>
 </body>
 </html>

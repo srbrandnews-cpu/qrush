@@ -7,8 +7,68 @@ const { query, get, run } = require('../config/db');
 const { createOrder, getCustomerOrder, decorateForCustomer, cleanPhone } = require('../services/orders');
 const { OPEN_STATUSES, REQUEST_TYPES, REQUEST_LABELS } = require('../utils/constants');
 const { emitToTenant } = require('../realtime/socket');
+const { signFreeQrToken, verifyFreeQrToken } = require('../middleware/auth');
 
 const router = express.Router();
+
+/* ------------------------------------------------------------------ *
+ * Free QR menu helpers
+ * ------------------------------------------------------------------ */
+
+/** Keep digits only so "+91 98765 43210" and "9876543210" match. */
+function phoneDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+/** Compare two phone numbers on their last 10 digits (ignores country code). */
+function samePhone(a, b) {
+  const x = phoneDigits(a);
+  const y = phoneDigits(b);
+  if (!x || !y) return false;
+  return x.slice(-10) === y.slice(-10);
+}
+
+/** Human-friendly phone for the public menu page. */
+function prettyPhone(value) {
+  const d = phoneDigits(value);
+  if (d.length === 12 && d.startsWith('91')) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
+  return String(value || '');
+}
+
+/** What the owner is allowed to see about their free menu. */
+function publicFreeQr(row) {
+  return {
+    slug: row.slug,
+    url: `/m/${row.slug}`,
+    restaurant: row.restaurant,
+    owner_name: row.owner_name,
+    phone: row.phone,
+    logo_url: row.logo_url,
+    menu_type: row.menu_type,
+    instagram: row.instagram,
+    facebook: row.facebook,
+    whatsapp: row.whatsapp,
+    website: row.website,
+    created_at: row.created_at,
+  };
+}
+
+// Very light brute-force guard for the free-menu login (no extra dependency).
+const freeQrAttempts = new Map();
+const FREE_QR_WINDOW = 10 * 60 * 1000;
+const FREE_QR_MAX_TRIES = 8;
+
+function freeQrThrottled(key) {
+  const now = Date.now();
+  const rec = freeQrAttempts.get(key);
+  if (!rec || now > rec.reset) {
+    freeQrAttempts.set(key, { count: 1, reset: now + FREE_QR_WINDOW });
+    return false;
+  }
+  rec.count += 1;
+  return rec.count > FREE_QR_MAX_TRIES;
+}
 
 // What the customer still sees on their phone: the kitchen steps plus served
 // (so they can pay by UPI and leave a rating before the cashier closes the bill).
@@ -342,6 +402,7 @@ router.post('/free-qr', async (req, res, next) => {
     if (b.password) {
       passwordHash = await bcrypt.hash(String(b.password), 10);
     }
+    const phone = phoneDigits(b.phone).slice(0, 20) || null;
     await run(
       `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type, instagram, facebook, whatsapp, website)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -349,7 +410,7 @@ router.post('/free-qr', async (req, res, next) => {
         slug,
         restaurant,
         (b.owner_name || '').toString().slice(0, 120) || null,
-        (b.phone || '').toString().slice(0, 30) || null,
+        phone,
         passwordHash,
         b.logo_url || null,
         menuData,
@@ -363,7 +424,81 @@ router.post('/free-qr', async (req, res, next) => {
     const host = req.get('host');
     const proto = req.protocol;
     const url = `${proto}://${host}/m/${slug}`;
-    res.status(201).json({ slug, url });
+    const row = {
+      id: (await get('SELECT id FROM free_qr_menus WHERE slug = ?', [slug])).id,
+      slug,
+      restaurant,
+      owner_name: (b.owner_name || '').toString().slice(0, 120) || null,
+      phone,
+      logo_url: b.logo_url || null,
+      menu_type: (b.menu_type || 'image').toString().slice(0, 20),
+      instagram: (b.instagram || '').toString().slice(0, 200) || null,
+      facebook: (b.facebook || '').toString().slice(0, 200) || null,
+      whatsapp: (b.whatsapp || '').toString().slice(0, 200) || null,
+      website: (b.website || '').toString().slice(0, 200) || null,
+    };
+    res.status(201).json({
+      slug,
+      url,
+      token: passwordHash ? signFreeQrToken(row) : null,
+      restaurant: publicFreeQr(row),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/public/free-qr/login
+ * body: { phone, password }
+ * Lets a free-menu owner open their own restaurant again.
+ */
+router.post('/free-qr/login', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const phone = phoneDigits(b.phone);
+    const password = String(b.password || '');
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone number and password are required' });
+    }
+    const throttleKey = `${req.ip || 'ip'}:${phone.slice(-10)}`;
+    if (freeQrThrottled(throttleKey)) {
+      return res.status(429).json({ error: 'Bahut zyada attempts. 10 minute baad try karein.' });
+    }
+
+    const rows = await query('SELECT * FROM free_qr_menus ORDER BY id DESC LIMIT 500');
+    const matches = rows.filter((r) => r.password_hash && samePhone(r.phone, phone));
+    if (!matches.length) {
+      return res.status(401).json({ error: 'Is number se koi restaurant nahi mila.' });
+    }
+
+    let row = null;
+    for (const candidate of matches) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await bcrypt.compare(password, candidate.password_hash)) { row = candidate; break; }
+    }
+    if (!row) {
+      return res.status(401).json({ error: 'Password galat hai.' });
+    }
+
+    res.json({ token: signFreeQrToken(row), restaurant: publicFreeQr(row) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/public/free-qr/me — owner dashboard data from a free-QR token.
+ */
+router.get('/free-qr/me', async (req, res, next) => {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const payload = verifyFreeQrToken(token);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+    res.json({ restaurant: publicFreeQr(row) });
   } catch (err) {
     next(err);
   }
@@ -371,15 +506,17 @@ router.post('/free-qr', async (req, res, next) => {
 
 /**
  * GET /m/:slug — serves the uploaded free menu.
+ * Exported as `hostedMenuPage` so server.js can mount it at the site root
+ * (`/m/<slug>`), which is what the generated QR code points to.
  */
-router.get('/m/:slug', async (req, res, next) => {
+async function hostedMenuPage(req, res, next) {
   try {
     const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
     if (!row) return res.status(404).send('Menu not found');
 
     const logoHtml = row.logo_url
-      ? `<img src="${escapeHtml(row.logo_url)}" alt="${escapeHtml(row.restaurant)}" style="max-width:140px;max-height:140px;border-radius:20px;object-fit:cover;box-shadow:0 12px 30px -12px rgba(0,0,0,.4)" />`
-      : `<div style="width:100px;height:100px;border-radius:20px;background:linear-gradient(135deg,#ea580c,#f97316);display:grid;place-items:center;color:#fff;font-size:40px;font-weight:800">${escapeHtml((row.restaurant||'R').charAt(0).toUpperCase())}</div>`;
+      ? `<img class="menu-logo" src="${escapeHtml(row.logo_url)}" alt="${escapeHtml(row.restaurant)}" />`
+      : `<div class="menu-logo menu-logo-fallback">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
 
     const menuData = row.menu_data;
     let menuHtml = '';
@@ -390,40 +527,96 @@ router.get('/m/:slug', async (req, res, next) => {
     }
 
     const socials = [];
-    if (row.whatsapp) socials.push(`<a href="https://wa.me/${escapeHtml(String(row.whatsapp).replace(/\\D/g,''))}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#25d366;color:#fff;font-weight:700;text-decoration:none">WhatsApp</a>`);
-    if (row.instagram) socials.push(`<a href="${escapeHtml(row.instagram)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;text-decoration:none">Instagram</a>`);
-    if (row.facebook) socials.push(`<a href="${escapeHtml(row.facebook)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#1877f2;color:#fff;font-weight:700;text-decoration:none">Facebook</a>`);
-    if (row.website) socials.push(`<a href="${escapeHtml(row.website)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;background:#ea580c;color:#fff;font-weight:700;text-decoration:none">Website</a>`);
+    const socialBtn = (href, label, bg) =>
+      `<a class="soc" href="${escapeHtml(href)}" target="_blank" rel="noopener" style="background:${bg}">${label}</a>`;
+    if (row.whatsapp) socials.push(socialBtn(`https://wa.me/${phoneDigits(row.whatsapp)}`, 'WhatsApp', '#25d366'));
+    if (row.instagram) socials.push(socialBtn(ensureUrl(row.instagram), 'Instagram', 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)'));
+    if (row.facebook) socials.push(socialBtn(ensureUrl(row.facebook), 'Facebook', '#1877f2'));
+    if (row.website) socials.push(socialBtn(ensureUrl(row.website), 'Website', '#ea580c'));
+
+    const phoneLink = row.phone
+      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
+      : '';
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ea580c" />
   <title>${escapeHtml(row.restaurant)} — Menu</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    body { background: var(--bg); margin:0; padding:0; font-family: var(--font); }
-    .mwrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
-    .mheader { text-align:center; padding: 32px 16px 24px; }
-    .mheader h1 { font-size: 28px; margin: 16px 0 4px; color: var(--ink); }
-    .mheader p { color: var(--muted); font-size: 14px; margin: 0; }
-    .menu-card { background:#fff; border:1px solid var(--line); border-radius:20px; padding:16px; box-shadow: var(--shadow-md); text-align:center; }
-    .socials { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:24px; }
-    .foot { text-align:center; margin-top:32px; font-size:11px; color:var(--muted-2); }
+    body { background: linear-gradient(180deg, #fff7ed 0%, #f6f8fb 340px); margin:0; padding:0; font-family: var(--font); }
+    .mwrap { max-width: 620px; margin: 0 auto; padding: 22px 16px 56px; }
+
+    /* 1 — restaurant logo, right at the top */
+    .mhead { text-align: center; padding: 8px 0 22px; }
+    .mlogo {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fff; border-radius: 26px; padding: 12px;
+      box-shadow: 0 22px 48px -26px rgba(15, 23, 42, .5);
+    }
+    .menu-logo { display: block; max-width: 180px; max-height: 180px; width: auto; height: auto; object-fit: contain; border-radius: 18px; }
+    .menu-logo-fallback {
+      width: 104px; height: 104px; display: grid; place-items: center;
+      font-size: 44px; font-weight: 800; color: #fff; border-radius: 22px;
+      background: linear-gradient(135deg, #ea580c, #f97316);
+    }
+    .mhead h1 { font-size: 27px; line-height: 1.2; margin: 18px 0 4px; color: var(--ink); letter-spacing: -.02em; }
+    .mhead .msub { color: var(--muted); font-size: 13.5px; margin: 0; }
+    .mcall {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+      padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      color: var(--primary-700); background: var(--primary-50);
+      border: 1px solid var(--primary-100); text-decoration: none;
+    }
+
+    /* 2 — the uploaded menu */
+    .menu-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px;
+      padding: 14px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35); text-align: center;
+    }
+    .sec-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); margin: 0 0 12px;
+    }
+    .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .menu-card .sec-title { padding: 4px 4px 0; }
+    .menu-card img { display: block; margin: 0 auto; }
+
+    /* 3 — social links */
+    .socials { margin-top: 26px; }
+    .socials .sec-title { padding: 0 4px; }
+    .soc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .soc {
+      display: flex; align-items: center; justify-content: center;
+      padding: 13px 16px; border-radius: 14px; color: #fff; font-weight: 700; font-size: 14px;
+      text-decoration: none; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, .55);
+    }
+    .soc:active { transform: scale(.985); }
+
+    .foot { text-align: center; margin-top: 34px; font-size: 11px; color: var(--muted-2); }
   </style>
 </head>
 <body>
   <div class="mwrap">
-    <div class="mheader">
-      ${logoHtml}
+    <header class="mhead">
+      <div class="mlogo">${logoHtml}</div>
       <h1>${escapeHtml(row.restaurant)}</h1>
-      ${row.owner_name ? `<p>By ${escapeHtml(row.owner_name)}</p>` : ''}
-    </div>
-    <div class="menu-card">
+      ${row.owner_name ? `<p class="msub">By ${escapeHtml(row.owner_name)}</p>` : ''}
+      ${phoneLink}
+    </header>
+
+    <section class="menu-card">
+      <h2 class="sec-title">Menu</h2>
       ${menuHtml}
-    </div>
-    ${socials.length ? `<div class="socials">${socials.join('')}</div>` : ''}
+    </section>
+
+    ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
+
     <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush · Free Digital Menu</div>
   </div>
 </body>
@@ -433,11 +626,22 @@ router.get('/m/:slug', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+}
+
+router.get('/m/:slug', hostedMenuPage);
 
 // tiny html escape helper
 function escapeHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/** Owners often type "instagram.com/foo" without the protocol. */
+function ensureUrl(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  return 'https://' + s.replace(/^\/+/, '');
+}
+
 module.exports = router;
+module.exports.hostedMenuPage = hostedMenuPage;

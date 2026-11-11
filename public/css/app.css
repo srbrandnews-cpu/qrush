@@ -154,6 +154,8 @@ button { font-family: inherit; transition: background-color .15s ease, border-co
 .btn-success:hover { background: #15803d; border-color: #15803d; color: #fff; }
 .btn-ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
 .btn-ghost:hover { background: #eef2f7; border-color: transparent; color: var(--ink); }
+.btn-outline { background: #fff; border-color: var(--line-strong); color: var(--ink-2); box-shadow: var(--shadow-xs); }
+.btn-outline:hover { background: #fff; border-color: var(--primary); color: var(--primary-700); }
 .btn-sm { padding: 7px 12px; font-size: 13px; border-radius: 9px; }
 .btn-lg { padding: 14px 22px; font-size: 16px; border-radius: 13px; }
 .btn-block { width: 100%; }
