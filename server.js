@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   lastModified: true,
   maxAge: 0,
   setHeaders: (res, filePath) => {
-    if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(filePath)) {
+    if (/\.(png|jpg|jpeg|gif|svg|ico|webp|mp4|webm)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // 1 week
     } else {
       // HTML / JS / CSS / JSON / sw.js — always revalidate.

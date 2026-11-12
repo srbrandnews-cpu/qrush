@@ -17,3 +17,6 @@ Thumbs.db
 .firebase/
 .firebaserc.local
 apphosting.local.yaml
+
+# Source media (production copy lives in public/video/)
+q rush video.mp4
