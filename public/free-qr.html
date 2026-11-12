@@ -266,6 +266,12 @@
         <input class="input" id="g-pass" type="password" placeholder="••••••••" />
       </div>
 
+      <div class="field" id="g-otp-wrap" style="display:none">
+        <label>OTP <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-otp" type="text" inputmode="numeric" placeholder="6-digit OTP" maxlength="6" />
+        <p class="tiny muted" id="g-otp-hint" style="margin:4px 0 0"></p>
+      </div>
+
       <div class="field">
         <label>Restaurant Logo (Image)</label>
         <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
@@ -1171,7 +1177,8 @@
       }
     });
 
-    /* ------------------------------- generate -------------------------------- */
+        /* -------------------------------- generate -------------------------------- */
+    let otpSent = false;
     $('g-gen').addEventListener('click', async () => {
       const rest = $('g-rest').value.trim();
       const owner = $('g-owner').value.trim();
@@ -1185,8 +1192,45 @@
         return;
       }
 
+      if (!otpSent) {
+        $('g-gen').disabled = true;
+        $('g-gen').textContent = 'Sending OTP...';
+        try {
+          const res = await fetch('/api/public/free-qr/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'OTP send nahi hua');
+          otpSent = true;
+          $('g-otp-wrap').style.display = '';
+          const hint = $('g-otp-hint');
+          if (data.otp) {
+            hint.textContent = 'Demo OTP: ' + data.otp + ' (SMS provider configure hone par yeh screen par nahi dikhega)';
+            hint.style.color = 'var(--primary-700)';
+          } else {
+            hint.textContent = 'OTP aapke phone par bhej diya gaya hai.';
+          }
+          $('g-gen').textContent = 'Verify & Generate';
+          toast('OTP bhej diya gaya!');
+          setTimeout(() => $('g-otp').focus(), 100);
+        } catch (err) {
+          alert('Error: ' + err.message);
+        } finally {
+          $('g-gen').disabled = false;
+        }
+        return;
+      }
+
+      const otp = $('g-otp').value.trim();
+      if (!otp || otp.length < 4) {
+        alert('Kripya OTP enter karein.');
+        return;
+      }
+
       $('g-gen').disabled = true;
-      $('g-gen').textContent = 'Generating...';
+      $('g-gen').textContent = 'Verifying...';
 
       try {
         const res = await fetch('/api/public/free-qr', {
@@ -1197,6 +1241,7 @@
             owner_name: owner,
             phone: phone,
             password: pass,
+            otp: otp,
             logo_url: logo || null,
             menu_data: menu,
             menu_type: generatorMenuType,
@@ -1215,19 +1260,28 @@
         $('g-open-menu').classList.remove('hidden');
         $('qr-container').classList.remove('hidden');
 
-        // The owner just proved the password, so open their dashboard too.
         if (data.token && data.restaurant) {
           setToken(data.token);
           showOwner(data.restaurant, data.stats, data.items);
-          toast('🎉 QR ready! Yeh raha aapka dashboard.');
+          toast('QR ready! Yeh raha aapka dashboard.');
         } else {
           $('qr-container').scrollIntoView({ behavior: 'smooth' });
         }
+
+        otpSent = false;
+        $('g-otp-wrap').style.display = 'none';
+        $('g-otp').value = '';
+        $('g-gen').textContent = 'Generate Free QR Code';
       } catch (err) {
         alert('Error: ' + err.message);
+        if (!/OTP/i.test(err.message)) {
+          otpSent = false;
+          $('g-otp-wrap').style.display = 'none';
+          $('g-gen').textContent = 'Generate Free QR Code';
+        }
       } finally {
         $('g-gen').disabled = false;
-        $('g-gen').textContent = 'Generate Free QR Code 🚀';
+        if (otpSent) $('g-gen').textContent = 'Verify & Generate';
       }
     });
 

@@ -256,6 +256,9 @@ const freeQrAttempts = new Map();
 const FREE_QR_WINDOW = 10 * 60 * 1000;
 const FREE_QR_MAX_TRIES = 8;
 
+// In-memory OTP store for first-time phone verification (no SMS provider).
+const otpStore = new Map(); // phone(last10) -> { otp, expires, attempts }
+
 function freeQrThrottled(key) {
   const now = Date.now();
   const rec = freeQrAttempts.get(key);
@@ -593,6 +596,44 @@ router.get('/venue/:slug', async (req, res, next) => {
  * body: { restaurant, owner_name, phone, password, logo_url, menu_data, menu_type }
  * Creates a free hosted menu page and returns a short URL for the QR code.
  */
+/**
+ * POST /api/public/free-qr/send-otp — send OTP for first-time phone verification.
+ */
+router.post('/free-qr/send-otp', async (req, res, next) => {
+  try {
+    const phone = phoneDigits((req.body || {}).phone);
+    if (!phone || phone.length < 10) return res.status(400).json({ error: 'Valid phone number zaroori hai.' });
+    const key = 'otp:' + (req.ip || 'ip') + ':' + phone.slice(-10);
+    if (freeQrThrottled(key)) return res.status(429).json({ error: 'Bahut zyada attempts. 10 minute baad try karein.' });
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    otpStore.set(phone.slice(-10), { otp, expires: Date.now() + 5 * 60 * 1000, attempts: 0 });
+    res.json({ ok: true, otp, message: 'OTP bhej diya gaya.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/public/free-qr/verify-otp — verify OTP.
+ */
+router.post('/free-qr/verify-otp', async (req, res, next) => {
+  try {
+    const phone = phoneDigits((req.body || {}).phone);
+    const otp = String((req.body || {}).otp || '').trim();
+    if (!phone || !otp) return res.status(400).json({ error: 'Phone aur OTP zaroori hai.' });
+    const rec = otpStore.get(phone.slice(-10));
+    if (!rec) return res.status(400).json({ error: 'OTP nahi mila. Pehle Send OTP dabayein.' });
+    if (Date.now() > rec.expires) { otpStore.delete(phone.slice(-10)); return res.status(400).json({ error: 'OTP expire ho gaya. Dobara send karein.' }); }
+    if (rec.attempts >= 5) { otpStore.delete(phone.slice(-10)); return res.status(429).json({ error: 'Bahut zyada galat attempts. Dobara send karein.' }); }
+    if (rec.otp !== otp) { rec.attempts += 1; return res.status(400).json({ error: 'OTP galat hai.' }); }
+    rec.verified = true;
+    res.json({ ok: true, message: 'Phone verified.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/free-qr', async (req, res, next) => {
   try {
     const b = req.body || {};
@@ -607,6 +648,13 @@ router.post('/free-qr', async (req, res, next) => {
       passwordHash = await bcrypt.hash(String(b.password), 10);
     }
     const phone = phoneDigits(b.phone).slice(0, 20) || null;
+    // OTP verification (required for first-time creation).
+    const otp = String(b.otp || '').trim();
+    const otpRec = otpStore.get(phoneDigits(b.phone).slice(-10));
+    if (!otpRec || otpRec.otp !== otp || Date.now() > otpRec.expires) {
+      return res.status(400).json({ error: 'OTP galat ya expire ho gaya. Dobara send karein.' });
+    }
+    otpStore.delete(phoneDigits(b.phone).slice(-10));
     const menuType = b.menu_type
       ? String(b.menu_type).slice(0, 20)
       : (menuData.startsWith('data:application/pdf') ? 'pdf' : 'image');
