@@ -688,6 +688,31 @@ router.post('/free-qr/login', async (req, res, next) => {
 /**
  * GET /api/public/free-qr/me â€” owner dashboard data from a free-QR token.
  */
+router.post('/free-qr/reset-password', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const phone = String(b.phone || '').trim();
+    const password = String(b.password || '');
+    if (!phone) return res.status(400).json({ error: 'Phone number zaroori hai.' });
+    if (password.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 characters ka ho.' });
+
+    const key = 'reset:' + (req.ip || 'ip') + ':' + phoneDigits(phone);
+    if (freeQrThrottled(key)) {
+      return res.status(429).json({ error: 'Bahut zyada attempts. 10 minute baad try karein.' });
+    }
+
+    const rows = await query('SELECT * FROM free_qr_menus');
+    const target = rows.find((r) => samePhone(r.phone, phone));
+    if (!target) return res.status(404).json({ error: 'Is phone number se koi account nahi mila.' });
+
+    const hash = await bcrypt.hash(password, 10);
+    await run('UPDATE free_qr_menus SET password_hash = ? WHERE id = ?', [hash, target.id]);
+    res.json({ ok: true, message: 'Password reset ho gaya. Ab login karein.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/free-qr/me', async (req, res, next) => {
   try {
     const payload = freeQrAuth(req);

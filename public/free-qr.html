@@ -330,11 +330,42 @@
           <p class="login-error" id="login-error"></p>
           <button class="btn btn-primary btn-block" id="login-submit" type="submit">Login</button>
         </form>
+        <p style="text-align:right;margin:8px 0 0"><a href="#" id="forgot-link" style="font-size:12.5px;color:var(--primary-700);font-weight:700;text-decoration:none">Forgot password?</a></p>
         <div class="divider-or">or</div>
         <p class="tiny muted" style="margin:0">Naya restaurant? Left side form bhar kar free QR banayein.</p>
         <p class="tiny muted" style="margin:10px 0 0">Restaurant staff? <a href="/login" style="color:var(--primary-700);font-weight:700">Staff login →</a></p>
       </div>
     </aside>
+  </div>
+
+  <!-- ------------------------------ Reset password modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="reset-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>🔑 Reset password</h3>
+        <button class="icon-btn" id="reset-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="tiny muted" style="margin:0 0 12px">Apna registered phone number daal kar naya password set karein.</p>
+        <div class="field">
+          <label>Contact Number</label>
+          <input class="input" id="r-phone" type="tel" placeholder="9876543210" />
+        </div>
+        <div class="field">
+          <label>New Password</label>
+          <input class="input" id="r-pass" type="password" placeholder="Kam se kam 4 characters" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Confirm Password</label>
+          <input class="input" id="r-pass2" type="password" placeholder="Dobara likhein" />
+        </div>
+        <p class="login-error" id="reset-error" style="margin-top:10px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="reset-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="reset-submit" type="button">Reset password</button>
+      </div>
+    </div>
   </div>
 
   <!-- ------------------------------ Edit modal ------------------------------ -->
@@ -1088,6 +1119,55 @@
       } finally {
         $('login-submit').disabled = false;
         $('login-submit').textContent = 'Login';
+      }
+    });
+
+    /* ----------------------------- reset password ---------------------------- */
+    function openReset() {
+      $('reset-error').textContent = '';
+      $('r-phone').value = $('l-phone').value.trim();
+      $('r-pass').value = '';
+      $('r-pass2').value = '';
+      $('reset-modal').classList.remove('hidden');
+      setTimeout(() => $('r-phone').focus(), 60);
+    }
+    function closeReset() { $('reset-modal').classList.add('hidden'); }
+
+    $('forgot-link').addEventListener('click', (e) => { e.preventDefault(); openReset(); });
+    $('reset-close').addEventListener('click', closeReset);
+    $('reset-cancel').addEventListener('click', closeReset);
+    $('reset-modal').addEventListener('click', (e) => { if (e.target === $('reset-modal')) closeReset(); });
+
+    $('reset-submit').addEventListener('click', async () => {
+      const phone = $('r-phone').value.trim();
+      const pass = $('r-pass').value;
+      const pass2 = $('r-pass2').value;
+      if (!phone) { $('reset-error').textContent = 'Phone number zaroori hai.'; return; }
+      if (pass.length < 4) { $('reset-error').textContent = 'Password kam se kam 4 characters ka ho.'; return; }
+      if (pass !== pass2) { $('reset-error').textContent = 'Passwords match nahi kar rahe.'; return; }
+
+      $('reset-error').textContent = '';
+      $('reset-submit').disabled = true;
+      $('reset-submit').textContent = 'Resetting...';
+      try {
+        const res = await fetch('/api/public/free-qr/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password: pass }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Reset nahi hua');
+        closeReset();
+        $('l-phone').value = phone;
+        $('l-pass').value = '';
+        toast('✅ Password reset ho gaya! Ab login karein.');
+        $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => $('l-pass').focus(), 400);
+      } catch (err) {
+        $('reset-error').textContent = err.message;
+      } finally {
+        $('reset-submit').disabled = false;
+        $('reset-submit').textContent = 'Reset password';
       }
     });
 
