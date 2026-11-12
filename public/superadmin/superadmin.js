@@ -10,13 +10,14 @@
   const money = (n, currency) => TN.fmtMoney(Number(n) || 0, currency || '₹');
   const plural = (n, one, many) => num(n) + ' ' + (Number(n) === 1 ? one : (many || one + 's'));
 
-  const TAB_TITLES = { overview: 'Overview', restaurants: 'Restaurants', access: 'Access & health' };
+  const TAB_TITLES = { overview: 'Overview', restaurants: 'Restaurants', freeqr: 'Free QR Menus', access: 'Access & health' };
 
   const state = {
     me: null,
     tenantName: '',
     stats: null,
     tenants: [],
+    freeqr: [],
     meta: null,
     tab: 'overview',
     q: '',
@@ -107,7 +108,13 @@
       state.stats = data.stats;
       state.tenants = data.tenants || [];
       state.meta = data.meta || null;
+      // Free QR menus
+      try {
+        const fq = await saApi('/api/admin/super-admin/free-qr');
+        state.freeqr = (fq && fq.freeqr) || [];
+      } catch (_) { state.freeqr = []; }
       renderAll();
+      renderFreeQr();
       const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       setSync('ok', 'Live · ' + time);
     } catch (err) {
@@ -127,6 +134,7 @@
     renderStats();
     renderOverviewLists();
     renderTenantTable();
+    renderFreeQr();
     renderAccess();
   }
 
@@ -319,6 +327,56 @@
     }).join('');
   }
 
+  /* -------------------------------- free qr ------------------------------- */
+  async function removeFreeQr(id) {
+    if (!confirm('Is free QR restaurant ko remove karein? Yeh action undo nahi ho sakta.')) return;
+    try {
+      await saApi(`/api/admin/super-admin/free-qr/${id}`, { method: 'DELETE' });
+      state.freeqr = state.freeqr.filter((x) => Number(x.id) !== Number(id));
+      $('nav-freeqr-count').textContent = num(state.freeqr.length);
+      $('freeqr-count').textContent = num(state.freeqr.length);
+      renderFreeQr();
+      TN.toast('Removed');
+    } catch (err) {
+      TN.toast(err.message || 'Remove nahi hua', 'error');
+    }
+  }
+
+  function renderFreeQr() {
+    const body = $('freeqr-rows');
+    if (!body) return;
+    const rows = state.freeqr || [];
+    $('freeqr-count').textContent = num(rows.length);
+    $('nav-freeqr-count').textContent = num(rows.length);
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="8"><div class="sa-empty"><span class="big">📋</span>Abhi koi free QR restaurant nahi bana.</div></td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.map((r) => `
+      <tr>
+        <td>
+          <b>${esc(r.restaurant || '—')}</b>
+          <div class="tiny muted">/${esc(r.slug)}</div>
+        </td>
+        <td>${esc(r.owner_name || '—')}<br /><span class="tiny muted">${esc(r.phone || '—')}</span></td>
+        <td>${num(r.scans)}</td>
+        <td>${num(r.social_clicks)}</td>
+        <td>${num(r.items)}</td>
+        <td>${num(r.orders)} / ${money(r.sales)}</td>
+        <td>${fmtDate(r.created_at)}</td>
+        <td class="right">
+          <div class="sa-actions">
+            <a class="sa-icon-btn" href="/m/${esc(r.slug)}" target="_blank" rel="noopener" title="Open menu">🔗</a>
+            <button class="btn btn-sm btn-danger" data-freeqr-remove="${r.id}">Remove</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    body.querySelectorAll('[data-freeqr-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => removeFreeQr(Number(btn.getAttribute('data-freeqr-remove'))));
+    });
+  }
+
   /* -------------------------------- access ------------------------------- */
 
   function renderAccess() {
@@ -387,6 +445,7 @@
     document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== 'panel-' + tab));
     $('sa-crumb-page').textContent = TAB_TITLES[tab] || tab;
     if (tab === 'restaurants') renderTenantTable();
+    if (tab === 'freeqr') renderFreeQr();
     if (tab === 'access') { renderAccess(); checkHealth(); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

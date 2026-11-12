@@ -288,6 +288,58 @@ router.delete('/super-admin/tenants/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/admin/super-admin/free-qr — list all free QR menus with stats.
+ */
+router.get('/super-admin/free-qr', async (req, res, next) => {
+  try {
+    const rows = await query('SELECT * FROM free_qr_menus ORDER BY id DESC');
+    const out = [];
+    for (const r of rows) {
+      const fqId = r.id;
+      const views = await get("SELECT COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind = 'view'", [fqId]);
+      const clicks = await get("SELECT COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind IN ('whatsapp','instagram','facebook','website')", [fqId]);
+      const orders = await get("SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS s FROM free_qr_orders WHERE free_qr_id = ? AND status <> 'cancelled'", [fqId]);
+      const items = await get('SELECT COUNT(*) AS c FROM free_qr_items WHERE free_qr_id = ?', [fqId]);
+      out.push({
+        id: r.id,
+        slug: r.slug,
+        restaurant: r.restaurant,
+        owner_name: r.owner_name,
+        phone: r.phone,
+        created_at: r.created_at,
+        ordering_enabled: !!Number(r.ordering_enabled),
+        scans: Number(views && views.c) || 0,
+        social_clicks: Number(clicks && clicks.c) || 0,
+        orders: Number(orders && orders.c) || 0,
+        sales: Number(orders && orders.s) || 0,
+        items: Number(items && items.c) || 0,
+      });
+    }
+    res.json({ freeqr: out });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/admin/super-admin/free-qr/:id — remove a free QR restaurant.
+ */
+router.delete('/super-admin/free-qr/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [id]);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    await run('DELETE FROM free_qr_orders WHERE free_qr_id = ?', [id]);
+    await run('DELETE FROM free_qr_items WHERE free_qr_id = ?', [id]);
+    await run('DELETE FROM free_qr_events WHERE free_qr_id = ?', [id]);
+    await run('DELETE FROM free_qr_menus WHERE id = ?', [id]);
+    res.json({ ok: true, deleted: id });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* ========================= TENANT-SCOPED ADMIN ROUTES ========================= */
 // These require the user to be an 'owner' of their tenant.
 router.use(requireAuth, requireRole('owner'));
