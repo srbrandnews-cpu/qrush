@@ -20,3 +20,6 @@ apphosting.local.yaml
 
 # Source media (production copy lives in public/video/)
 q rush video.mp4
+
+# Database backups (may contain customer data)
+backups/

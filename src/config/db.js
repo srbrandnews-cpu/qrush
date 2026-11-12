@@ -28,6 +28,18 @@ const { AsyncLocalStorage } = require('async_hooks');
 const DIALECT = (process.env.DB_CLIENT || 'sqlite').toLowerCase();
 const als = new AsyncLocalStorage();
 
+// Some ISPs cannot resolve hosted Postgres hostnames (Neon etc.). Setting
+// DNS_SERVERS=8.8.8.8,1.1.1.1 in .env uses those resolvers instead.
+if (process.env.DNS_SERVERS) {
+  const dns = require('dns');
+  dns.setServers(
+    String(process.env.DNS_SERVERS)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
 const DB_DIR = process.env.DB_DIR || path.join(__dirname, '..', '..', 'data');
 // Only the SQLite driver needs an on-disk folder. Production (Postgres) images
 // often run as a non-root user with a read-only app directory, so creating
