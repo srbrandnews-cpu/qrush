@@ -66,7 +66,7 @@ async function main() {
     const created = await call('/api/admin/super-admin/tenants', {
       method: 'POST',
       token: superToken,
-      body: { restaurant, name: 'Platform Test', email, password, phone: '9876543210' },
+      body: { restaurant, name: 'Platform Test', email, password, phone: '9172941524' },
     });
     assert(created.status === 201 && created.data.tenant && created.data.owner, 'super admin can create a restaurant');
     tenantId = created.data.tenant.id;

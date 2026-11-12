@@ -15,7 +15,7 @@ const router = express.Router();
  * Free QR menu helpers
  * ------------------------------------------------------------------ */
 
-/** Keep digits only so "+91 98765 43210" and "9876543210" match. */
+/** Keep digits only so "+91 91729 41524" and "9172941524" match. */
 function phoneDigits(value) {
   return String(value || '').replace(/\D/g, '');
 }

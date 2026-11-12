@@ -36,10 +36,10 @@ async function main() {
 
   // --- 1. Phone normalisation (still used to show a contact number) ---
   const { normalizePhone } = require('../src/services/notify');
-  assert(normalizePhone('9876543210', '+91') === '+919876543210', '10-digit number -> +919876543210');
-  assert(normalizePhone('09876543210', '+91') === '+919876543210', 'leading 0 handled');
-  assert(normalizePhone('+91 98765 43210', '+91') === '+919876543210', 'spaces handled');
-  assert(normalizePhone('009876543210', '+91') === '+919876543210', '00 prefix handled');
+  assert(normalizePhone('9172941524', '+91') === '+919172941524', '10-digit number -> +919172941524');
+  assert(normalizePhone('09172941524', '+91') === '+919172941524', 'leading 0 handled');
+  assert(normalizePhone('+91 91729 41524', '+91') === '+919172941524', 'spaces handled');
+  assert(normalizePhone('009172941524', '+91') === '+919172941524', '00 prefix handled');
   assert(normalizePhone('', '+91') === null, 'empty phone -> null');
   assert(normalizePhone('abc', '+91') === null, 'garbage phone -> null');
 

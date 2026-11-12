@@ -85,7 +85,7 @@ async function main() {
       [
         'Spice Garden (Demo)',
         'demo',
-        '+91 98765 43210',
+        '+91 91729 41524',
         'MG Road, Bengaluru',
         '₹',
         5,

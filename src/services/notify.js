@@ -25,7 +25,7 @@ const PROVIDER = 'web-push';
 /* -------------------------------------------------------------------------- */
 
 /**
- * Turn any user-typed phone into E.164-ish (+919876543210).
+ * Turn any user-typed phone into E.164-ish (+919172941524).
  * Kept because the customer table can still show a phone number, and a
  * restaurant owner may want to call a guest whose order is stuck.
  */
@@ -40,9 +40,9 @@ function normalizePhone(raw, countryCode = '+91') {
   if (p.startsWith('00')) p = p.slice(2);
 
   if (!p.startsWith('+')) {
-    if (p.startsWith('0')) p = cc + p.slice(1);        // 09876543210 -> 91 9876543210
-    else if (p.length === 10) p = cc + p;               // 9876543210   -> 91 9876543210
-    // else: already contains the country code (e.g. 919876543210) — leave it
+    if (p.startsWith('0')) p = cc + p.slice(1);        // 09172941524 -> 91 9172941524
+    else if (p.length === 10) p = cc + p;               // 9172941524   -> 91 9172941524
+    // else: already contains the country code (e.g. 919172941524) — leave it
   }
 
   p = '+' + p.replace(/^\+/, '');

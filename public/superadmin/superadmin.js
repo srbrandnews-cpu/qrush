@@ -517,7 +517,7 @@
           </div>
           <div class="field">
             <label for="nt-phone">Phone</label>
-            <input class="input" id="nt-phone" placeholder="e.g. 98765 43210" autocomplete="tel" />
+            <input class="input" id="nt-phone" placeholder="e.g. 91729 41524" autocomplete="tel" />
           </div>
         </div>
         <div class="field">
@@ -608,7 +608,7 @@
       sub: 'Restaurant ka naam, phone aur status.',
       body: `
         ${field('et-name', 'Restaurant name', t.name)}
-        ${field('et-phone', 'Phone', t.phone, { placeholder: 'e.g. 98765 43210' })}
+        ${field('et-phone', 'Phone', t.phone, { placeholder: 'e.g. 91729 41524' })}
         <div class="sa-info" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div><span>Status</span><b>${Number(t.is_active) ? 'Active' : 'Suspended'}</b></div>
           <label class="switch"><input type="checkbox" id="et-active" ${Number(t.is_active) ? 'checked' : ''} /><span class="slider"></span></label>

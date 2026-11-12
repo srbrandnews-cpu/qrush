@@ -65,8 +65,8 @@ function billSuffix(index) {
 }
 
 /**
- * Canonical phone shape so "+91 98765 43210", "098765 43210" and
- * "9876543210" all resolve to the same bill identity. India is the default
+ * Canonical phone shape so "+91 91729 41524", "091729 41524" and
+ * "9172941524" all resolve to the same bill identity. India is the default
  * market, but other country numbers are kept intact.
  */
 function cleanPhone(value) {
