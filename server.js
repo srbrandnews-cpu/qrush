@@ -82,7 +82,20 @@ app.get('/menu', page(path.join('menu', 'index.html')));
 // Kitchen board for a free hosted menu (orders scanned from the free QR card).
 app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
 
-// --- 404 for unknown API calls, plain 404 page otherwise ---
+// Keep-alive: ping self every 10 min to reduce Render free-tier sleep.
+if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+  const http = require('http');
+  const keepAliveUrl = process.env.RENDER_EXTERNAL_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
+  setInterval(() => {
+    const url = `${keepAliveUrl}/api/health`;
+    const mod = url.startsWith('https') ? require('https') : require('http');
+    mod.get(url, (res) => {
+      console.log('[keepalive] ping', res.statusCode, new Date().toISOString());
+    }).on('error', (e) => {
+      console.log('[keepalive] err', e.message);
+    });
+  }, 10 * 60 * 1000);
+}
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public', '404.html')));
 
