@@ -65,6 +65,7 @@ const dryRun = process.argv.includes('--dry-run');
 
   console.log(dryRun ? 'Dry run complete.' : 'Done — HEIC images converted to JPEG.');
   await close();
+  process.exit(0);
 })().catch(async (err) => {
   console.error('Failed:', err.message);
   try { await close(); } catch (_) {}
