@@ -25,6 +25,7 @@
     "backup:db": "node scripts/backup-db.js",
     "restore:db": "node scripts/restore-db.js",
     "backup:chat": "node scripts/backup-chat.js",
+    "fix:heic": "node scripts/fix-heic-menus.js",
     "test:migrate": "node scripts/test-migrate.js",
     "icons": "node scripts/make-icon.js"
   },
@@ -46,6 +47,7 @@
     "csv-parse": "^7.0.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "heic-convert": "^1.2.4",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",

@@ -8,6 +8,7 @@ const { createOrder, getCustomerOrder, decorateForCustomer, cleanPhone } = requi
 const { OPEN_STATUSES, REQUEST_TYPES, REQUEST_LABELS } = require('../utils/constants');
 const { emitToTenant, emitToFreeQr } = require('../realtime/socket');
 const { signFreeQrToken, verifyFreeQrToken } = require('../middleware/auth');
+const { normalizeMenuData, normalizeLogo, convertHeicBuffer } = require('../utils/menu-image');
 
 const router = express.Router();
 
@@ -638,9 +639,18 @@ router.post('/free-qr', async (req, res, next) => {
   try {
     const b = req.body || {};
     const restaurant = (b.restaurant || '').toString().trim().slice(0, 120);
-    const menuData = (b.menu_data || '').toString().trim();
+    let menuData = (b.menu_data || '').toString().trim();
     if (!restaurant || !menuData) {
       return res.status(400).json({ error: 'Restaurant name and menu are required' });
+    }
+
+    // iPhones upload HEIC photos, which most browsers cannot display. Convert
+    // them to JPEG now so the menu always renders.
+    const normalMenu = await normalizeMenuData(menuData);
+    menuData = normalMenu.value;
+    const normalLogo = await normalizeLogo(b.logo_url);
+    if (menuData.length > 16 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Menu file bahut badi hai (max 16MB).' });
     }
     const slug = crypto.randomBytes(6).toString('hex');
     let passwordHash = null;
@@ -667,7 +677,7 @@ router.post('/free-qr', async (req, res, next) => {
         (b.owner_name || '').toString().slice(0, 120) || null,
         phone,
         passwordHash,
-        b.logo_url || null,
+        normalLogo.value || null,
         menuData,
         menuType,
         (b.instagram || '').toString().slice(0, 200) || null,
@@ -817,6 +827,17 @@ router.patch('/free-qr/me', async (req, res, next) => {
       const pw = String(b.password);
       if (pw.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 characters ka ho.' });
       passwordHash = await bcrypt.hash(pw, 10);
+    }
+
+    // iPhone photos arrive as HEIC/HEIF; convert them to JPEG so the uploaded
+    // image actually renders on the dashboard and on the customer menu page.
+    if (next_.menu_data) {
+      const normalMenu = await normalizeMenuData(next_.menu_data);
+      next_.menu_data = normalMenu.value || null;
+    }
+    if (next_.logo_url) {
+      const normalLogo = await normalizeLogo(next_.logo_url);
+      next_.logo_url = normalLogo.value || null;
     }
 
     // Guard against someone typing a menu URL where an image file is expected.
@@ -1128,7 +1149,15 @@ function freeQrAsset(kind) {
       } catch (_) {
         return res.status(404).send('Not found');
       }
-      res.set('Content-Type', match[1] || 'application/octet-stream');
+      // Safety net for menus saved before HEIC conversion existed.
+      let contentType = match[1] || 'application/octet-stream';
+      if (/^image\/hei[cf]/i.test(contentType)) {
+        try {
+          buf = await convertHeicBuffer(buf);
+          contentType = 'image/jpeg';
+        } catch (_) { /* serve the original below */ }
+      }
+      res.set('Content-Type', contentType);
       res.set('Cache-Control', 'no-cache, must-revalidate');
       res.set('Content-Length', String(buf.length));
       res.send(buf);
@@ -1157,7 +1186,15 @@ async function hostedMenuMenu(req, res, next) {
     } catch (_) {
       return res.status(404).send('Not found');
     }
-    res.set('Content-Type', match[1] || 'application/octet-stream');
+    // Safety net for menus saved before HEIC conversion existed.
+    let contentType = match[1] || 'application/octet-stream';
+    if (/^image\/hei[cf]/i.test(contentType)) {
+      try {
+        buf = await convertHeicBuffer(buf);
+        contentType = 'image/jpeg';
+      } catch (_) { /* serve the original below */ }
+    }
+    res.set('Content-Type', contentType);
     res.set('Cache-Control', 'no-cache, must-revalidate');
     res.set('Content-Length', String(buf.length));
     res.send(buf);

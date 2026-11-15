@@ -880,11 +880,16 @@
       if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
       try {
         const isPdfFile = /pdf/i.test(file.type || '');
+        const isHeicFile = /hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '');
         const data = isPdfFile ? await readFileAsDataUrl(file) : await prepareMenuImage(file);
         pendingMenu = { data, type: isPdfFile ? 'pdf' : 'image' };
+        // HEIC previews do not render in most browsers; the server turns the
+        // photo into JPEG on save, so show a friendly placeholder here.
         $('m-menu-thumb').innerHTML = pendingMenu.type === 'pdf'
           ? '<span style="font-size:22px">📄</span>'
-          : '<img src="' + data + '" alt="Menu" />';
+          : (isHeicFile
+            ? '<span style="font-size:22px" title="iPhone photo — save karte hi dikhegi">📷</span>'
+            : '<img src="' + data + '" alt="Menu" />');
       } catch (err) {
         toast(err.message || 'Image upload nahi hui', true);
       } finally {
