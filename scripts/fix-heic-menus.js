@@ -19,6 +19,7 @@ const { normalizeMenuData, normalizeLogo } = require('../src/utils/menu-image');
 const dryRun = process.argv.includes('--dry-run');
 
 (async () => {
+  console.log('Scanning for HEIC menu images...');
   const rows = await query(
     "SELECT id, slug, restaurant, menu_data, logo_url FROM free_qr_menus " +
     "WHERE LOWER(COALESCE(menu_data,'')) LIKE '%data:image/heic%' " +

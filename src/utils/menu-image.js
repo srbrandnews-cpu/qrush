@@ -18,11 +18,11 @@ function getHeicConvert() {
   return heicConvert;
 }
 
-const HEIC_TYPE = /^image\/hei[cf]/i;
+const HEIC_DATA_URL = /^data:image\/hei[cf]/i;
 const DATA_URL = /^data:([^;,]*)(;base64)?,([\s\S]*)$/;
 
 function isHeicDataUrl(value) {
-  return HEIC_TYPE.test(String(value || '').trim().slice(0, 40));
+  return HEIC_DATA_URL.test(String(value || '').trim());
 }
 
 /** Parse menu_data into an array of data-URI / URL strings. */
