@@ -16,7 +16,7 @@ const { runWithOrigin } = require('./src/utils/request-context');
 
 const app = express();
 app.set('trust proxy', true);
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
 // Make the request's own origin visible to helpers that build absolute URLs

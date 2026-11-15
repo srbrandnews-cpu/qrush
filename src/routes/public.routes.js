@@ -820,8 +820,9 @@ router.patch('/free-qr/me', async (req, res, next) => {
     }
 
     // Guard against someone typing a menu URL where an image file is expected.
-    if (String(next_.menu_data || '').length > 5 * 1024 * 1024 * 1.4) {
-      return res.status(413).json({ error: 'Menu file bahut badi hai (max 5MB).' });
+    // Images are compressed client-side, so this only catches abuse/legacy data.
+    if (String(next_.menu_data || '').length > 16 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Menu file bahut badi hai (max 16MB).' });
     }
 
     await run(

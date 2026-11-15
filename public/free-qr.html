@@ -518,6 +518,78 @@
       });
     }
 
+    // Phone cameras produce 3–8MB photos; base64 makes them ~35% bigger, which
+    // used to hit the API body limit. Re-encode big images down to a
+    // web-friendly size before uploading. Small files are sent untouched.
+    function prepareImageFile(file, opts) {
+      const o = opts || {};
+      const maxDim = o.maxDim || 1600;
+      const quality = o.quality || 0.84;
+      const keepUnder = o.keepUnder || 700 * 1024;
+
+      if (!/^image\//i.test(file.type || '')) return readFileAsDataUrl(file);
+      if (file.size <= keepUnder) return readFileAsDataUrl(file);
+
+      return new Promise((resolve) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        const fallback = () => {
+          try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+          readFileAsDataUrl(file).then(resolve);
+        };
+
+        img.onload = () => {
+          try {
+            let w = img.naturalWidth || img.width;
+            let h = img.naturalHeight || img.height;
+            const scale = Math.min(1, maxDim / Math.max(w, h));
+            w = Math.max(1, Math.round(w * scale));
+            h = Math.max(1, Math.round(h * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            const isPng = /png/i.test(file.type || '');
+            if (!isPng) {
+              // JPEG has no alpha — paint white so transparent areas don't go black.
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, w, h);
+            }
+            ctx.drawImage(img, 0, 0, w, h);
+            try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+
+            const out = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
+            // Keep original if compression did not actually help.
+            if (out && out.length < file.size * 1.37) resolve(out);
+            else readFileAsDataUrl(file).then(resolve);
+          } catch (_) {
+            fallback();
+          }
+        };
+        img.onerror = fallback;
+        img.src = objectUrl;
+      });
+    }
+
+    // Menu pages: big pixel size is fine, just keep the file small.
+    async function prepareMenuImage(file) {
+      const dataUrl = await prepareImageFile(file, { maxDim: 1600, quality: 0.84 });
+      if (dataUrl && dataUrl.length > 6 * 1024 * 1024) {
+        throw new Error('Image bahut badi hai — chhoti photo try karein');
+      }
+      return dataUrl;
+    }
+
+    // Logos: small and crisp, keep PNG transparency.
+    async function prepareLogoImage(file) {
+      const dataUrl = await prepareImageFile(file, { maxDim: 600, quality: 0.9, keepUnder: 400 * 1024 });
+      if (dataUrl && dataUrl.length > 2 * 1024 * 1024) {
+        throw new Error('Logo bahut bada hai — chhoti image try karein');
+      }
+      return dataUrl;
+    }
+
     function fmtDate(value) {
       if (!value) return '—';
       const d = new Date(String(value).replace(' ', 'T') + 'Z');
@@ -785,34 +857,58 @@
     $('m-logo-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); return; }
-      pendingLogo = await readFileAsDataUrl(file);
-      $('m-logo').src = pendingLogo;
-      $('m-logo').style.visibility = 'visible';
+      if (!/^image\//i.test(file.type || '')) { toast('Logo ke liye image chunein', true); e.target.value = ''; return; }
+      try {
+        pendingLogo = await prepareLogoImage(file);
+        $('m-logo').src = pendingLogo;
+        $('m-logo').style.visibility = 'visible';
+      } catch (err) {
+        toast(err.message || 'Logo upload nahi hua', true);
+      } finally {
+        e.target.value = '';
+      }
     });
 
     $('m-menu-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); return; }
-      const data = await readFileAsDataUrl(file);
-      pendingMenu = { data, type: /pdf/i.test(file.type) ? 'pdf' : 'image' };
-      $('m-menu-thumb').innerHTML = pendingMenu.type === 'pdf'
-        ? '<span style="font-size:22px">📄</span>'
-        : '<img src="' + data + '" alt="Menu" />';
+      if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
+        toast('Sirf image ya PDF upload kar sakte hain', true);
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
+      try {
+        const isPdfFile = /pdf/i.test(file.type || '');
+        const data = isPdfFile ? await readFileAsDataUrl(file) : await prepareMenuImage(file);
+        pendingMenu = { data, type: isPdfFile ? 'pdf' : 'image' };
+        $('m-menu-thumb').innerHTML = pendingMenu.type === 'pdf'
+          ? '<span style="font-size:22px">📄</span>'
+          : '<img src="' + data + '" alt="Menu" />';
+      } catch (err) {
+        toast(err.message || 'Image upload nahi hui', true);
+      } finally {
+        e.target.value = '';
+      }
     });
 
     async function patchOwner(body) {
-      const res = await fetch('/api/public/free-qr/me', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + ownerToken,
-        },
-        body: JSON.stringify(body),
-      });
+      let res;
+      try {
+        res = await fetch('/api/public/free-qr/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + ownerToken,
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (_) {
+        throw new Error('Internet connection check karein');
+      }
+      if (res.status === 413) throw new Error('File bahut badi hai — chhoti image upload karein');
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Save nahi hua');
+      if (!res.ok) throw new Error(data.error || 'Save nahi hua (' + res.status + ')');
       return data;
     }
 
@@ -879,11 +975,22 @@
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
       for (const f of files) {
-        if (f.size > 5 * 1024 * 1024) { toast('File size max 5MB honi chahiye', true); e.target.value = ''; return; }
+        if (!/^image\//i.test(f.type || '') && !/pdf/i.test(f.type || '')) {
+          toast('Sirf image ya PDF upload kar sakte hain', true);
+          e.target.value = '';
+          return;
+        }
+        if (f.size > 20 * 1024 * 1024) {
+          toast('File bahut badi hai (max 20MB)', true);
+          e.target.value = '';
+          return;
+        }
       }
       toast('Images upload ho rahi hain...');
       try {
-        const newUrls = await Promise.all(files.map(readFileAsDataUrl));
+        const newUrls = await Promise.all(
+          files.map((f) => (/pdf/i.test(f.type || '') ? readFileAsDataUrl(f) : prepareMenuImage(f)))
+        );
         const type = files[0] && /pdf/i.test(files[0].type) ? 'pdf' : 'image';
 
         const exRes = await fetch('/api/public/free-qr/menu-data', { headers: { Authorization: 'Bearer ' + ownerToken } });
@@ -1085,17 +1192,34 @@
     $('g-logo-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
-      $('g-logo').value = await readFileAsDataUrl(file);
+      if (!/^image\//i.test(file.type || '')) { toast('Logo ke liye image chunein', true); e.target.value = ''; return; }
+      try {
+        $('g-logo').value = await prepareLogoImage(file);
+      } catch (err) {
+        toast(err.message || 'Logo upload nahi hua', true);
+      } finally {
+        e.target.value = '';
+      }
     });
 
     let generatorMenuType = 'image';
     $('g-menu-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { alert('File size max 5MB honi chahiye'); return; }
-      generatorMenuType = /pdf/i.test(file.type) ? 'pdf' : 'image';
-      $('g-menu').value = await readFileAsDataUrl(file);
+      if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
+        toast('Sirf image ya PDF upload kar sakte hain', true);
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
+      try {
+        generatorMenuType = /pdf/i.test(file.type || '') ? 'pdf' : 'image';
+        $('g-menu').value = generatorMenuType === 'pdf' ? await readFileAsDataUrl(file) : await prepareMenuImage(file);
+      } catch (err) {
+        toast(err.message || 'Image upload nahi hui', true);
+      } finally {
+        e.target.value = '';
+      }
     });
 
     /* -------------------------------- login --------------------------------- */
