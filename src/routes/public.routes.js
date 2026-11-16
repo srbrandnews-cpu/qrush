@@ -1601,7 +1601,15 @@ async function hostedMenuPage(req, res, next) {
     }
     .soc:active { transform: scale(.985); }
 
-    .foot { text-align: center; margin-top: 34px; font-size: 11px; color: var(--muted-2); }
+    .foot { text-align: center; margin-top: 34px; }
+    .foot-brand {
+      display: inline-flex; align-items: center; justify-content: center;
+      text-decoration: none; background: #fff; border: 1px solid var(--line);
+      border-radius: 18px; padding: 12px 20px;
+      box-shadow: 0 18px 40px -34px rgba(15, 23, 42, .5);
+    }
+    .foot-brand:active { transform: scale(.99); }
+    .foot-brand img { display: block; width: 150px; height: auto; }
 
     /* 2b â€” ordering */
     body.has-cart .mwrap { padding-bottom: 120px; }
@@ -1693,7 +1701,11 @@ async function hostedMenuPage(req, res, next) {
 
     ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
 
-    <div class="foot"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />Powered by QRush Â· Free Digital Menu</div>
+    <div class="foot">
+      <a class="foot-brand" href="https://wa.me/919172941524" target="_blank" rel="noopener" aria-label="QRush">
+        <img src="/img/qrush-logo.png?v=3" alt="QRush" />
+      </a>
+    </div>
   </div>
 </body>
 </html>`;

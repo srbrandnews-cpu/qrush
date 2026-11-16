@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ea580c" />
+  <meta name="description" content="Sample QRush digital menu — this is how your restaurant's menu looks to customers after they scan your QR code." />
+  <meta name="robots" content="noindex" />
+  <title>Sample Menu — QRush Live Demo</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body {
+      margin: 0; padding: 0; font-family: var(--font);
+      background: linear-gradient(180deg, #fff7ed 0%, var(--bg) 380px);
+    }
+
+    /* demo ribbon */
+    .demo-bar {
+      background: #0f172a; color: #fff; font-size: 12.5px; line-height: 1.45;
+      padding: 10px 16px; text-align: center; position: sticky; top: 0; z-index: 40;
+    }
+    .demo-bar b { color: #fdba74; }
+    .demo-bar a { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+    .mwrap { max-width: 720px; margin: 0 auto; padding: 22px 16px 64px; }
+
+    /* restaurant header */
+    .mhead { text-align: center; padding: 6px 0 20px; }
+    .menu-logo-fallback {
+      width: 92px; height: 92px; display: grid; place-items: center; margin: 0 auto;
+      font-size: 40px; font-weight: 800; color: #fff; border-radius: 24px;
+      background: linear-gradient(135deg, #ea580c, #f97316);
+      box-shadow: 0 22px 48px -26px rgba(15, 23, 42, .5);
+    }
+    .mhead h1 { font-size: clamp(24px, 6vw, 30px); line-height: 1.2; margin: 16px 0 4px; letter-spacing: -.02em; }
+    .msub { color: var(--muted); font-size: 13.5px; margin: 0; }
+    .mchips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+    .mchip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+      color: var(--primary-700); background: var(--primary-50);
+      border: 1px solid var(--primary-100);
+    }
+
+    /* category jump bar */
+    .cats {
+      position: sticky; top: 38px; z-index: 30; margin: 0 -16px 18px; padding: 8px 16px;
+      display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+      background: rgba(246, 248, 251, .92); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    .cats::-webkit-scrollbar { display: none; }
+    .cats a {
+      flex: none; font-size: 12.5px; font-weight: 700; text-decoration: none;
+      color: var(--ink-2); background: #fff; border: 1px solid var(--line-strong);
+      padding: 7px 13px; border-radius: 999px; white-space: nowrap;
+    }
+    .cats a:hover { border-color: var(--primary); color: var(--primary-700); }
+
+    /* sections + cards */
+    .msec { margin-bottom: 26px; scroll-margin-top: 96px; }
+    .sec-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); margin: 0 0 12px;
+    }
+    .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    .dish-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    @media (min-width: 640px) { .dish-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    .dish {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 14px 34px -28px rgba(15, 23, 42, .45);
+      display: flex; flex-direction: column;
+    }
+    .dish img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #f1f5f9; }
+    .dish-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .dish-name { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+    .dish-price {
+      margin-top: auto; font-size: 14.5px; font-weight: 800; color: var(--ink-2);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* socials */
+    .soc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .soc {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 16px; border-radius: 14px; color: #fff; font-weight: 700; font-size: 14px;
+      text-decoration: none; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, .55);
+    }
+    .soc:active { transform: scale(.985); }
+
+    .foot { text-align: center; margin-top: 34px; font-size: 11.5px; color: var(--muted-2); }
+    .foot-cta {
+      display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+      background: var(--brand-grad); color: #fff; text-decoration: none;
+      font-size: 14px; font-weight: 700; padding: 13px 20px; border-radius: 12px;
+      box-shadow: 0 16px 34px -20px rgba(234, 88, 12, .8);
+    }
+    .foot-cta:active { transform: translateY(1px); }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <b>Sample menu</b> — aapke customers ko scan ke baad aisa menu dikhega.
+    <a href="/free-qr.html#generator">Apna free QR banayein →</a>
+  </div>
+
+  <div class="mwrap">
+    <header class="mhead">
+      <div class="menu-logo-fallback" aria-hidden="true">S</div>
+      <h1>Spice Garden</h1>
+      <p class="msub">Demo restaurant · Kolhapur, Maharashtra</p>
+      <div class="mchips">
+        <span class="mchip">🟢 Pure Veg &amp; Non-Veg</span>
+        <span class="mchip">🕒 11:00 AM – 11:00 PM</span>
+      </div>
+    </header>
+
+    <nav class="cats" aria-label="Menu categories">
+      <a href="#starters">Starters</a>
+      <a href="#mains">Main Course</a>
+      <a href="#breads">Breads &amp; Rice</a>
+      <a href="#drinks">Beverages</a>
+      <a href="#desserts">Desserts</a>
+    </nav>
+
+    <section class="msec" id="starters">
+      <h2 class="sec-title">Starters</h2>
+      <div class="dish-grid">
+        <article class="dish">
+          <img src="/img/demo/paneer-tikka.jpg" alt="Paneer Tikka" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Paneer Tikka</span><span class="dish-price">₹260</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/chicken-tikka.jpg" alt="Chicken Tikka" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Chicken Tikka</span><span class="dish-price">₹290</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/tandoori-mushroom.jpg" alt="Tandoori Mushroom" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Tandoori Mushroom</span><span class="dish-price">₹240</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/veg-spring-rolls.jpg" alt="Veg Spring Rolls" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Veg Spring Rolls</span><span class="dish-price">₹180</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="msec" id="mains">
+      <h2 class="sec-title">Main Course</h2>
+      <div class="dish-grid">
+        <article class="dish">
+          <img src="/img/demo/paneer-butter-masala.jpg" alt="Paneer Butter Masala" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Paneer Butter Masala</span><span class="dish-price">₹280</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/butter-chicken.jpg" alt="Butter Chicken" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Butter Chicken</span><span class="dish-price">₹340</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/dal-makhani.jpg" alt="Dal Makhani" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Dal Makhani</span><span class="dish-price">₹240</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/kadai-chicken.jpg" alt="Kadai Chicken" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Kadai Chicken</span><span class="dish-price">₹320</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/veg-kolhapuri.jpg" alt="Veg Kolhapuri" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Veg Kolhapuri</span><span class="dish-price">₹260</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="msec" id="breads">
+      <h2 class="sec-title">Breads &amp; Rice</h2>
+      <div class="dish-grid">
+        <article class="dish">
+          <img src="/img/demo/butter-naan.jpg" alt="Butter Naan" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Butter Naan</span><span class="dish-price">₹60</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/garlic-naan.jpg" alt="Garlic Naan" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Garlic Naan</span><span class="dish-price">₹80</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/jeera-rice.jpg" alt="Jeera Rice" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Jeera Rice</span><span class="dish-price">₹180</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/veg-pulao.jpg" alt="Veg Pulao" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Veg Pulao</span><span class="dish-price">₹200</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="msec" id="drinks">
+      <h2 class="sec-title">Beverages</h2>
+      <div class="dish-grid">
+        <article class="dish">
+          <img src="/img/demo/sweet-lassi.jpg" alt="Sweet Lassi" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Sweet Lassi</span><span class="dish-price">₹90</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/fresh-lime-soda.jpg" alt="Fresh Lime Soda" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Fresh Lime Soda</span><span class="dish-price">₹70</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/masala-chai.jpg" alt="Masala Chai" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Masala Chai</span><span class="dish-price">₹40</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="msec" id="desserts">
+      <h2 class="sec-title">Desserts</h2>
+      <div class="dish-grid">
+        <article class="dish">
+          <img src="/img/demo/gulab-jamun.jpg" alt="Gulab Jamun" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Gulab Jamun</span><span class="dish-price">₹90</span></div>
+        </article>
+        <article class="dish">
+          <img src="/img/demo/rasgulla.jpg" alt="Rasgulla" loading="lazy" decoding="async" width="400" height="300" />
+          <div class="dish-body"><span class="dish-name">Rasgulla</span><span class="dish-price">₹80</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="msec">
+      <h2 class="sec-title">Connect with us</h2>
+      <div class="soc-grid">
+        <a class="soc" style="background:#25d366" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20demo%20menu%20dekha%20—%20mujhe%20bhi%20apne%20restaurant%20ke%20liye%20QR%20menu%20chahiye." target="_blank" rel="noopener">WhatsApp</a>
+        <a class="soc" href="/free-qr.html#generator" style="background:#ea580c">Make my menu</a>
+      </div>
+    </section>
+
+    <div class="foot">
+      <img src="/img/qrush-logo.png?v=3" alt="QRush" style="display:block;width:150px;height:auto;margin:0 auto 10px;background:#fff;padding:6px 10px;border-radius:10px" />
+      <p style="margin:0 0 4px">Powered by QRush · Free Digital Menu</p>
+      <p style="margin:0">Ye ek sample menu hai. Aapka menu aapke apne logo, photos aur rates ke saath banega.</p>
+      <a class="foot-cta" href="/free-qr.html#generator">Apna free QR menu banayein →</a>
+    </div>
+  </div>
+</body>
+</html>
