@@ -5,12 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ea580c" />
   <title>Free QR Menu Generator — QRush</title>
+  <script>try { if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed'); } catch (e) {}</script>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
     body { background: linear-gradient(180deg, #fff7ed 0%, var(--bg) 420px); }
     html { scroll-behavior: smooth; }
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    /* ------------------------- embedded inside main site ------------------- */
+    html.embed body { background: var(--bg); }
+    html.embed .site-head,
+    html.embed #marketing,
+    html.embed #site-foot { display: none !important; }
+    html.embed #generator { padding: 20px 0 44px; }
+    html.embed #generator .lp-wrap { display: none; }
+    html.embed #generator-panel > h2,
+    html.embed #generator-panel > p { display: none; }
+    html.embed #generator .gen-layout { margin-top: 0; }
+    html.embed body.owner-mode #generator { padding-top: 20px; }
 
     /* ------------------------------- site header ----------------------------- */
     .site-head {

@@ -398,6 +398,26 @@
     footer.site-foot .tiny a { color: var(--muted); font-weight: 600; }
     .foot-links { display: flex; gap: 16px; flex-wrap: wrap; }
 
+    /* ------------------------ Free QR generator section -------------------- */
+    .freeqr { padding: 54px 0 26px; scroll-margin-top: 76px; }
+    .freeqr-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 18px; flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .freeqr-head h2 { font-size: clamp(22px, 3vw, 31px); letter-spacing: -.03em; margin: 10px 0 0; }
+    .freeqr-head p { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 8px 0 0; max-width: 62ch; }
+    .freeqr-head .btn { flex: none; }
+    .freeqr-frame {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
+      box-shadow: 0 34px 74px -56px rgba(15, 23, 42, .55);
+    }
+    .freeqr-frame iframe {
+      display: block; width: 100%; height: clamp(720px, 88vh, 1180px);
+      border: 0; background: #fff;
+    }
+    @media (max-width: 600px) { .freeqr-frame iframe { height: 100vh; } }
+    [data-theme="dark"] .freeqr-frame { background: var(--card); }
+
     /* --------------------------- WhatsApp floating tab ---------------------- */
     .wa-fab {
       position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
@@ -437,7 +457,7 @@
       <a class="brand" href="/"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" /> <span class="brand-name">QRush</span></a>
       <nav class="site-nav">
         <div class="site-links">
-          <a class="link" href="/free-qr.html">Free QR Generator</a>
+          <a class="link" href="#free-qr">Free QR Generator</a>
           <a class="link" href="#how">How it works</a>
           <a class="link" href="#unique">Why QRush</a>
           <a class="link" href="#gallery">Gallery</a>
@@ -476,6 +496,7 @@
             Start on WhatsApp
           </a>
           <a class="btn btn-lg" href="#screens">See the screens</a>
+          <a class="btn btn-lg" href="#free-qr">Free QR menu</a>
           <a class="btn btn-lg" href="#demo">▶ Watch demo</a>
         </div>
         <p class="cta-note">New restaurant? WhatsApp par ek message — baaki setup hum karte hain.</p>
@@ -696,6 +717,30 @@
     </div>
   </section>
 
+  <section class="freeqr" id="free-qr">
+    <div class="wrap">
+      <div class="freeqr-head">
+        <div>
+          <span class="pill"><span class="dot"></span> Free forever · No payment</span>
+          <h2>Free Digital QR Menu Generator</h2>
+          <p>
+            Menu card ki photo ya PDF upload karein aur turant apna QR code paayein.
+            Customer QR scan karega aur menu seedha browser me khulega — koi app nahi.
+          </p>
+        </div>
+        <a class="btn" href="/free-qr.html" target="_blank" rel="noopener">Open full page →</a>
+      </div>
+      <div class="freeqr-frame">
+        <iframe
+          id="freeqr-embed"
+          title="Free Digital QR Menu Generator"
+          loading="lazy"
+          data-src="/free-qr.html?embed=1"
+        ></iframe>
+      </div>
+    </div>
+  </section>
+
   <section class="band" id="get" style="padding-top: 0">
     <div class="wrap">
       <div class="cta-band">
@@ -722,6 +767,7 @@
       <div class="brand" style="font-size:15px"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" /> <span class="brand-name">QRush</span></div>
       <nav class="foot-links tiny">
         <a href="#how">How it works</a>
+        <a href="#free-qr">Free QR menu generator</a>
         <a href="/login">Staff login</a>
         <a data-new-restaurant href="#get" target="_blank" rel="noopener noreferrer">New restaurant</a>
       </nav>
@@ -769,6 +815,45 @@
       video.addEventListener('ended', function () {
         shell.classList.remove('playing');
         video.currentTime = 0;
+      });
+    })();
+
+    // Free QR generator embed: load the iframe when the section is near or linked.
+    (function () {
+      var frame = document.getElementById('freeqr-embed');
+      var section = document.getElementById('free-qr');
+      if (!frame || !section) return;
+
+      var loaded = false;
+      function load() {
+        if (loaded) return;
+        loaded = true;
+        frame.src = frame.getAttribute('data-src');
+      }
+
+      function fromHash() {
+        if (location.hash === '#free-qr') load();
+      }
+
+      if (location.hash === '#free-qr') load();
+      window.addEventListener('hashchange', fromHash);
+
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              load();
+              io.disconnect();
+            }
+          });
+        }, { rootMargin: '600px 0px' });
+        io.observe(section);
+      } else {
+        load();
+      }
+
+      document.querySelectorAll('a[href="#free-qr"]').forEach(function (a) {
+        a.addEventListener('click', load);
       });
     })();
   </script>
