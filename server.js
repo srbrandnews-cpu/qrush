@@ -46,7 +46,25 @@ app.get('/m/:slug/menu', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/menu/:idx', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/go/:network', publicRouter.hostedMenuGo);
 
-app.get('/api/health', (req, res) => res.json({ ok: true, name: 'QRush' }));
+app.get('/api/health', async (req, res) => {
+  const mem = process.memoryUsage();
+  const health = {
+    ok: true,
+    name: 'QRush',
+    uptime_seconds: Math.round(process.uptime()),
+    memory: {
+      rss_mb: Math.round(mem.rss / 1024 / 1024),
+      heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
+      heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
+    },
+    node_version: process.version,
+  };
+  // Warn if memory usage is high (potential crash risk)
+  if (mem.heapUsed / mem.heapTotal > 0.85) {
+    console.warn('[HEALTH] High memory usage:', Math.round(mem.heapUsed / mem.heapTotal * 100) + '%');
+  }
+  res.json(health);
+});
 
 // --- Static assets (CSS/JS/service worker) ---
 // Code files are revalidated on every load (ETag -> cheap 304), so a browser
