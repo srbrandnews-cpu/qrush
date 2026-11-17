@@ -23,3 +23,7 @@ q rush video.mp4
 
 # Database backups (may contain customer data)
 backups/
+
+TableNest_Source_Code_Audit.zip
+*.zip
+

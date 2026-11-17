@@ -83,6 +83,20 @@
       : '<span class="badge cancelled">Suspended</span>';
   }
 
+  function planLabel(plan) {
+    const p = String(plan || 'free').toLowerCase();
+    if (p === 'starter') return 'Starter ₹149';
+    if (p === 'business') return 'Business ₹299';
+    return 'Free ₹0';
+  }
+
+  function planBadgeClass(plan) {
+    const p = String(plan || 'free').toLowerCase();
+    if (p === 'starter') return 'preparing';
+    if (p === 'business') return 'ready';
+    return 'muted';
+  }
+
   function menuUrl(t) {
     if (!t || !t.sample_table_token) return '';
     return '/menu?table=' + encodeURIComponent(t.sample_table_token);
@@ -150,9 +164,18 @@
     $('p-revenue').textContent = money(s.revenue_today);
     $('p-revenue-sub').textContent = `${money(s.revenue_all)} all time`;
     $('p-setup').textContent = num(s.tables_total);
-    $('p-setup-sub').textContent = `${num(s.menu_items_total)} menu items`;
+    $('p-setup-sub').textContent = `${num(s.menu_items_total)} menu items · ${num((s.tenant_menu_views || 0) + (s.freeqr_menu_views || 0))} menu views`;
     $('p-rating').textContent = Number(s.rating_count) ? `${Number(s.rating_avg).toFixed(1)} ★` : '—';
     $('p-rating-sub').textContent = `${num(s.rating_count)} guest ratings`;
+    // Plan mix (metadata only — no payments or feature locks in this phase).
+    const paidTenants = Number(s.tenants_plan_starter || 0) + Number(s.tenants_plan_business || 0);
+    const paidFreeqr = Number(s.freeqr_plan_starter || 0) + Number(s.freeqr_plan_business || 0);
+    if ($('p-plans')) {
+      $('p-plans').textContent = num(paidTenants + paidFreeqr);
+      $('p-plans-sub').textContent =
+        `restaurants F${num(s.tenants_plan_free)} S${num(s.tenants_plan_starter)} B${num(s.tenants_plan_business)} · ` +
+        `free-QR F${num(s.freeqr_plan_free)} S${num(s.freeqr_plan_starter)} B${num(s.freeqr_plan_business)}`;
+    }
   }
 
   /* ---------------------------- overview lists --------------------------- */
@@ -283,7 +306,7 @@
       `<span>${num(state.stats ? state.stats.open_orders : 0)} open orders platform-wide</span>`;
 
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="6"><div class="sa-empty"><span class="big">🔎</span>
+      body.innerHTML = `<tr><td colspan="7"><div class="sa-empty"><span class="big">🔎</span>
         ${state.tenants.length ? 'Is filter par koi restaurant nahi mila.' : 'Abhi koi restaurant nahi — pehla venue add karein.'}
       </div></td></tr>`;
       return;
@@ -312,6 +335,10 @@
           <b>${esc(t.owner_name || 'No owner')}</b>
           <span>${esc(t.owner_email || '—')}</span>
         </td>
+        <td>
+          <span class="badge ${planBadgeClass(t.plan)}">${esc(planLabel(t.plan))}</span>
+          <div class="tiny muted" style="margin-top:4px">${esc(t.plan_status || 'active')}</div>
+        </td>
         <td><div class="num">${money(t.revenue_today, t.currency)}<small>${num(t.orders_today)} orders</small></div></td>
         <td><div class="num">${money(t.revenue_all, t.currency)}<small>${num(t.orders_all)} orders</small></div></td>
         <td>${statusBadge(t)}${t.last_order_at ? `<div class="tiny muted" style="margin-top:4px">last ${fmtDate(t.last_order_at)}</div>` : ''}</td>
@@ -320,6 +347,7 @@
             ${url ? `<a class="sa-icon-btn" href="${esc(url)}" target="_blank" rel="noopener" title="Open customer menu" aria-label="Open customer menu">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg>
             </a>` : ''}
+            <button class="btn btn-sm" data-plan="${t.id}" data-kind="tenant">Plan</button>
             <button class="btn btn-sm" data-manage="${t.id}">Manage</button>
           </div>
         </td>
@@ -359,14 +387,18 @@
           <div class="tiny muted">/${esc(r.slug)}</div>
         </td>
         <td>${esc(r.owner_name || '—')}<br /><span class="tiny muted">${esc(r.phone || '—')}</span></td>
+        <td>
+          <span class="badge ${planBadgeClass(r.plan)}">${esc(planLabel(r.plan))}</span>
+          <div class="tiny muted" style="margin-top:4px">${esc(r.plan_status || 'active')}</div>
+        </td>
         <td>${num(r.scans)}</td>
         <td>${num(r.social_clicks)}</td>
         <td>${num(r.items)}</td>
         <td>${num(r.orders)} / ${money(r.sales)}</td>
-        <td>${fmtDate(r.created_at)}</td>
         <td class="right">
           <div class="sa-actions">
             <a class="sa-icon-btn" href="/m/${esc(r.slug)}" target="_blank" rel="noopener" title="Open menu">🔗</a>
+            <button class="btn btn-sm" data-plan="${r.id}" data-kind="freeqr">Plan</button>
             <button class="btn btn-sm btn-danger" data-freeqr-remove="${r.id}">Remove</button>
           </div>
         </td>
@@ -642,6 +674,77 @@
     });
   }
 
+  /* ------------------------------- plan prep ----------------------------- */
+
+  const PLAN_OPTIONS = [
+    ['free', 'Free — ₹0'],
+    ['starter', 'Starter — ₹149/month'],
+    ['business', 'Business — ₹299/month'],
+  ];
+  const PLAN_STATUS_OPTIONS = ['active', 'inactive', 'pending', 'expired', 'cancelled'];
+
+  function openPlanEditor(kind, row) {
+    const isTenant = kind === 'tenant';
+    const name = isTenant ? row.name : row.restaurant;
+    const plan = String(row.plan || 'free').toLowerCase();
+    const status = String(row.plan_status || 'active').toLowerCase();
+    const start = String(row.plan_started_at || '').slice(0, 10);
+    const expiry = String(row.plan_expires_at || '').slice(0, 10);
+
+    openModal({
+      title: 'Plan — ' + (name || 'Restaurant'),
+      sub: 'Plan prep only · no payments are collected or activated here',
+      wide: true,
+      body: `
+        <div class="field">
+          <label for="pl-plan">Plan</label>
+          <select class="input" id="pl-plan">
+            ${PLAN_OPTIONS.map(([v, l]) => `<option value="${v}" ${v === plan ? 'selected' : ''}>${esc(l)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label for="pl-status">Plan status</label>
+          <select class="input" id="pl-status">
+            ${PLAN_STATUS_OPTIONS.map((v) => `<option value="${v}" ${v === status ? 'selected' : ''}>${esc(v)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="row">
+          ${field('pl-start', 'Started (YYYY-MM-DD, optional)', start)}
+          ${field('pl-expiry', 'Expires (YYYY-MM-DD, optional)', expiry)}
+        </div>
+        <div class="sa-note">Metadata only. Features remain fully available; no payment is charged, no feature is locked in this phase.</div>`,
+      actions: [
+        { label: 'Cancel', onClick: closeModal },
+        {
+          label: 'Save plan', class: 'btn-primary',
+          onClick: async (btn) => {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving…';
+            try {
+              const path = isTenant
+                ? `/api/admin/super-admin/tenants/${row.id}/plan`
+                : `/api/admin/super-admin/free-qr/${row.id}/plan`;
+              const body = {
+                plan: $('pl-plan').value,
+                plan_status: $('pl-status').value,
+                plan_started_at: $('pl-start').value.trim() || null,
+                plan_expires_at: $('pl-expiry').value.trim() || null,
+              };
+              await saApi(path, { method: 'PUT', body });
+              closeModal();
+              await load({ silent: true });
+              TN.toast('Plan updated', 'success');
+            } catch (err) {
+              TN.toast(err.message || 'Plan update nahi hua', 'error');
+              btn.disabled = false;
+              btn.textContent = 'Save plan';
+            }
+          },
+        },
+      ],
+    });
+  }
+
   /* ----------------------------- manage modal --------------------------- */
 
   function openManage(t) {
@@ -673,6 +776,7 @@
         <div class="manage-actions">
           ${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open customer menu ↗</a>` : '<span></span>'}
           <button class="btn" data-do="edit">Edit details</button>
+          <button class="btn" data-do="plan">Change plan</button>
           <button class="btn" data-do="reset">Reset owner password</button>
           <button class="btn" data-do="toggle">${Number(t.is_active) ? 'Suspend venue' : 'Activate venue'}</button>
           <div class="danger-zone">
@@ -685,6 +789,7 @@
 
     const root = $('modal-root');
     root.querySelector('[data-do="edit"]').addEventListener('click', () => openEdit(t));
+    root.querySelector('[data-do="plan"]').addEventListener('click', () => openPlanEditor('tenant', t));
     root.querySelector('[data-do="reset"]').addEventListener('click', () => openReset(t));
     root.querySelector('[data-do="toggle"]').addEventListener('click', () => openToggle(t));
     root.querySelector('[data-do="delete"]').addEventListener('click', () => openDelete(t));
@@ -1211,6 +1316,16 @@
   });
 
   document.addEventListener('click', (e) => {
+    const plan = e.target.closest('[data-plan]');
+    if (plan) {
+      const kind = plan.dataset.kind === 'freeqr' ? 'freeqr' : 'tenant';
+      const id = Number(plan.dataset.plan);
+      const row = kind === 'tenant'
+        ? findTenant(id)
+        : (state.freeqr || []).find((x) => Number(x.id) === id);
+      if (row) openPlanEditor(kind, row);
+      return;
+    }
     const manage = e.target.closest('[data-manage]');
     if (manage) {
       const tenant = findTenant(manage.dataset.manage);

@@ -1,10 +1,10 @@
-/* Owner admin dashboard — dashboard, menu, tables/QR, staff, settings. */
+﻿/* Owner admin dashboard â€” dashboard, menu, tables/QR, staff, settings. */
 
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = TN.escapeHtml;
 
-  let currency = '₹';
+  let currency = 'â‚¹';
   let menuData = { categories: [], uncategorized: [] };
   let tablesData = [];
   let qrSheet = null;
@@ -74,8 +74,8 @@
       window.location.href = me.user.role === 'kitchen' ? '/kitchen' : '/cashier';
       return;
     }
-    currency = (me.tenant && me.tenant.currency) || '₹';
-    $('whoami').textContent = `${me.user.name} • ${me.tenant ? me.tenant.name : ''}`;
+    currency = (me.tenant && me.tenant.currency) || 'â‚¹';
+    $('whoami').textContent = `${me.user.name} â€¢ ${me.tenant ? me.tenant.name : ''}`;
     if (me.user.is_super_admin) {
       $('platform-nav-label').classList.remove('hidden');
       $('platform-link').classList.remove('hidden');
@@ -100,6 +100,28 @@
     const ov = await TN.api('/api/admin/overview').catch(() => null);
     if (ov) { $('d-tables').textContent = ov.tables; $('d-menu').textContent = `${ov.menuItems} menu items`; }
 
+    // Analytics (real recorded menu views/scans)
+    if (ov && ov.analytics) {
+      const a = ov.analytics || {};
+      const v = a.views || {};
+      const recent = Array.isArray(a.recent) ? a.recent : [];
+      const daily = Array.isArray(a.daily) ? a.daily : [];
+      const dailyStr = daily.length ? daily.map(d => `${esc(d.day)}: ${d.views}`).join(' \u00B7 ') : 'No data in last 7 days';
+      $('d-analytics').innerHTML = `
+        <div class="stat-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
+          <div class="mini-stat"><div class="label">Today</div><div class="value" style="font-size:22px">${Number(v.today)||0}</div></div>
+          <div class="mini-stat"><div class="label">Last 7 days</div><div class="value" style="font-size:22px">${Number(v.week)||0}</div></div>
+          <div class="mini-stat"><div class="label">Last 30 days</div><div class="value" style="font-size:22px">${Number(v.month)||0}</div></div>
+          <div class="mini-stat"><div class="label">All time</div><div class="value" style="font-size:22px">${Number(v.total)||0}</div></div>
+        </div>
+        <div class="tiny muted" style="margin-bottom:8px"><b>Daily (7 days):</b> ${dailyStr}</div>
+        <div class="small"><b>Recent activity</b></div>
+        ${recent.length ? `<ul class="simple-list" style="margin:6px 0 0;padding-left:18px">${recent.slice(0,8).map(r => `<li>${esc(r.kind || 'view')} ${r.table_name ? '\u00B7 '+esc(r.table_name) : ''} <span class="muted">\u00B7 ${TN.fmtTime ? TN.fmtTime(r.created_at) : esc(r.created_at||'')}</span></li>`).join('')}</ul>` : '<div class="tiny muted">No recent menu activity recorded yet.</div>'}
+      `;
+    } else if ($('d-analytics')) {
+      $('d-analytics').innerHTML = '<div class="empty">Analytics unavailable.</div>';
+    }
+
     const top = stats.topItems || [];
     $('top-items').innerHTML = top.length
       ? top.map((t, i) => {
@@ -107,7 +129,7 @@
           return `<div class="top-item">
             <span class="rank">${i + 1}</span>
             <div class="grow"><div class="bold">${esc(t.name)}</div><div class="bar" style="width:${Math.max(8, (t.qty / max) * 100)}%"></div></div>
-            <span class="qty">${t.qty}×</span>
+            <span class="qty">${t.qty}Ã—</span>
           </div>`;
         }).join('')
       : '<div class="empty">Aaj abhi tak koi order nahi.</div>';
@@ -118,28 +140,52 @@
       ? orders.map((o) => `<div class="live-row">
           <span class="no">#${o.order_no}</span>
           <span class="tbl">${esc(o.bill_label || o.table_name)}</span>
-          ${o.customer_phone ? `<span class="tiny muted">📞 ${esc(o.customer_phone)}</span>` : ''}
-          ${o.customer_name ? `<span class="tiny muted">👤 ${esc(o.customer_name)}</span>` : ''}
+          ${o.customer_phone ? `<span class="tiny muted">ðŸ“ž ${esc(o.customer_phone)}</span>` : ''}
+          ${o.customer_name ? `<span class="tiny muted">ðŸ‘¤ ${esc(o.customer_name)}</span>` : ''}
           <span class="badge ${o.status}">${o.status}</span>
           <span class="amt">${TN.fmtMoney(o.total, currency)}</span>
         </div>`).join('')
       : '<div class="empty">Koi active order nahi.</div>';
+
+    // Profile & plan (from settings/restaurant)
+    try {
+      const restData = await TN.api('/api/admin/restaurant');
+      const r = restData.restaurant || {};
+      const fields = [
+        ['Name', r.name], ['Phone', r.phone], ['Address', r.address], ['Description', r.description],
+        ['Hours', (r.opening_hours||r.closing_hours) ? `${r.opening_hours||''}${r.opening_hours&&r.closing_hours?' - ':''}${r.closing_hours||''}` : '']
+      ];
+      const done = fields.filter(([,v]) => v && String(v).trim()).length;
+      const pct = Math.round((done / fields.length) * 100);
+      const plan = String(r.plan || 'free');
+      const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+      $('d-profile').innerHTML = `
+        <div style="margin-bottom:10px"><b>Profile completion:</b> ${pct}%</div>
+        <div style="margin-bottom:10px"><b>Current plan:</b> ${esc(planLabel)} <span class="badge muted">${esc(r.plan_status || 'active')}</span></div>
+        <div class="tiny muted" style="margin-bottom:8px">Plans (prep only, no payments): Free \u20B90 \u00B7 Starter \u20B9149/month \u00B7 Business \u20B9299/month</div>
+        <div class="small"><b>Restaurant:</b> ${esc(r.name || '\u2014')}</div>
+        <div class="small muted">${esc(r.address || 'Address not set')} ${r.phone ? '\u00B7 '+esc(r.phone) : ''}</div>
+        <div class="tiny muted" style="margin-top:8px">Update details in Settings tab.</div>
+      `;
+    } catch (_) {
+      if ($('d-profile')) $('d-profile').innerHTML = '<div class="empty">Could not load profile.</div>';
+    }
 
     renderRush(stats);
     renderFeedback(stats);
     await renderSetup(ov, stats);
   }
 
-  const RATING_EMOJI = { 5: '🤩', 4: '🙂', 3: '😐', 2: '🙁', 1: '😞' };
+  const RATING_EMOJI = { 5: 'ðŸ¤©', 4: 'ðŸ™‚', 3: 'ðŸ˜', 2: 'ðŸ™', 1: 'ðŸ˜ž' };
 
   /** Speed score + hourly heatmap + live requests. */
   function renderRush(stats) {
     const score = stats.speedScore;
-    $('d-score').textContent = score == null ? '—' : score;
+    $('d-score').textContent = score == null ? 'â€”' : score;
     $('d-score-ring').style.setProperty('--score', score == null ? 0 : Math.max(0, Math.min(100, score)));
     $('d-score-badge').textContent = score == null ? 'No data' : score >= 80 ? 'On fire' : score >= 60 ? 'Good' : 'Slow';
     $('d-score-badge').className = 'badge ' + (score == null ? 'muted' : score >= 60 ? 'ready' : 'preparing');
-    $('d-prep').textContent = stats.avgPrepMinutes == null ? '—' : stats.avgPrepMinutes + ' min';
+    $('d-prep').textContent = stats.avgPrepMinutes == null ? 'â€”' : stats.avgPrepMinutes + ' min';
     $('d-target').textContent = stats.prepTarget || 15;
     $('d-rush-line').textContent = `This hour: ${stats.lastHourOrders || 0} orders`;
     $('d-requests-line').textContent = `${stats.openRequests || 0} open table requests`;
@@ -157,7 +203,7 @@
     $('d-heat').innerHTML = buckets.map((count, h) => {
       const h12 = h % 12 || 12;
       const label = h % 3 === 0 ? `${h12}${h < 12 ? 'a' : 'p'}` : '';
-      return `<div class="col" title="${h12}${h < 12 ? 'am' : 'pm'} · ${count} orders">
+      return `<div class="col" title="${h12}${h < 12 ? 'am' : 'pm'} Â· ${count} orders">
         ${count ? `<span class="n">${count}</span>` : ''}
         <div class="bar ${count ? '' : 'zero'}" style="height:${Math.max(3, (count / max) * 100)}%"></div>
         <span class="h">${label}</span>
@@ -175,20 +221,20 @@
       return;
     }
     const rounded = Math.round(rating.avg || 0);
-    const stars = '★'.repeat(rounded) + '☆'.repeat(Math.max(0, 5 - rounded));
+    const stars = 'â˜…'.repeat(rounded) + 'â˜†'.repeat(Math.max(0, 5 - rounded));
     $('d-feedback').innerHTML = `
       <div class="card-pad" style="padding-bottom:2px">
         <div class="avg-big">
-          <span class="n">${rating.avg || '—'}</span>
+          <span class="n">${rating.avg || 'â€”'}</span>
           <div><div class="stars">${stars}</div><div class="tiny muted">average rating</div></div>
         </div>
       </div>
       ${fb.map((row) => `
         <div class="fb-row">
-          <span class="fb-emoji">${RATING_EMOJI[row.rating] || '⭐'}</span>
+          <span class="fb-emoji">${RATING_EMOJI[row.rating] || 'â­'}</span>
           <div class="fb-body">
-            <div class="who">${esc(row.table_name)}${row.customer_name ? ' · ' + esc(row.customer_name) : ''}</div>
-            <div class="note">${row.feedback ? '“' + esc(row.feedback) + '”' : 'Rated ' + row.rating + '/5'}</div>
+            <div class="who">${esc(row.table_name)}${row.customer_name ? ' Â· ' + esc(row.customer_name) : ''}</div>
+            <div class="note">${row.feedback ? 'â€œ' + esc(row.feedback) + 'â€' : 'Rated ' + row.rating + '/5'}</div>
             <div class="when">${TN.fmtTime(row.updated_at)}</div>
           </div>
         </div>`).join('')}`;
@@ -218,23 +264,23 @@
       },
       {
         done: (ov && ov.menuItems > 0), label: 'Menu items add karo',
-        hint: 'CSV import se 1 minute mein poora menu (📥 Import CSV)', tab: 'menu',
+        hint: 'CSV import se 1 minute mein poora menu (ðŸ“¥ Import CSV)', tab: 'menu',
       },
       {
         done: (ov && ov.tables > 0), label: 'Tables add karo',
-        hint: 'Bulk add se 10-20 tables ek saath (🪑 Tables & QR)', tab: 'tables',
+        hint: 'Bulk add se 10-20 tables ek saath (ðŸª‘ Tables & QR)', tab: 'tables',
       },
       {
         done: (ov && ov.tables > 0), label: 'QR code print karke table par lagao',
-        hint: 'Tables & QR tab → Print all → sticker cut karke chipkao', tab: 'tables',
+        hint: 'Tables & QR tab â†’ Print all â†’ sticker cut karke chipkao', tab: 'tables',
       },
       {
         done: hasKitchen, label: 'Kitchen staff account banao',
-        hint: 'Staff tab → role "kitchen" → woh /kitchen screen chalayega', tab: 'staff',
+        hint: 'Staff tab â†’ role "kitchen" â†’ woh /kitchen screen chalayega', tab: 'staff',
       },
       {
         done: hasCashier, label: 'Cashier staff account banao',
-        hint: 'Staff tab → role "cashier" → woh /cashier screen chalayega', tab: 'staff',
+        hint: 'Staff tab â†’ role "cashier" â†’ woh /cashier screen chalayega', tab: 'staff',
       },
       {
         done: (ov && ov.allOrders > 0), label: 'Ek test order karke dekho',
@@ -255,11 +301,11 @@
     const allDone = doneCount === steps.length;
     $('setup-list').innerHTML =
       (allDone
-        ? '<div class="setup-done"><span class="big">🎉</span><span>Sab kuch set ho gaya — aapka restaurant live hai! Naya order aayega toh kitchen screen par dikhega.</span></div>'
+        ? '<div class="setup-done"><span class="big">ðŸŽ‰</span><span>Sab kuch set ho gaya â€” aapka restaurant live hai! Naya order aayega toh kitchen screen par dikhega.</span></div>'
         : '') +
       steps.map((s, i) => `
       <div class="setup-item ${s.done ? 'done' : ''}">
-        <span class="setup-check">${s.done ? '✓' : ''}</span>
+        <span class="setup-check">${s.done ? 'âœ“' : ''}</span>
         <div>
           <div class="setup-label">${i + 1}. ${esc(s.label)}</div>
           ${s.done ? '' : `<div class="setup-hint">${esc(s.hint)}</div>`}
@@ -290,7 +336,7 @@
     const host = $('menu-editor');
     host.innerHTML = '';
     if (!menuData.categories.length && !menuData.uncategorized.length) {
-      host.innerHTML = '<div class="card"><div class="empty"><div class="icon">🍛</div><p>Menu khali hai. Pehle category, phir items add karein.</p></div></div>';
+      host.innerHTML = '<div class="card"><div class="empty"><div class="icon">ðŸ›</div><p>Menu khali hai. Pehle category, phir items add karein.</p></div></div>';
       return;
     }
 
@@ -309,7 +355,7 @@
         <span class="tiny muted">${cat.items.length} items</span>
         ${cat.id ? `
           <button class="btn btn-sm" data-act="edit-cat">Edit</button>
-          <button class="btn btn-sm btn-ghost" data-act="del-cat">🗑</button>` : ''}
+          <button class="btn btn-sm btn-ghost" data-act="del-cat">ðŸ—‘</button>` : ''}
       </div>
       <div class="cat-items"></div>`;
 
@@ -323,12 +369,12 @@
         row.innerHTML = `
           <span class="veg-mark ${it.is_veg ? '' : 'nonveg'}"></span>
           <div class="mi-body">
-            <div class="mi-name">${esc(it.name)} ${it.is_quick ? '<span class="badge preparing" style="font-size:10px">⚡ quick</span>' : ''} ${it.is_available ? '' : '<span class="badge muted">unavailable</span>'}</div>
+            <div class="mi-name">${esc(it.name)} ${it.is_quick ? '<span class="badge preparing" style="font-size:10px">âš¡ quick</span>' : ''} ${it.is_available ? '' : '<span class="badge muted">unavailable</span>'}</div>
             ${it.description ? `<div class="mi-desc">${esc(it.description)}</div>` : ''}
           </div>
           <span class="mi-price">${currency}${Number(it.price).toLocaleString('en-IN')}</span>
           <button class="btn btn-sm" data-act="edit-item">Edit</button>
-          <button class="btn btn-sm btn-ghost" data-act="del-item">🗑</button>`;
+          <button class="btn btn-sm btn-ghost" data-act="del-item">ðŸ—‘</button>`;
         row.querySelector('[data-act="edit-item"]').addEventListener('click', () => itemModal(cat, it));
         row.querySelector('[data-act="del-item"]').addEventListener('click', () => confirmDeleteItem(it));
         itemsHost.appendChild(row);
@@ -348,7 +394,7 @@
 
   /**
    * Bulk import a menu from a CSV file. This is how a real restaurant
-   * onboards quickly — typing 60 items by hand is not realistic.
+   * onboards quickly â€” typing 60 items by hand is not realistic.
    */
   function importCsvModal() {
     openModal('Import menu from CSV', `
@@ -357,7 +403,7 @@
         aur same naam ke items update ho jayenge.
       </p>
       <div class="field">
-        <a class="btn btn-sm" href="/api/menu/template.csv" download>⬇ Download template CSV</a>
+        <a class="btn btn-sm" href="/api/menu/template.csv" download>â¬‡ Download template CSV</a>
         <span class="tiny muted" style="margin-left:8px">Format samajhne ke liye template download karein</span>
       </div>
       <div class="field">
@@ -388,7 +434,7 @@
           if (res.itemsCreated) parts.push(res.itemsCreated + ' items added');
           if (res.itemsUpdated) parts.push(res.itemsUpdated + ' updated');
           if (res.categoriesCreated) parts.push(res.categoriesCreated + ' categories created');
-          TN.toast(parts.join(' · ') || 'Import complete', 'success');
+          TN.toast(parts.join(' Â· ') || 'Import complete', 'success');
           await loadMenu();
           // Show row-level errors inside the modal.
           if (res.errors && res.errors.length) {
@@ -434,7 +480,7 @@
         <div style="display:flex;gap:8px;align-items:center">
           <input class="input" id="m-item-image" value="${item && item.image_url ? esc(item.image_url) : ''}" placeholder="Image URL ya upload..." style="flex:1" />
           <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
-            📁 Upload <input type="file" id="m-item-file" accept="image/*" style="display:none" />
+            ðŸ“ Upload <input type="file" id="m-item-file" accept="image/*" style="display:none" />
           </label>
         </div>
         <div class="img-preview ${item && item.image_url ? '' : 'empty'}" id="m-item-preview" style="margin-top:8px">${item && item.image_url ? `<img src="${esc(item.image_url)}" style="width:100%;height:100%;object-fit:cover" />` : ''}</div>
@@ -445,8 +491,8 @@
         <div class="field">
           <label>Type</label>
           <select class="input" id="m-item-veg">
-            <option value="1" ${item && item.is_veg ? 'selected' : ''}>🟢 Veg</option>
-            <option value="0" ${item && !item.is_veg ? 'selected' : ''}>🔴 Non-veg</option>
+            <option value="1" ${item && item.is_veg ? 'selected' : ''}>ðŸŸ¢ Veg</option>
+            <option value="0" ${item && !item.is_veg ? 'selected' : ''}>ðŸ”´ Non-veg</option>
           </select>
         </div>
       </div>
@@ -496,7 +542,7 @@
         preview.classList.toggle('empty', !url);
         preview.innerHTML = url
           ? `<img src="${esc(url)}" alt="" />`
-          : '<span>Preview — no photo, emoji tile</span>';
+          : '<span>Preview â€” no photo, emoji tile</span>';
       };
       imgInput.addEventListener('input', syncPreview);
       const thumb = preview.querySelector('img');
@@ -545,7 +591,7 @@
       : '<div class="empty" style="grid-column:1/-1">Abhi koi table nahi.</div>';
     const free = tablesData.filter((t) => t.is_active && !Number(t.open_orders)).length;
     const busy = tablesData.filter((t) => Number(t.open_orders) > 0).length;
-    $('floor-summary').textContent = `${free} free · ${busy} busy`;
+    $('floor-summary').textContent = `${free} free Â· ${busy} busy`;
   }
 
   function renderTables() {
@@ -560,7 +606,7 @@
       const floor = !t.is_active
         ? '<span class="badge muted">inactive</span>'
         : (Number(t.open_orders) > 0
-          ? `<span class="floor-pill busy">Occupied · ${TN.fmtMoney(t.open_total, currency)}</span>`
+          ? `<span class="floor-pill busy">Occupied Â· ${TN.fmtMoney(t.open_total, currency)}</span>`
           : '<span class="floor-pill free">Free</span>');
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -571,7 +617,7 @@
         <td style="text-align:right;white-space:nowrap">
           <button class="btn btn-sm" data-act="qr">QR</button>
           <button class="btn btn-sm" data-act="edit">Edit</button>
-          <button class="btn btn-sm btn-ghost" data-act="del">🗑</button>
+          <button class="btn btn-sm btn-ghost" data-act="del">ðŸ—‘</button>
         </td>`;
       tr.querySelector('[data-act="qr"]').addEventListener('click', () => showQr(t));
       tr.querySelector('[data-act="edit"]').addEventListener('click', () => tableModal(t));
@@ -583,9 +629,9 @@
   /** Branded, printable table tent: venue name, QR, table, WiFi & UPI. */
   function tentHtml(t, qr, rest) {
     const wifi = rest && rest.wifi_name
-      ? `📶 ${esc(rest.wifi_name)}${rest.wifi_password ? ' · ' + esc(rest.wifi_password) : ''}`
+      ? `ðŸ“¶ ${esc(rest.wifi_name)}${rest.wifi_password ? ' Â· ' + esc(rest.wifi_password) : ''}`
       : '';
-    const upi = rest && rest.upi_id ? `📱 UPI: ${esc(rest.upi_id)}` : '';
+    const upi = rest && rest.upi_id ? `ðŸ“± UPI: ${esc(rest.upi_id)}` : '';
     return `
       <div class="qr-card">
         <div class="tent-brand"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="width:130px;height:auto;object-fit:contain;background:#fff;padding:4px 8px;border-radius:8px" /> QRush</div>
@@ -611,7 +657,7 @@
   async function showQr(t) {
     if (!qrSheet) await loadQrGrid();
     const data = await TN.api(`/api/tables/${t.id}/qr`);
-    openModal(`Table tent — ${t.name}`, `
+    openModal(`Table tent â€” ${t.name}`, `
       ${tentHtml(t, data.qr, qrSheet && qrSheet.restaurant)}
       <div class="hint" style="margin-top:8px">Print karke table par rakh dein. Customer scan karke seedha isi table ka menu kholega.</div>`, [
       { label: 'Close', onClick: () => { closeModal(); } },
@@ -654,7 +700,7 @@
         <div class="field"><label>Start numbering from</label><input class="input" id="m-b-start" type="number" min="1" value="1" /></div>
       </div>
       <div class="field"><label>Seats per table</label><input class="input" id="m-b-seats" type="number" min="1" value="4" /></div>
-      <p class="tiny muted">Example: 10 tables starting at 1 → "Table 1" … "Table 10", har ek ka unique QR.</p>
+      <p class="tiny muted">Example: 10 tables starting at 1 â†’ "Table 1" â€¦ "Table 10", har ek ka unique QR.</p>
     `, [
       { label: 'Cancel', onClick: () => { closeModal(); } },
       {
@@ -699,7 +745,7 @@
           <td><span class="badge ${u.is_active ? 'ready' : 'muted'}">${u.is_active ? 'active' : 'disabled'}</span></td>
           <td style="text-align:right;white-space:nowrap">
             <button class="btn btn-sm" data-act="edit">Edit</button>
-            <button class="btn btn-sm btn-ghost" data-act="del">🗑</button>
+            <button class="btn btn-sm btn-ghost" data-act="del">ðŸ—‘</button>
           </td>`;
         tr.querySelector('[data-act="edit"]').addEventListener('click', () => staffModal(u));
         tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteStaff(u));
@@ -724,8 +770,8 @@
             <div class="sc-title">${s.icon} ${esc(s.title)}</div>
             <div class="sc-url">${esc(s.url)}</div>
             <div class="flex gap8">
-              <a class="btn btn-sm" href="${s.url}" target="_blank">Open ↗</a>
-              <button class="btn btn-sm" data-copy="${esc(s.url)}">📋 Copy link</button>
+              <a class="btn btn-sm" href="${s.url}" target="_blank">Open â†—</a>
+              <button class="btn btn-sm" data-copy="${esc(s.url)}">ðŸ“‹ Copy link</button>
             </div>
             <div class="sc-hint">Staff ko apna email + password do (neeche list mein). QR scan karte hi seedha yeh screen khul jayegi.</div>
           </div>
@@ -738,7 +784,7 @@
             await navigator.clipboard.writeText(text);
             TN.toast('Link copy ho gaya', 'success');
           } catch (_) {
-            TN.toast('Copy nahi hua — link manually select karein', 'error');
+            TN.toast('Copy nahi hua â€” link manually select karein', 'error');
           }
         }));
     } catch (err) {
@@ -754,9 +800,9 @@
       <div class="field"><label>Password ${u ? '(leave blank to keep current)' : ''}</label><input class="input" id="m-s-pass" type="password" placeholder="Min 6 characters" /></div>
       <div class="field"><label>Role</label>
         <select class="input" id="m-s-role">
-          <option value="kitchen" ${u && u.role === 'kitchen' ? 'selected' : ''}>👨‍🍳 Kitchen — orders accept/ready karega</option>
-          <option value="cashier" ${u && u.role === 'cashier' ? 'selected' : ''}>💰 Cashier — bill &amp; payment</option>
-          <option value="owner" ${u && u.role === 'owner' ? 'selected' : ''}>👑 Owner — full access</option>
+          <option value="kitchen" ${u && u.role === 'kitchen' ? 'selected' : ''}>ðŸ‘¨â€ðŸ³ Kitchen â€” orders accept/ready karega</option>
+          <option value="cashier" ${u && u.role === 'cashier' ? 'selected' : ''}>ðŸ’° Cashier â€” bill &amp; payment</option>
+          <option value="owner" ${u && u.role === 'owner' ? 'selected' : ''}>ðŸ‘‘ Owner â€” full access</option>
         </select>
       </div>
       ${u ? `<div class="field"><label style="display:flex;align-items:center;gap:10px">
@@ -798,11 +844,14 @@
 
   async function loadSettings() {
     const data = await TN.api('/api/admin/restaurant');
-    const r = data.restaurant;
+    const r = data.restaurant || {};
     $('s-name').value = r.name || '';
     $('s-phone').value = r.phone || '';
     $('s-currency').value = r.currency || '₹';
     $('s-address').value = r.address || '';
+    if ($('s-description')) $('s-description').value = r.description || '';
+    if ($('s-open')) $('s-open').value = r.opening_hours || '';
+    if ($('s-close')) $('s-close').value = r.closing_hours || '';
     $('s-logo').value = r.logo_url || '';
     if (r.logo_url) {
       $('s-logo-preview').innerHTML = `<img src="${esc(r.logo_url)}" alt="Logo" style="width:100%;height:100%;object-fit:cover" />`;
@@ -810,6 +859,16 @@
       $('s-logo-preview').innerHTML = '<span style="font-size:20px">🏪</span>';
     }
     $('s-gst').value = r.gst_percent || 0;
+    if ($('s-whatsapp')) $('s-whatsapp').value = r.whatsapp || '';
+    if ($('s-instagram')) $('s-instagram').value = r.instagram || '';
+    if ($('s-facebook')) $('s-facebook').value = r.facebook || '';
+    if ($('s-website')) $('s-website').value = r.website || '';
+    if ($('s-plan-info')) {
+      const plan = String(r.plan || 'free');
+      const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+      const price = plan === 'starter' ? '₹149/month' : plan === 'business' ? '₹299/month' : '₹0';
+      $('s-plan-info').textContent = `Current plan: ${planLabel} ${price} · Status: ${r.plan_status || 'active'} (managed by platform admin; no payments in this phase).`;
+    }
     $('s-wifi-name').value = r.wifi_name || '';
     $('s-wifi-pass').value = r.wifi_password || '';
     $('s-upi').value = r.upi_id || '';
@@ -823,15 +882,20 @@
         method: 'PUT',
         body: {
           name: val('s-name'), phone: val('s-phone'), currency: val('s-currency') || '₹',
-          address: val('s-address'), logo_url: val('s-logo'), gst_percent: Number(val('s-gst')) || 0,
+          address: val('s-address'), description: val('s-description'),
+          opening_hours: val('s-open'), closing_hours: val('s-close'),
+          whatsapp: val('s-whatsapp'), instagram: val('s-instagram'),
+          facebook: val('s-facebook'), website: val('s-website'),
+          logo_url: val('s-logo'), gst_percent: Number(val('s-gst')) || 0,
           wifi_name: val('s-wifi-name'), wifi_password: val('s-wifi-pass'),
           upi_id: val('s-upi'), prep_minutes: Number(val('s-prep')) || 15,
           rush_mode: $('s-rush').checked,
         },
       });
       currency = data.restaurant.currency || '₹';
-      $('whoami').textContent = `${$('whoami').textContent.split('•')[0].trim()} • ${data.restaurant.name}`;
+      $('whoami').textContent = `${$('whoami').textContent.split('·')[0].trim()} · ${data.restaurant.name}`;
       TN.toast('Settings saved', 'success');
+      loadSettings();
     } catch (err) { TN.toast(err.message, 'error'); }
   });
 
@@ -850,12 +914,12 @@
     const rest = (await TN.api('/api/admin/restaurant')).restaurant;
     $('n-country').value = rest.country_code || '+91';
 
-    // Provider status — only browser push is supported.
-    $('provider-badge').textContent = 'Browser push · active';
+    // Provider status â€” only browser push is supported.
+    $('provider-badge').textContent = 'Browser push Â· active';
     $('provider-badge').className = 'badge ready';
     $('provider-hint').innerHTML =
       'Order <b>ready</b> ya <b>served</b> hote hi customer ke phone par browser notification jaata hai. ' +
-      'Customer ko ek baar "Allow" karna hota hai — koi app install nahi karni. ' +
+      'Customer ko ek baar "Allow" karna hota hai â€” koi app install nahi karni. ' +
       'Push kaam karta hai kyunki site HTTPS par hai (public URL).';
 
     // Delivery log.
@@ -870,9 +934,9 @@
       const label = n.status === 'sent' ? 'sent' : n.status === 'failed' ? 'failed' : n.status;
       return `<tr>
         <td class="tiny muted">${TN.escapeHtml(TN.fmtTime(n.created_at))}</td>
-        <td class="bold">${n.order_no ? '#' + n.order_no : '—'}${n.table_name ? '<div class="tiny muted">' + TN.escapeHtml(n.table_name) + '</div>' : ''}</td>
+        <td class="bold">${n.order_no ? '#' + n.order_no : 'â€”'}${n.table_name ? '<div class="tiny muted">' + TN.escapeHtml(n.table_name) + '</div>' : ''}</td>
         <td>${TN.escapeHtml(n.channel)}</td>
-        <td class="tiny">${TN.escapeHtml(n.recipient || '—')}</td>
+        <td class="tiny">${TN.escapeHtml(n.recipient || 'â€”')}</td>
         <td><span class="badge ${cls}">${label}</span></td>
         <td class="tiny muted" style="max-width:320px">${TN.escapeHtml(n.body || '')}${n.error ? '<div style="color:var(--red)">' + TN.escapeHtml(n.error) + '</div>' : ''}</td>
       </tr>`;
@@ -905,10 +969,10 @@
 
   function connectSocket() {
     const token = TN.getToken();
-    if (!token) return; // not logged in — no point connecting
+    if (!token) return; // not logged in â€” no point connecting
     const socket = io({ auth: { token } });
     socket.on('unauthorized', () => {
-      TN.toast('Session expire ho gaya — dobara login karein', 'error');
+      TN.toast('Session expire ho gaya â€” dobara login karein', 'error');
       setTimeout(() => { window.location.href = '/login?expired=1'; }, 900);
     });
     socket.on('order:update', () => {
@@ -940,7 +1004,7 @@
   $('s-logo').addEventListener('input', (e) => {
     const v = e.target.value.trim();
     if (v) $('s-logo-preview').innerHTML = `<img src="${esc(v)}" style="width:100%;height:100%;object-fit:cover" />`;
-    else $('s-logo-preview').innerHTML = '<span style="font-size:20px">🏪</span>';
+    else $('s-logo-preview').innerHTML = '<span style="font-size:20px">ðŸª</span>';
   });
 
   // Handle item image upload

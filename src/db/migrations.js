@@ -183,6 +183,57 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    // v2.6 — Phase 2 foundations: profile/plan prep + analytics (additive, no payments).
+    name: '009-phase2-foundations',
+    async up() {
+      // ---- Free QR menus: profile fields + plan prep (no charging, no locking) ----
+      await addColumn('free_qr_menus', 'address', 'TEXT');
+      await addColumn('free_qr_menus', 'description', 'TEXT');
+      await addColumn('free_qr_menus', 'opening_hours', 'TEXT');
+      await addColumn('free_qr_menus', 'closing_hours', 'TEXT');
+      await addColumn('free_qr_menus', 'plan', "TEXT NOT NULL DEFAULT 'free'");
+      await addColumn('free_qr_menus', 'plan_status', "TEXT NOT NULL DEFAULT 'active'");
+      await addColumn('free_qr_menus', 'plan_started_at', 'TEXT');
+      await addColumn('free_qr_menus', 'plan_expires_at', 'TEXT');
+      await addColumn('free_qr_menus', 'updated_at', 'TEXT');
+
+      // ---- Tenants (SaaS track): profile fields + plan prep ----
+      await addColumn('tenants', 'description', 'TEXT');
+      await addColumn('tenants', 'opening_hours', 'TEXT');
+      await addColumn('tenants', 'closing_hours', 'TEXT');
+      await addColumn('tenants', 'whatsapp', 'TEXT');
+      await addColumn('tenants', 'instagram', 'TEXT');
+      await addColumn('tenants', 'facebook', 'TEXT');
+      await addColumn('tenants', 'website', 'TEXT');
+      await addColumn('tenants', 'plan', "TEXT NOT NULL DEFAULT 'free'");
+      await addColumn('tenants', 'plan_status', "TEXT NOT NULL DEFAULT 'active'");
+      await addColumn('tenants', 'plan_started_at', 'TEXT');
+      await addColumn('tenants', 'plan_expires_at', 'TEXT');
+
+      // ---- Analytics: date-range indexes + tenant menu view/scan events ----
+      await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_events_created ON free_qr_events(free_qr_id, created_at)');
+      await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_orders_created_only ON free_qr_orders(free_qr_id, created_at)');
+
+      if (!(await tableExists('tenant_menu_events'))) {
+        const created = dialect() === 'postgres'
+          ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+          : `datetime('now')`;
+        await exec(`
+          CREATE TABLE IF NOT EXISTS tenant_menu_events (
+            id         ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            tenant_id  INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            table_id   INTEGER REFERENCES tables(id) ON DELETE SET NULL,
+            kind       TEXT    NOT NULL,
+            visitor    TEXT,
+            created_at TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_tenant_menu_events ON tenant_menu_events(tenant_id, kind, created_at)');
+        await exec('CREATE INDEX IF NOT EXISTS idx_tenant_menu_events_created ON tenant_menu_events(tenant_id, created_at)');
+      }
+    },
+  },
 ];
 
 /**

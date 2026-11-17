@@ -711,25 +711,38 @@
 
       <div class="stat-grid">
         <div class="stat">
-          <div class="stat-label">👀 Total scans</div>
+          <div class="stat-label">👀 Total menu views / scans</div>
           <div class="stat-value" id="s-view-total">0</div>
-          <div class="stat-foot" id="s-view-today">0 today</div>
+          <div class="stat-foot" id="s-view-today">0 today · 0 last 7 days · 0 last 30 days</div>
         </div>
         <div class="stat">
           <div class="stat-label">🧑 Unique visitors</div>
           <div class="stat-value" id="s-view-unique">0</div>
-          <div class="stat-foot">all time</div>
+          <div class="stat-foot">all time (real recorded)</div>
         </div>
         <div class="stat">
-          <div class="stat-label">🔗 Social clicks</div>
-          <div class="stat-value" id="s-click-total">0</div>
-          <div class="stat-foot" id="s-click-today">0 today</div>
+          <div class="stat-label">📋 Profile &amp; plan</div>
+          <div class="stat-value" id="s-profile" style="font-size:22px">0%</div>
+          <div class="stat-foot" id="s-plan">Plan: Free · Active</div>
         </div>
         <div class="stat">
-          <div class="stat-label">📅 Menu live since</div>
-          <div class="stat-value" id="s-live" style="font-size:20px">—</div>
-          <div class="stat-foot">aapka free QR</div>
+          <div class="stat-label">✅ Menu &amp; QR status</div>
+          <div class="stat-value" id="s-status" style="font-size:20px">—</div>
+          <div class="stat-foot" id="s-live">Menu live since —</div>
         </div>
+      </div>
+
+      <div class="dash-card" style="margin-bottom:18px">
+        <div class="dash-card-head">
+          <h3>Quick actions</h3>
+        </div>
+        <div class="owner-actions" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-top:0">
+          <a class="btn btn-primary btn-sm" id="qa-open" target="_blank" rel="noopener">Open public menu</a>
+          <button class="btn btn-outline btn-sm" id="qa-copy" type="button">Copy menu link</button>
+          <button class="btn btn-outline btn-sm" id="qa-download" type="button">Download QR (PNG)</button>
+          <button class="btn btn-ghost btn-sm" id="qa-print" type="button">Print QR</button>
+        </div>
+        <p class="tiny muted" id="s-profile-hint" style="margin:10px 0 0"></p>
       </div>
 
       <div class="dash-cols">
@@ -773,7 +786,23 @@
               <h3>Social link clicks</h3>
             </div>
             <ul class="click-list" id="d-click-list"></ul>
-            <p class="tiny muted" style="margin:12px 0 0">Har button par kitne logon ne click kiya.</p>
+            <p class="tiny muted" style="margin:12px 0 0">Har button par kitne logon ne click kiya (real recorded).</p>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Recent activity</h3>
+            </div>
+            <ul class="click-list" id="d-recent"></ul>
+            <p class="tiny muted" style="margin:12px 0 0">Recent scan/view events (no personal visitor data shown).</p>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Menu views — last 7 days</h3>
+            </div>
+            <div id="d-daily" style="display:flex;flex-direction:column;gap:8px"></div>
+            <p class="tiny muted" style="margin:12px 0 0">Real recorded views/scans per day.</p>
           </div>
         </div>
       </div>
@@ -836,10 +865,10 @@
         <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
           <input class="input" id="g-menu" placeholder="File upload karein..." style="flex:1;margin-top:0" readonly />
           <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
-            📁 Upload <input type="file" id="g-menu-file" accept="image/*,application/pdf" style="display:none" />
+            📁 Upload <input type="file" id="g-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
           </label>
         </div>
-        <p class="tiny muted" style="margin:4px 0 0">Phone se photo ya PDF chunein — badi photos automatically compress ho jaati hain.</p>
+        <p class="tiny muted" style="margin:4px 0 0">Phone se photo ya PDF chunein — ek se zyada images (page 1, 2...) bhi select kar sakte hain. Badi photos automatically compress ho jaati hain.</p>
       </div>
 
       <div class="field">
@@ -983,6 +1012,27 @@
             <label>Contact number</label>
             <input class="input" id="m-phone" type="tel" placeholder="9172941524" />
           </div>
+        </div>
+
+        <div class="field">
+          <label>Restaurant address</label>
+          <input class="input" id="m-address" placeholder="Shop no., street, area, city" />
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Opening time</label>
+            <input class="input" id="m-open" placeholder="e.g. 10:00 AM" />
+          </div>
+          <div class="field">
+            <label>Closing time</label>
+            <input class="input" id="m-close-time" placeholder="e.g. 11:00 PM" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Restaurant description <span class="tiny muted">(optional)</span></label>
+          <textarea class="input" id="m-desc" rows="3" placeholder="Short description about your restaurant" style="resize:vertical"></textarea>
         </div>
 
         <div class="field">
@@ -1358,17 +1408,70 @@
         fallback.textContent = (current.restaurant || 'R').charAt(0).toUpperCase();
       }
 
-      // Stats
+      // Stats (real recorded data)
       const s = currentStats || {};
-      const views = s.views || { total: 0, today: 0, unique: 0 };
+      const views = s.views || { total: 0, today: 0, unique: 0, week: 0, month: 0 };
       const clicks = s.clicks || {};
       const clickTotal = s.click_total || { total: 0, today: 0 };
       $('s-view-total').textContent = views.total || 0;
-      $('s-view-today').textContent = (views.today || 0) + ' today';
+      $('s-view-today').textContent = (views.today || 0) + ' today · ' + (views.week || 0) + ' last 7 days · ' + (views.month || 0) + ' last 30 days';
       $('s-view-unique').textContent = views.unique || 0;
-      $('s-click-total').textContent = clickTotal.total || 0;
-      $('s-click-today').textContent = (clickTotal.today || 0) + ' today';
-      $('s-live').textContent = fmtDate(current.created_at);
+      const pc = (current.profile_completion || { percent: 0, done: 0, total: 0 });
+      $('s-profile').textContent = (pc.percent || 0) + '%';
+      const planName = String(current.plan || 'free').charAt(0).toUpperCase() + String(current.plan || 'free').slice(1);
+      $('s-plan').textContent = 'Plan: ' + planName + ' · ' + (current.plan_status || 'active');
+      const menuOk = (current.menu_status === 'active');
+      $('s-status').textContent = (menuOk ? 'Menu ready' : 'Menu missing') + ' · QR ' + (current.qr_status || 'active');
+      $('s-live').textContent = 'Menu live since ' + fmtDate(current.created_at);
+      const missing = (pc.checks || []).filter(c => !c.ok).map(c => c.key);
+      $('s-profile-hint').textContent = missing.length
+        ? 'Profile incomplete: ' + missing.join(', ') + '. “Edit my page” se poori karein.'
+        : 'Profile complete. Aap apni details aur menu kabhi bhi update kar sakte hain.';
+
+      const publicUrl = absoluteMenuUrl(current);
+      if ($('qa-open')) $('qa-open').href = publicUrl;
+      if ($('d-open')) $('d-open').href = publicUrl;
+
+      // Recent activity
+      const recentEl = $('d-recent');
+      if (recentEl) {
+        const recent = Array.isArray(s.recent) ? s.recent : [];
+        if (!recent.length) {
+          recentEl.innerHTML = '<li class="click-row"><span class="click-name">No activity recorded yet</span><span class="click-count">—</span></li>';
+        } else {
+          const label = (k) => ({ view: 'Menu view/scan', whatsapp: 'WhatsApp click', instagram: 'Instagram click', facebook: 'Facebook click', website: 'Website click', order: 'Order placed' }[k] || k);
+          recentEl.innerHTML = recent.slice(0, 10).map(r => (
+            '<li class="click-row">' +
+            '<span class="click-dot" style="background:#94a3b8"></span>' +
+            '<span class="click-name">' + label(r.kind) + '</span>' +
+            '<span class="click-today">' + fmtDate(r.created_at) + '</span>' +
+            '</li>'
+          )).join('');
+        }
+      }
+
+      // 7-day daily views (real)
+      const dailyEl = $('d-daily');
+      if (dailyEl) {
+        const daily = Array.isArray(s.daily) ? s.daily : [];
+        const map = new Map(daily.map((d) => [d.day, Number(d.views) || 0]));
+        const days = [];
+        const now = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+          const key = d.toISOString().slice(0, 10);
+          days.push({ key, views: map.get(key) || 0 });
+        }
+        const max = Math.max(1, ...days.map((d) => d.views));
+        dailyEl.innerHTML = days.map((d) => {
+          const label = new Date(d.key + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          return '<div style="display:flex;align-items:center;gap:10px">' +
+            '<span class="tiny muted" style="width:64px;flex:none">' + label + '</span>' +
+            '<span style="flex:1;background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden"><span style="display:block;height:100%;width:' + Math.round((d.views / max) * 100) + '%;background:var(--primary,#ea580c)"></span></span>' +
+            '<span class="small" style="width:34px;text-align:right;flex:none">' + d.views + '</span>' +
+            '</div>';
+        }).join('');
+      }
 
       // Per-network click breakdown
       const nets = [
@@ -1458,6 +1561,10 @@
       $('m-rest').value = current.restaurant || '';
       $('m-owner').value = current.owner_name || '';
       $('m-phone').value = current.phone || '';
+      $('m-address').value = current.address || '';
+      $('m-open').value = current.opening_hours || '';
+      $('m-close-time').value = current.closing_hours || '';
+      $('m-desc').value = current.description || '';
       $('m-whatsapp').value = current.whatsapp || '';
       $('m-instagram').value = current.instagram || '';
       $('m-facebook').value = current.facebook || '';
@@ -1582,6 +1689,10 @@
         restaurant: rest,
         owner_name: $('m-owner').value.trim(),
         phone: $('m-phone').value.trim(),
+        address: $('m-address').value.trim(),
+        opening_hours: $('m-open').value.trim(),
+        closing_hours: $('m-close-time').value.trim(),
+        description: $('m-desc').value.trim(),
         whatsapp: $('m-whatsapp').value.trim(),
         instagram: $('m-instagram').value.trim(),
         facebook: $('m-facebook').value.trim(),
@@ -1765,16 +1876,36 @@
     });
 
     /* ------------------------------- actions -------------------------------- */
-    $('d-copy').addEventListener('click', async () => {
+    async function copyMenuLink(btn) {
+      if (!btn) return;
       const link = absoluteMenuUrl(current);
+      const original = btn.textContent;
+      let copied = false;
       try {
         await navigator.clipboard.writeText(link);
-        $('d-copy').textContent = '✅ Link copied!';
-        setTimeout(() => { $('d-copy').textContent = '📋 Copy menu link'; }, 1800);
+        copied = true;
       } catch (_) {
-        window.prompt('Copy this link:', link);
+        // Fallback for browsers/contexts without the async clipboard API.
+        const ta = document.createElement('textarea');
+        ta.value = link;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        ta.remove();
       }
-    });
+      if (copied) {
+        btn.textContent = '✅ Link copied!';
+        setTimeout(() => { btn.textContent = original; }, 1800);
+      } else {
+        // Last resort: show the link so the owner can copy it manually.
+        try { window.prompt('Copy this link:', link); }
+        catch (_) { toast('Link: ' + link); }
+      }
+    }
+
+    $('d-copy').addEventListener('click', () => copyMenuLink($('d-copy')));
 
     $('d-download').addEventListener('click', async () => {
       const url = await qrDataUrl(720);
@@ -1807,6 +1938,11 @@
       );
       w.document.close();
     });
+
+    // Quick action mirrors
+    if ($('qa-copy')) $('qa-copy').addEventListener('click', () => copyMenuLink($('qa-copy')));
+    if ($('qa-download')) $('qa-download').addEventListener('click', () => $('d-download').click());
+    if ($('qa-print')) $('qa-print').addEventListener('click', () => $('d-print').click());
 
     $('d-logout').addEventListener('click', () => {
       setToken('');
@@ -1877,17 +2013,29 @@
 
     let generatorMenuType = 'image';
     $('g-menu-file').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
-        toast('Sirf image ya PDF upload kar sakte hain', true);
-        e.target.value = '';
-        return;
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      
+      for (const file of files) {
+        if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
+          toast('Sirf image ya PDF upload kar sakte hain', true);
+          e.target.value = '';
+          return;
+        }
+        if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
       }
-      if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
+
+      toast('Images upload ho rahi hain...');
       try {
-        generatorMenuType = /pdf/i.test(file.type || '') ? 'pdf' : 'image';
-        $('g-menu').value = generatorMenuType === 'pdf' ? await readFileAsDataUrl(file) : await prepareMenuImage(file);
+        const isPdf = files.some(f => /pdf/i.test(f.type || ''));
+        if (isPdf && files.length > 1) { throw new Error('PDF sirf ek hi file upload kar sakte hain'); }
+
+        generatorMenuType = isPdf ? 'pdf' : 'image';
+        const data = await Promise.all(
+          files.map(f => (generatorMenuType === 'pdf' ? readFileAsDataUrl(f) : prepareMenuImage(f)))
+        );
+        $('g-menu').value = generatorMenuType === 'pdf' ? data[0] : JSON.stringify(data);
+        toast('✅ ' + data.length + ' page(s) ready!');
       } catch (err) {
         toast(err.message || 'Image upload nahi hui', true);
       } finally {

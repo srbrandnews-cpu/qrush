@@ -42,8 +42,10 @@ async function listPlatformTenants() {
   const today = utcToday();
   const openSlots = OPEN_STATUSES.map(() => '?').join(',');
   const rows = await query(`
-    SELECT t.id, t.name, t.slug, t.phone, t.address, t.currency, t.gst_percent,
-           t.is_active, t.created_at, t.upi_id, t.prep_minutes, t.rush_mode,
+    SELECT t.id, t.name, t.slug, t.phone, t.address, t.description, t.opening_hours, t.closing_hours,
+           t.whatsapp, t.instagram, t.facebook, t.website,
+           t.currency, t.gst_percent, t.is_active, t.created_at, t.upi_id, t.prep_minutes, t.rush_mode,
+           t.plan, t.plan_status, t.plan_started_at, t.plan_expires_at,
            (SELECT u.id FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_id,
            (SELECT u.name FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_name,
            (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_email,
@@ -102,7 +104,16 @@ router.get('/super-admin/overview', async (req, res, next) => {
         (SELECT COUNT(DISTINCT tenant_id) FROM orders WHERE substr(created_at, 1, 10) = ?) AS active_tenants_today,
         (SELECT COUNT(*) FROM tenants WHERE substr(created_at, 1, 10) = ?) AS tenants_new_today,
         (SELECT COALESCE(AVG(rating), 0) FROM orders WHERE rating IS NOT NULL) AS rating_avg,
-        (SELECT COUNT(rating) FROM orders WHERE rating IS NOT NULL) AS rating_count
+        (SELECT COUNT(rating) FROM orders WHERE rating IS NOT NULL) AS rating_count,
+        (SELECT COUNT(*) FROM tenants WHERE COALESCE(plan,'free') = 'free') AS tenants_plan_free,
+        (SELECT COUNT(*) FROM tenants WHERE plan = 'starter') AS tenants_plan_starter,
+        (SELECT COUNT(*) FROM tenants WHERE plan = 'business') AS tenants_plan_business,
+        (SELECT COUNT(*) FROM free_qr_menus) AS freeqr_total,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE COALESCE(plan,'free') = 'free') AS freeqr_plan_free,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan = 'starter') AS freeqr_plan_starter,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan = 'business') AS freeqr_plan_business,
+        (SELECT COUNT(*) FROM tenant_menu_events WHERE kind = 'view') AS tenant_menu_views,
+        (SELECT COUNT(*) FROM free_qr_events WHERE kind = 'view') AS freeqr_menu_views
     `, [today, today, ...OPEN_STATUSES, today, today]);
 
     const normalized = {};
@@ -307,6 +318,18 @@ router.get('/super-admin/free-qr', async (req, res, next) => {
         restaurant: r.restaurant,
         owner_name: r.owner_name,
         phone: r.phone,
+        address: r.address || '',
+        description: r.description || '',
+        opening_hours: r.opening_hours || '',
+        closing_hours: r.closing_hours || '',
+        whatsapp: r.whatsapp || '',
+        instagram: r.instagram || '',
+        facebook: r.facebook || '',
+        website: r.website || '',
+        plan: r.plan || 'free',
+        plan_status: r.plan_status || 'active',
+        plan_started_at: r.plan_started_at || null,
+        plan_expires_at: r.plan_expires_at || null,
         created_at: r.created_at,
         ordering_enabled: !!Number(r.ordering_enabled),
         scans: Number(views && views.c) || 0,
@@ -340,6 +363,76 @@ router.delete('/super-admin/free-qr/:id', async (req, res, next) => {
   }
 });
 
+const ALLOWED_PLANS = new Set(['free', 'starter', 'business']);
+const ALLOWED_PLAN_STATUS = new Set(['active', 'inactive', 'expired', 'cancelled', 'pending']);
+
+function normalizePlanBody(b) {
+  const plan = b.plan !== undefined ? String(b.plan).toLowerCase().trim() : undefined;
+  const status = b.plan_status !== undefined ? String(b.plan_status).toLowerCase().trim() : undefined;
+  if (plan !== undefined && !ALLOWED_PLANS.has(plan)) return { error: 'Invalid plan (free|starter|business)' };
+  if (status !== undefined && !ALLOWED_PLAN_STATUS.has(status)) return { error: 'Invalid plan status' };
+  const cleanDate = (v) => {
+    if (v === undefined) return undefined;
+    if (v === null || v === '') return null;
+    const s = String(v).trim().slice(0, 32);
+    return s || null;
+  };
+  return {
+    plan,
+    status,
+    plan_started_at: cleanDate(b.plan_started_at),
+    plan_expires_at: cleanDate(b.plan_expires_at),
+  };
+}
+
+router.put('/super-admin/tenants/:id/plan', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const tenant = await get('SELECT id FROM tenants WHERE id = ?', [id]);
+    if (!tenant) return res.status(404).json({ error: 'Restaurant not found' });
+    const p = normalizePlanBody(req.body || {});
+    if (p.error) return res.status(400).json({ error: p.error });
+    const current = await get('SELECT plan, plan_status, plan_started_at, plan_expires_at FROM tenants WHERE id = ?', [id]);
+    await run(
+      `UPDATE tenants SET plan = ?, plan_status = ?, plan_started_at = ?, plan_expires_at = ? WHERE id = ?`,
+      [
+        p.plan !== undefined ? p.plan : (current.plan || 'free'),
+        p.status !== undefined ? p.status : (current.plan_status || 'active'),
+        p.plan_started_at !== undefined ? p.plan_started_at : current.plan_started_at,
+        p.plan_expires_at !== undefined ? p.plan_expires_at : current.plan_expires_at,
+        id,
+      ]
+    );
+    res.json({ tenant: await get('SELECT id, name, slug, plan, plan_status, plan_started_at, plan_expires_at, is_active FROM tenants WHERE id = ?', [id]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/super-admin/free-qr/:id/plan', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const row = await get('SELECT id FROM free_qr_menus WHERE id = ?', [id]);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    const p = normalizePlanBody(req.body || {});
+    if (p.error) return res.status(400).json({ error: p.error });
+    const current = await get('SELECT plan, plan_status, plan_started_at, plan_expires_at FROM free_qr_menus WHERE id = ?', [id]);
+    await run(
+      `UPDATE free_qr_menus SET plan = ?, plan_status = ?, plan_started_at = ?, plan_expires_at = ? WHERE id = ?`,
+      [
+        p.plan !== undefined ? p.plan : (current.plan || 'free'),
+        p.status !== undefined ? p.status : (current.plan_status || 'active'),
+        p.plan_started_at !== undefined ? p.plan_started_at : current.plan_started_at,
+        p.plan_expires_at !== undefined ? p.plan_expires_at : current.plan_expires_at,
+        id,
+      ]
+    );
+    res.json({ freeqr: await get('SELECT id, slug, restaurant, plan, plan_status, plan_started_at, plan_expires_at FROM free_qr_menus WHERE id = ?', [id]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* ========================= TENANT-SCOPED ADMIN ROUTES ========================= */
 // These require the user to be an 'owner' of their tenant.
 router.use(requireAuth, requireRole('owner'));
@@ -358,7 +451,54 @@ router.get('/overview', async (req, res, next) => {
       [tenantId, ...OPEN_STATUSES]
     )).c;
     const allOrders = (await get('SELECT COUNT(*) AS c FROM orders WHERE tenant_id = ?', [tenantId])).c;
-    res.json({ tables, menuItems, staff, openOrders: open, allOrders });
+
+    // Real analytics (tenant menu views/scans) - recorded events only
+    let analytics = { views: { total: 0, today: 0, week: 0, month: 0 }, daily: [], monthly: [], recent: [] };
+    try {
+      const now = new Date();
+      const iso = (d) => d.toISOString();
+      const todayStr = iso(now).slice(0, 10);
+      const weekFrom = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6, 0, 0, 0))).slice(0, 19).replace('T', ' ');
+      const monthFrom = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 29, 0, 0, 0))).slice(0, 19).replace('T', ' ');
+      const todayLike = todayStr + '%';
+      const total = await get("SELECT COUNT(*) AS c FROM tenant_menu_events WHERE tenant_id = ? AND kind = 'view'", [tenantId]);
+      const today = await get("SELECT COUNT(*) AS c FROM tenant_menu_events WHERE tenant_id = ? AND kind = 'view' AND created_at LIKE ?", [tenantId, todayLike]);
+      const week = await get("SELECT COUNT(*) AS c FROM tenant_menu_events WHERE tenant_id = ? AND kind = 'view' AND created_at >= ?", [tenantId, weekFrom]);
+      const month = await get("SELECT COUNT(*) AS c FROM tenant_menu_events WHERE tenant_id = ? AND kind = 'view' AND created_at >= ?", [tenantId, monthFrom]);
+      const daily = await query(
+        `SELECT substr(created_at,1,10) AS day, COUNT(*) AS c FROM tenant_menu_events
+          WHERE tenant_id = ? AND kind = 'view' AND created_at >= ?
+          GROUP BY substr(created_at,1,10) ORDER BY day ASC`,
+        [tenantId, weekFrom]
+      );
+      const monthly = await query(
+        `SELECT substr(created_at,1,10) AS day, COUNT(*) AS c FROM tenant_menu_events
+          WHERE tenant_id = ? AND kind = 'view' AND created_at >= ?
+          GROUP BY substr(created_at,1,10) ORDER BY day ASC`,
+        [tenantId, monthFrom]
+      );
+      const recent = await query(
+        `SELECT e.kind, e.created_at, tb.name AS table_name
+           FROM tenant_menu_events e
+           LEFT JOIN tables tb ON tb.id = e.table_id
+          WHERE e.tenant_id = ?
+          ORDER BY e.id DESC LIMIT 20`,
+        [tenantId]
+      );
+      analytics = {
+        views: {
+          total: Number(total && total.c) || 0,
+          today: Number(today && today.c) || 0,
+          week: Number(week && week.c) || 0,
+          month: Number(month && month.c) || 0,
+        },
+        daily: daily.map((r) => ({ day: r.day, views: Number(r.c) || 0 })),
+        monthly: monthly.map((r) => ({ day: r.day, views: Number(r.c) || 0 })),
+        recent: recent.map((r) => ({ kind: r.kind, created_at: r.created_at, table_name: r.table_name || null })),
+      };
+    } catch (_) { /* keep defaults if events table/query unavailable */ }
+
+    res.json({ tables, menuItems, staff, openOrders: open, allOrders, analytics });
   } catch (err) {
     next(err);
   }
@@ -376,7 +516,7 @@ router.get('/restaurant', async (req, res, next) => {
 });
 
 /**
- * PUT /api/admin/restaurant  { name, phone, address, currency, gst_percent }
+ * PUT /api/admin/restaurant  (owner-managed profile/settings; plan is admin-managed)
  */
 router.put('/restaurant', async (req, res, next) => {
   try {
@@ -390,21 +530,32 @@ router.put('/restaurant', async (req, res, next) => {
     if (!Number.isFinite(prep) || prep < 1 || prep > 120) {
       return res.status(400).json({ error: 'Typical prep time must be between 1 and 120 minutes' });
     }
+    const clean = (v, max) => v === undefined ? undefined : (v ? String(v).trim().slice(0, max) : null);
     await run(
       `UPDATE tenants SET
-         name = ?, phone = ?, address = ?, logo_url = ?, currency = ?, gst_percent = ?,
-         wifi_name = ?, wifi_password = ?, upi_id = ?, rush_mode = ?, prep_minutes = ?
+         name = ?, phone = ?, address = ?, description = ?, opening_hours = ?, closing_hours = ?,
+         logo_url = ?, currency = ?, gst_percent = ?,
+         wifi_name = ?, wifi_password = ?, upi_id = ?,
+         whatsapp = ?, instagram = ?, facebook = ?, website = ?,
+         rush_mode = ?, prep_minutes = ?
        WHERE id = ?`,
       [
         b.name != null ? String(b.name).trim() : t.name,
         b.phone !== undefined ? (b.phone ? String(b.phone).trim() : null) : t.phone,
         b.address !== undefined ? (b.address ? String(b.address).trim() : null) : t.address,
+        b.description !== undefined ? (b.description ? String(b.description).trim().slice(0, 1000) : null) : (t.description || null),
+        b.opening_hours !== undefined ? (b.opening_hours ? String(b.opening_hours).trim().slice(0, 120) : null) : (t.opening_hours || null),
+        b.closing_hours !== undefined ? (b.closing_hours ? String(b.closing_hours).trim().slice(0, 120) : null) : (t.closing_hours || null),
         b.logo_url !== undefined ? (b.logo_url ? String(b.logo_url).trim() : null) : t.logo_url,
         b.currency != null ? String(b.currency).trim() : t.currency,
         gst,
         b.wifi_name !== undefined ? (b.wifi_name ? String(b.wifi_name).trim() : null) : t.wifi_name,
         b.wifi_password !== undefined ? (b.wifi_password ? String(b.wifi_password).trim() : null) : t.wifi_password,
         b.upi_id !== undefined ? (b.upi_id ? String(b.upi_id).trim() : null) : t.upi_id,
+        b.whatsapp !== undefined ? (b.whatsapp ? String(b.whatsapp).trim().slice(0, 200) : null) : (t.whatsapp || null),
+        b.instagram !== undefined ? (b.instagram ? String(b.instagram).trim().slice(0, 200) : null) : (t.instagram || null),
+        b.facebook !== undefined ? (b.facebook ? String(b.facebook).trim().slice(0, 200) : null) : (t.facebook || null),
+        b.website !== undefined ? (b.website ? String(b.website).trim().slice(0, 200) : null) : (t.website || null),
         b.rush_mode != null ? (b.rush_mode ? 1 : 0) : t.rush_mode,
         prep,
         t.id,

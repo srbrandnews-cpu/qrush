@@ -59,27 +59,52 @@ function publicFreeQr(row) {
   const menuUrls = images.map((img, i) =>
     img.startsWith('data:') ? `/m/${row.slug}/menu/${i}` : (/^https?:\/\//i.test(img) ? img : null)
   ).filter(Boolean);
-  return {
+  const profile = {
     slug: row.slug,
     url: `/m/${row.slug}`,
     restaurant: row.restaurant,
-    owner_name: row.owner_name,
-    phone: row.phone,
+    owner_name: row.owner_name || '',
+    phone: row.phone || '',
+    address: row.address || '',
+    description: row.description || '',
+    opening_hours: row.opening_hours || '',
+    closing_hours: row.closing_hours || '',
     logo_url: logoIsFile
       ? `/m/${row.slug}/logo`
       : (/^https?:\/\//i.test(row.logo_url || '') ? row.logo_url : null),
+    logo_is_file: logoIsFile,
     menu_url: menuUrls.length ? menuUrls[0] : null,
     menu_urls: menuUrls,
     menu_is_file: menuIsFile,
     menu_type: row.menu_type,
-    instagram: row.instagram,
-    facebook: row.facebook,
-    whatsapp: row.whatsapp,
-    website: row.website,
+    instagram: row.instagram || '',
+    facebook: row.facebook || '',
+    whatsapp: row.whatsapp || '',
+    website: row.website || '',
     created_at: row.created_at,
+    updated_at: row.updated_at || null,
     ordering_enabled: row.ordering_enabled === undefined ? true : !!Number(row.ordering_enabled),
     kitchen_url: `/m/${row.slug}/kitchen`,
+    plan: (row.plan || 'free').toLowerCase(),
+    plan_status: row.plan_status || 'active',
+    plan_started_at: row.plan_started_at || null,
+    plan_expires_at: row.plan_expires_at || null,
   };
+
+  const checks = [
+    ['name', !!String(profile.restaurant || '').trim()],
+    ['phone', !!String(profile.phone || '').trim()],
+    ['address', !!String(profile.address || '').trim()],
+    ['description', !!String(profile.description || '').trim()],
+    ['hours', !!(String(profile.opening_hours || '').trim() || String(profile.closing_hours || '').trim())],
+    ['logo', !!String(row.logo_url || '').trim()],
+    ['menu', menuUrls.length > 0],
+  ];
+  const done = checks.filter(([, ok]) => ok).length;
+  profile.profile_completion = { done, total: checks.length, percent: Math.round((done / checks.length) * 100), checks: checks.map(([k, ok]) => ({ key: k, ok })) };
+  profile.menu_status = menuUrls.length > 0 ? 'active' : 'missing';
+  profile.qr_status = 'active'; // permanent slug/QR
+  return profile;
 }
 
 /** â‚¹299 / â‚¹49.50 */
@@ -190,6 +215,33 @@ function shouldCountView(id, visitor) {
 }
 
 /** Record one analytics event. Never throws â€” analytics must not break a page. */
+// Tenant menu view/scan analytics (privacy-conscious, basic dedupe).
+const tenantViewSeen = new Map();
+const TENANT_VIEW_DEDUPE_MS = 30 * 60 * 1000;
+
+async function logTenantMenuEvent(tenantId, tableId, kind, visitor) {
+  try {
+    if (kind === 'view') {
+      const key = `${tenantId}:${tableId || 0}:${visitor || 'anon'}`;
+      const now = Date.now();
+      const seen = tenantViewSeen.get(key) || 0;
+      if (now - seen < TENANT_VIEW_DEDUPE_MS) return;
+      tenantViewSeen.set(key, now);
+      if (tenantViewSeen.size > 5000) {
+        for (const [k, ts] of tenantViewSeen) {
+          if (now - ts > TENANT_VIEW_DEDUPE_MS) tenantViewSeen.delete(k);
+        }
+      }
+    }
+    await run(
+      'INSERT INTO tenant_menu_events (tenant_id, table_id, kind, visitor) VALUES (?, ?, ?, ?)',
+      [tenantId, tableId || null, kind, visitor || null]
+    );
+  } catch (_) {
+    // analytics must never break the customer flow
+  }
+}
+
 async function logFreeQrEvent(id, kind, visitor) {
   try {
     await run('INSERT INTO free_qr_events (free_qr_id, kind, visitor) VALUES (?, ?, ?)', [id, kind, visitor || null]);
@@ -198,12 +250,21 @@ async function logFreeQrEvent(id, kind, visitor) {
   }
 }
 
-/** Totals + today's numbers for the owner dashboard. */
+/** Analytics snapshot for the owner's dashboard (real recorded data only). */
 async function freeQrStats(id) {
-  const today = new Date().toISOString().slice(0, 10) + '%';
+  const now = new Date();
+  const iso = (d) => d.toISOString();
+  const ymd = (d) => iso(d).slice(0, 10);
+  const todayStr = ymd(now);
+  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6, 0, 0, 0));
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 29, 0, 0, 0));
+  const todayLike = todayStr + '%';
+  const weekFrom = iso(weekStart).slice(0, 19).replace('T', ' ');
+  const monthFrom = iso(monthStart).slice(0, 19).replace('T', ' ');
+
   const zero = () => ({ total: 0, today: 0 });
   const stats = {
-    views: { total: 0, today: 0, unique: 0 },
+    views: { total: 0, today: 0, unique: 0, week: 0, month: 0 },
     clicks: {},
     click_total: { total: 0, today: 0 },
   };
@@ -215,11 +276,19 @@ async function freeQrStats(id) {
   );
   const todays = await query(
     'SELECT kind, COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND created_at LIKE ? GROUP BY kind',
-    [id, today]
+    [id, todayLike]
   );
   const uniq = await get(
     'SELECT COUNT(DISTINCT visitor) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind = ?',
     [id, 'view']
+  );
+  const weekViews = await get(
+    "SELECT COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind = 'view' AND created_at >= ?",
+    [id, weekFrom]
+  );
+  const monthViews = await get(
+    "SELECT COUNT(*) AS c FROM free_qr_events WHERE free_qr_id = ? AND kind = 'view' AND created_at >= ?",
+    [id, monthFrom]
   );
 
   for (const r of totals) {
@@ -239,13 +308,43 @@ async function freeQrStats(id) {
     }
   }
   stats.views.unique = Number(uniq && uniq.c) || 0;
+  stats.views.week = Number(weekViews && weekViews.c) || 0;
+  stats.views.month = Number(monthViews && monthViews.c) || 0;
 
-  // Orders that came in through the QR menu today.
+  const dailyRows = await query(
+    `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS c
+       FROM free_qr_events
+      WHERE free_qr_id = ? AND kind = 'view' AND created_at >= ?
+      GROUP BY substr(created_at, 1, 10)
+      ORDER BY day ASC`,
+    [id, weekFrom]
+  );
+  const monthlyRows = await query(
+    `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS c
+       FROM free_qr_events
+      WHERE free_qr_id = ? AND kind = 'view' AND created_at >= ?
+      GROUP BY substr(created_at, 1, 10)
+      ORDER BY day ASC`,
+    [id, monthFrom]
+  );
+  stats.daily = dailyRows.map((r) => ({ day: r.day, views: Number(r.c) || 0 }));
+  stats.monthly = monthlyRows.map((r) => ({ day: r.day, views: Number(r.c) || 0 }));
+
+  const recent = await query(
+    `SELECT kind, created_at
+       FROM free_qr_events
+      WHERE free_qr_id = ?
+      ORDER BY id DESC
+      LIMIT 20`,
+    [id]
+  );
+  stats.recent = recent.map((r) => ({ kind: r.kind, created_at: r.created_at }));
+
   const ord = await get(
     `SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s
        FROM free_qr_orders
       WHERE free_qr_id = ? AND status <> 'cancelled' AND created_at LIKE ?`,
-    [id, today]
+    [id, todayLike]
   );
   stats.orders = { today: Number(ord && ord.c) || 0, sales: Number(ord && ord.s) || 0 };
 
@@ -352,6 +451,11 @@ router.get('/menu', async (req, res, next) => {
     const active = activeRows
       .filter((row) => ownsCustomerOrder(row, phone, deviceId))
       .map(({ id, order_no, status, created_at }) => ({ id, order_no, status, created_at }));
+
+    // Real analytics: record a tenant menu view/scan (privacy-conscious, deduped).
+    try {
+      await logTenantMenuEvent(table.tenant_id, table.table_id, 'view', visitorId(req));
+    } catch (_) { /* never break menu load */ }
 
     res.json({
       restaurant: {
@@ -821,6 +925,10 @@ router.patch('/free-qr/me', async (req, res, next) => {
     if (b.facebook !== undefined) next_.facebook = String(b.facebook || '').trim().slice(0, 200) || null;
     if (b.whatsapp !== undefined) next_.whatsapp = String(b.whatsapp || '').trim().slice(0, 200) || null;
     if (b.website !== undefined) next_.website = String(b.website || '').trim().slice(0, 200) || null;
+    if (b.address !== undefined) next_.address = String(b.address || '').trim().slice(0, 300) || null;
+    if (b.description !== undefined) next_.description = String(b.description || '').trim().slice(0, 1000) || null;
+    if (b.opening_hours !== undefined) next_.opening_hours = String(b.opening_hours || '').trim().slice(0, 120) || null;
+    if (b.closing_hours !== undefined) next_.closing_hours = String(b.closing_hours || '').trim().slice(0, 120) || null;
 
     let passwordHash = current.password_hash;
     if (b.password) {
@@ -850,7 +958,8 @@ router.patch('/free-qr/me', async (req, res, next) => {
       `UPDATE free_qr_menus
          SET restaurant = ?, owner_name = ?, phone = ?, password_hash = ?, logo_url = ?,
              menu_data = ?, menu_type = ?, instagram = ?, facebook = ?, whatsapp = ?, website = ?,
-             ordering_enabled = ?
+             address = ?, description = ?, opening_hours = ?, closing_hours = ?,
+             ordering_enabled = ?, updated_at = ?
        WHERE id = ?`,
       [
         next_.restaurant,
@@ -864,7 +973,12 @@ router.patch('/free-qr/me', async (req, res, next) => {
         next_.facebook,
         next_.whatsapp,
         next_.website,
+        next_.address || null,
+        next_.description || null,
+        next_.opening_hours || null,
+        next_.closing_hours || null,
         next_.ordering_enabled === undefined ? 1 : (next_.ordering_enabled ? 1 : 0),
+        new Date().toISOString().slice(0, 19).replace('T', ' '),
         current.id,
       ]
     );
@@ -1568,6 +1682,8 @@ async function hostedMenuPage(req, res, next) {
       background: linear-gradient(135deg, #ea580c, #f97316);
     }
     .mhead h1 { font-size: 27px; line-height: 1.2; margin: 18px 0 4px; color: var(--ink); letter-spacing: -.02em; }
+    .mhint { font-size: 13px; color: var(--muted); margin: 3px 0 0; }
+    .mdesc { font-size: 13.5px; color: var(--ink-2, #334155); max-width: 460px; margin: 10px auto 0; line-height: 1.55; }
     .mhead .msub { color: var(--muted); font-size: 13.5px; margin: 0; }
     .mcall {
       display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
@@ -1695,6 +1811,9 @@ async function hostedMenuPage(req, res, next) {
       <h1>${escapeHtml(row.restaurant)}</h1>
       ${row.owner_name ? `<p class="msub">By ${escapeHtml(row.owner_name)}</p>` : ''}
       ${phoneLink}
+      ${(row.opening_hours || row.closing_hours) ? `<p class="mhint">🕒 ${escapeHtml(row.opening_hours || '')}${row.opening_hours && row.closing_hours ? ' – ' : ''}${escapeHtml(row.closing_hours || '')}</p>` : ''}
+      ${row.address ? `<p class="mhint">📍 ${escapeHtml(row.address)}</p>` : ''}
+      ${row.description ? `<p class="mdesc">${escapeHtml(row.description)}</p>` : ''}
     </header>
 
     ${menuSectionHtml}
