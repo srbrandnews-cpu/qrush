@@ -27,3 +27,7 @@ backups/
 TableNest_Source_Code_Audit.zip
 *.zip
 
+
+# One-off scripts that may contain credentials
+reset_render.js
+

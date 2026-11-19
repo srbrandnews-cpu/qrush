@@ -123,7 +123,7 @@ Migrations idempotent hain — har boot par safely chalte hain.
 | Super admin panels | `http://localhost:3115/superadmin` → Subscriptions / Revenue / Settings / Ads |
 | Public menu + ad | `http://localhost:3115/m/738486ca79e7` |
 
-Login: `owner@demo.com` / `pass1234`
+Login (local only): `owner@demo.com` / `pass1234`
 
 ---
 

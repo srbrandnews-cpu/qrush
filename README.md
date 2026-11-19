@@ -86,7 +86,10 @@ Phir browser mein kholein: **http://localhost:3000**
 
 ---
 
-## 🔑 Demo logins (password sabke liye: `pass1234`)
+## 🔑 Demo logins (LOCAL DEVELOPMENT ONLY — password: `pass1234`)
+
+> ⚠️ `pass1234` public hai. Production/Render par deploy karne se pehle
+> **Admin → Staff** se har account ka password badlein.
 
 | Screen | URL | Email |
 |---|---|---|

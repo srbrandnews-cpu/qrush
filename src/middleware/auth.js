@@ -85,9 +85,13 @@ function requireRole(...roles) {
 
 // Super-admin check: only the platform owner (by email) can manage tenants.
 // Configure extra platform admins with a comma-separated SUPER_ADMIN_EMAILS
-// env var. The demo owner is kept for local testing and for the current live
-// venue; change its password from Admin -> Staff before sharing the URL.
-const SUPER_ADMIN_EMAILS = String(process.env.SUPER_ADMIN_EMAILS || 'srbrandnews@gmail.com,owner@demo.com')
+// env var. In production there is NO hard-coded fallback: the env var must be
+// set, otherwise nobody can access the platform console. The local demo owner
+// is only allowed outside production.
+const DEFAULT_SUPER_ADMIN_EMAILS = process.env.NODE_ENV === 'production'
+  ? ''
+  : 'srbrandnews@gmail.com,owner@demo.com';
+const SUPER_ADMIN_EMAILS = String(process.env.SUPER_ADMIN_EMAILS || DEFAULT_SUPER_ADMIN_EMAILS)
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);

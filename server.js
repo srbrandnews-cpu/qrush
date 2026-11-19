@@ -13,11 +13,37 @@ const push = require('./src/services/push');
 const { initSocket } = require('./src/realtime/socket');
 const { dialect } = require('./src/config/db');
 const { runWithOrigin } = require('./src/utils/request-context');
+const {
+  securityHeaders,
+  blockBadRequests,
+  loginLimiter,
+  ownerLoginLimiter,
+  otpLimiter,
+  writeLimiter,
+  apiLimiter,
+} = require('./src/middleware/security');
 
 const app = express();
+app.disable('x-powered-by');
 app.set('trust proxy', true);
+app.use(securityHeaders);
+app.use(blockBadRequests);
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
+
+// Broad protection: cap every API IP, then tighter limits on auth-sensitive
+// endpoints. Write requests (orders, menu edits, signup, upgrades) get their
+// own bucket so a single phone cannot flood the database.
+app.use('/api', apiLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/public/free-qr/login', ownerLoginLimiter);
+app.use('/api/public/free-qr/send-otp', otpLimiter);
+app.use('/api/public/free-qr/verify-otp', otpLimiter);
+app.use('/api/public/free-qr/reset-password', otpLimiter);
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  return writeLimiter(req, res, next);
+});
 
 // Make the request's own origin visible to helpers that build absolute URLs
 // (QR codes). Means a deployment never needs a hard-coded BASE_URL.
@@ -123,7 +149,10 @@ app.use((err, req, res, next) => {
   const status = err.status || 500;
   if (status >= 500) console.error('[error]', err);
   if (req.path.startsWith('/api')) {
-    return res.status(status).json({ error: err.message || 'Server error' });
+    // Never leak SQL / stack details to clients in production.
+    const isProd = process.env.NODE_ENV === 'production';
+    const message = status >= 500 && isProd ? 'Server error' : (err.message || 'Server error');
+    return res.status(status).json({ error: message });
   }
   res.status(status).send('Something went wrong');
 });
@@ -168,11 +197,39 @@ function checkProductionConfig() {
   if (process.env.JWT_SECRET === 'change-me-to-a-long-random-string' || !process.env.JWT_SECRET) {
     problems.push('JWT_SECRET set nahi hai (ya default hai) — please apna random secret daalein.');
   }
+  if (!process.env.SUPER_ADMIN_EMAILS) {
+    problems.push(
+      'SUPER_ADMIN_EMAILS set nahi hai — production mein Super Admin console band rahega. ' +
+      'Render → Environment mein apna email daalein (comma-separated for multiple admins).'
+    );
+  }
 
   if (problems.length) {
     console.warn('\n⚠️  Production configuration warnings:\n');
     problems.forEach((p) => console.warn('   • ' + p));
     console.warn('');
+  }
+}
+
+/**
+ * Warns when any account still uses the demo password published in the
+ * README (public repo). Does not block boot — the owner must change it.
+ */
+async function checkWeakPasswords() {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { query } = require('./src/config/db');
+    const users = await query('SELECT email, password_hash FROM users');
+    const weak = (users || []).filter(
+      (u) => u.password_hash && bcrypt.compareSync('pass1234', u.password_hash)
+    );
+    if (weak.length) {
+      console.warn('\n⚠️  SECURITY WARNING: demo password "pass1234" still active on:');
+      weak.forEach((u) => console.warn('   • ' + u.email));
+      console.warn('   Admin → Staff tab se turant strong password set karein.\n');
+    }
+  } catch (_) {
+    // Never block boot because of a warning check.
   }
 }
 
@@ -182,6 +239,7 @@ async function boot() {
     await runMigrations();
     push.init();
     checkProductionConfig();
+    await checkWeakPasswords();
 
     server.listen(PORT, () => {
       const db = dialect() === 'postgres' ? 'PostgreSQL' : 'SQLite';
