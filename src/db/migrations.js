@@ -274,7 +274,8 @@ const MIGRATIONS = [
         if (dialect() === 'postgres') {
           await run(
             'INSERT INTO admin_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING',
-            [key, value]
+            [key, value],
+            { returning: false }
           );
         } else {
           await run('INSERT OR IGNORE INTO admin_settings (key, value) VALUES (?, ?)', [key, value]);

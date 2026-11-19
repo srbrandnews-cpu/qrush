@@ -462,7 +462,8 @@ router.put('/super-admin/settings', async (req, res, next) => {
       await run(
         `INSERT INTO admin_settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
-        [key, val === null ? null : String(val), new Date().toISOString().replace('T', ' ').slice(0, 19), req.user.email]
+        [key, val === null ? null : String(val), new Date().toISOString().replace('T', ' ').slice(0, 19), req.user.email],
+        { returning: false }
       );
     }
     const rows = await query('SELECT key, value, updated_at, updated_by FROM admin_settings ORDER BY key');

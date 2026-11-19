@@ -122,9 +122,9 @@ function txClient() {
 }
 
 /** INSERTs auto-gain `RETURNING id` so run() can report lastInsertRowid. */
-function withReturning(sql) {
+function withReturning(sql, enabled = true) {
   const trimmed = sql.replace(/;\s*$/, '');
-  if (/^\s*insert\s/i.test(trimmed) && !/\breturning\b/i.test(trimmed)) {
+  if (enabled && /^\s*insert\s/i.test(trimmed) && !/\breturning\b/i.test(trimmed)) {
     return trimmed + ' RETURNING id';
   }
   return trimmed;
@@ -176,9 +176,11 @@ async function get(sql, params = []) {
 }
 
 /** INSERT/UPDATE/DELETE -> { changes, lastInsertRowid }. */
-async function run(sql, params = []) {
+async function run(sql, params = [], options = {}) {
   if (DIALECT === 'postgres') {
-    const finalSql = withReturning(sql);
+    // Some tables (e.g. admin_settings) have no `id` column — pass
+    // { returning: false } so we don't append "RETURNING id".
+    const finalSql = withReturning(sql, options.returning !== false);
     const client = txClient();
     const res = client
       ? await client.query(toPgPlaceholders(finalSql), params)
