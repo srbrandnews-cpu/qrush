@@ -271,7 +271,14 @@ const MIGRATIONS = [
         ['ad_enabled', '0'],
       ];
       for (const [key, value] of defaultSettings) {
-        await run('INSERT OR IGNORE INTO admin_settings (key, value) VALUES (?, ?)', [key, value]);
+        if (dialect() === 'postgres') {
+          await run(
+            'INSERT INTO admin_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING',
+            [key, value]
+          );
+        } else {
+          await run('INSERT OR IGNORE INTO admin_settings (key, value) VALUES (?, ?)', [key, value]);
+        }
       }
 
       // ---- Subscription payments (manual payment records) ----
