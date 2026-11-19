@@ -53,14 +53,12 @@ app.use((req, res, next) => {
 });
 
 // --- API routes ---
+// Only the Free QR product is live. Table-ordering routes (menu / tables /
+// orders / requests / voice) were moved to archive/main-website/ and are no
+// longer mounted. `auth` + `admin` stay because the Super Admin console needs
+// them, and `public` serves the free-QR menus, dashboard and ordering APIs.
 app.use('/api/auth', require('./src/routes/auth.routes'));
-app.use('/api/menu', require('./src/routes/menu.routes'));
-app.use('/api/tables', require('./src/routes/table.routes'));
-app.use('/api/orders', require('./src/routes/order.routes'));
-app.use('/api/requests', require('./src/routes/request.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
-app.use('/api/push', require('./src/routes/push.routes'));
-app.use('/api/voice', require('./src/routes/voice.routes'));
 const publicRouter = require('./src/routes/public.routes');
 app.use('/api/public', publicRouter);
 
@@ -111,18 +109,16 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- HTML screens ---
+// The site now exposes ONLY the Free Digital QR Menu Generator. The old
+// table-ordering screens (admin / kitchen / cashier / login / menu / waiting)
+// live in archive/main-website/public/ and are not served any more.
 const page = (file) => (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', file));
 };
-app.get('/', page('index.html'));
-app.get('/login', page(path.join('login', 'index.html')));
-app.get('/admin', page(path.join('admin', 'index.html')));
+app.get('/', page('free-qr.html'));
+app.get('/free-qr', page('free-qr.html'));
 app.get('/superadmin', page(path.join('superadmin', 'index.html')));
-app.get('/kitchen', page(path.join('kitchen', 'index.html')));
-app.get('/cashier', page(path.join('cashier', 'index.html')));
-app.get('/r/:slug', page(path.join('wait', 'index.html')));
-app.get('/menu', page(path.join('menu', 'index.html')));
 // Kitchen board for a free hosted menu (orders scanned from the free QR card).
 app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
 
@@ -226,7 +222,7 @@ async function checkWeakPasswords() {
     if (weak.length) {
       console.warn('\n⚠️  SECURITY WARNING: demo password "pass1234" still active on:');
       weak.forEach((u) => console.warn('   • ' + u.email));
-      console.warn('   Admin → Staff tab se turant strong password set karein.\n');
+      console.warn('   Free QR → Owner Login → Forgot password se turant reset karein.\n');
     }
   } catch (_) {
     // Never block boot because of a warning check.
@@ -244,11 +240,9 @@ async function boot() {
     server.listen(PORT, () => {
       const db = dialect() === 'postgres' ? 'PostgreSQL' : 'SQLite';
       console.log(`\n🚀 QRush running  (database: ${db})`);
-      console.log(`   Home      http://localhost:${PORT}/`);
-      console.log(`   Admin     http://localhost:${PORT}/admin`);
-      console.log(`   Kitchen   http://localhost:${PORT}/kitchen`);
-      console.log(`   Cashier   http://localhost:${PORT}/cashier`);
-      console.log(`   QR codes  Admin panel -> Tables & QR tab\n`);
+      console.log(`   Free QR   http://localhost:${PORT}/`);
+      console.log(`   Super     http://localhost:${PORT}/superadmin`);
+      console.log(`   Menus     /m/<slug>   ·   Kitchen  /m/<slug>/kitchen\n`);
     });
   } catch (err) {
     console.error('\n❌ Failed to start QRush:\n', err);

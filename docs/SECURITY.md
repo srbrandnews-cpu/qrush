@@ -79,19 +79,17 @@ SUPER_ADMIN_EMAILS=owner@demo.com
 Iske bina `/superadmin` 403 dega — ye jaan-boojh kar kiya gaya hai taaki koi
 default account se platform control na le sake.
 
-### C. Demo password turant badlein (urgent)
-`pass1234` public README mein likha hai aur abhi bhi production par active hai.
-**Admin → Staff** tab se in accounts ka password badlein (12+ characters,
-uppercase + lowercase + number + symbol):
+### C. Passwords
+Main website (Admin → Staff) archive ho chuki hai, isliye password change ka
+purana page live nahi hai. Ab:
 
-| Account | Kya access hai |
-|---|---|
-| `owner@demo.com` | Owner + Super Admin (poora platform) |
-| `kitchen@demo.com` | Kitchen screen |
-| `cashier@demo.com` | Cashier screen |
-
-Boot par server khud warning deta hai agar koi account abhi bhi `pass1234`
-use kar raha ho (`[SECURITY WARNING]` log mein).
+- **Free QR restaurant owner** — `free-qr.html → Owner Login → Forgot password`
+  (registered phone par OTP aata hai).
+- **Platform / Super Admin account** — iska password abhi UI se change nahi hota.
+  Zaroorat pade to developer se DB-level reset karwayein (jab main website
+  restore ho, Admin → Staff se bhi ho sakta hai).
+- Purana `pass1234` password ab bhi kisi bhi account par active ho to boot logs
+  mein `[SECURITY WARNING]` list dikhegi — us account ko turant secure karein.
 
 ### D. GitHub token revoke karein
 https://github.com/settings/tokens → purana token → **Revoke**.
