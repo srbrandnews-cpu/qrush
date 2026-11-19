@@ -67,8 +67,9 @@ function createRateLimiter({ windowMs, max, message, extraKey }) {
     entry.count += 1;
 
     const remaining = Math.max(0, max - entry.count);
-    // Do not overwrite a tighter limiter's headers (login runs before writes).
-    if (!res.getHeader('X-RateLimit-Limit')) {
+    // Show the tightest limit that applies (login 10, writes 120, API 600).
+    const current = Number(res.getHeader('X-RateLimit-Limit') || 0);
+    if (!current || max < current) {
       res.setHeader('X-RateLimit-Limit', String(max));
       res.setHeader('X-RateLimit-Remaining', String(remaining));
     }
