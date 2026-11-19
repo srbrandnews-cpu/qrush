@@ -55,7 +55,9 @@ async function requireAuth(req, res, next) {
   try {
     const token = extractToken(req);
     const payload = token && verifyToken(token);
-    if (!payload) {
+    // Free-QR owner tokens carry { scope:'freeqr', fq } and never a uid —
+    // they must use the free-QR endpoints, not the staff/admin ones.
+    if (!payload || !payload.uid) {
       return res.status(401).json({ error: 'Login required' });
     }
     // Make sure the account still exists and is active.

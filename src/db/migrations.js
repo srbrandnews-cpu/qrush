@@ -11,7 +11,7 @@
  * never edit an existing one (already-deployed databases would skip it).
  */
 
-const { addColumn, tableExists, run, exec, dialect } = require('../config/db');
+const { addColumn, tableExists, run, exec, query, dialect } = require('../config/db');
 
 const MIGRATIONS = [
   {
@@ -231,6 +231,215 @@ const MIGRATIONS = [
         `);
         await exec('CREATE INDEX IF NOT EXISTS idx_tenant_menu_events ON tenant_menu_events(tenant_id, kind, created_at)');
         await exec('CREATE INDEX IF NOT EXISTS idx_tenant_menu_events_created ON tenant_menu_events(tenant_id, created_at)');
+      }
+    },
+  },
+  {
+    // v3.0 — Phase 3 monetization: subscriptions, payments, ads, settings (additive, no payments gateway).
+    name: '010-phase3-monetization',
+    async up() {
+      const created = dialect() === 'postgres'
+        ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`
+        : `datetime('now')`;
+
+      // ---- Admin settings (configurable WhatsApp number, plan prices, features, grace period) ----
+      if (!(await tableExists('admin_settings'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS admin_settings (
+            key        TEXT    NOT NULL PRIMARY KEY,
+            value      TEXT,
+            updated_at TEXT    NOT NULL DEFAULT (${created}),
+            updated_by TEXT
+          )
+        `);
+      }
+
+      // Seed default settings if not present
+      const defaultSettings = [
+        ['whatsapp_number', ''],
+        ['whatsapp_support_message', 'Hello QRUSH Team, I want to upgrade my restaurant account.'],
+        ['default_subscription_duration_days', '30'],
+        ['grace_period_days', '7'],
+        ['plan_free_price', '0'],
+        ['plan_starter_price', '149'],
+        ['plan_business_price', '299'],
+        ['plan_free_features', 'Basic digital menu, Restaurant profile, QR code generation and download, Basic menu management, Public menu page'],
+        ['plan_starter_features', 'Everything in Free, Enhanced analytics, Additional menu customization'],
+        ['plan_business_features', 'Everything in Starter, Advanced analytics, Priority WhatsApp support'],
+        // Ads start switched OFF: platform owner enables them from
+        // Super Admin -> Settings once there are enough restaurants.
+        ['ad_enabled', '0'],
+      ];
+      for (const [key, value] of defaultSettings) {
+        await run('INSERT OR IGNORE INTO admin_settings (key, value) VALUES (?, ?)', [key, value]);
+      }
+
+      // ---- Subscription payments (manual payment records) ----
+      if (!(await tableExists('subscription_payments'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS subscription_payments (
+            id              ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            tenant_id       INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            plan            TEXT    NOT NULL,
+            amount          REAL    NOT NULL DEFAULT 0,
+            payment_method  TEXT    NOT NULL DEFAULT 'other',
+            payment_ref     TEXT,
+            status          TEXT    NOT NULL DEFAULT 'pending'
+                              CHECK (status IN ('pending','confirmed','rejected','refunded')),
+            activated_by    TEXT,
+            activated_at    TEXT,
+            expires_at      TEXT,
+            notes           TEXT,
+            created_at      TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_sub_payments_tenant ON subscription_payments(tenant_id, status)');
+        await exec('CREATE INDEX IF NOT EXISTS idx_sub_payments_status ON subscription_payments(status, created_at)');
+      }
+
+      // ---- Subscription history (audit log) ----
+      if (!(await tableExists('subscription_history'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS subscription_history (
+            id              ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            tenant_id       INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            previous_plan   TEXT,
+            new_plan        TEXT    NOT NULL,
+            previous_status TEXT,
+            new_status      TEXT    NOT NULL,
+            amount          REAL,
+            payment_method  TEXT,
+            payment_ref     TEXT,
+            admin_email     TEXT,
+            notes           TEXT,
+            created_at      TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_sub_history_tenant ON subscription_history(tenant_id, created_at)');
+      }
+
+      // ---- Advertisements ----
+      if (!(await tableExists('advertisements'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS advertisements (
+            id            ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            title         TEXT    NOT NULL,
+            image_url     TEXT    NOT NULL,
+            destination_url TEXT,
+            placement     TEXT    NOT NULL DEFAULT 'public_menu',
+            start_date    TEXT,
+            end_date      TEXT,
+            is_active     INTEGER NOT NULL DEFAULT 1,
+            created_by    TEXT,
+            created_at    TEXT    NOT NULL DEFAULT (${created}),
+            updated_at    TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_ads_placement ON advertisements(placement, is_active)');
+      }
+
+      // ---- Ad events (impressions and clicks, deduped) ----
+      if (!(await tableExists('ad_events'))) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS ad_events (
+            id            ${dialect() === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+            ad_id         INTEGER NOT NULL REFERENCES advertisements(id) ON DELETE CASCADE,
+            tenant_id     INTEGER REFERENCES tenants(id) ON DELETE SET NULL,
+            kind          TEXT    NOT NULL CHECK (kind IN ('impression','click')),
+            visitor       TEXT,
+            created_at    TEXT    NOT NULL DEFAULT (${created})
+          )
+        `);
+        await exec('CREATE INDEX IF NOT EXISTS idx_ad_events_ad ON ad_events(ad_id, kind, created_at)');
+        await exec('CREATE INDEX IF NOT EXISTS idx_ad_events_created ON ad_events(created_at)');
+      }
+
+      // ---- Add plan_price and plan_features to free_qr_menus (if not present) ----
+      // Already has plan/plan_status from migration 009; no new columns needed.
+    },
+  },
+  {
+    // v3.1 — Phase 3 Free QR monetization: extend subscription_payments for free_qr_menus.
+    name: '011-phase3-freeqr-billing',
+    async up() {
+      await addColumn('subscription_payments', 'free_qr_id', 'INTEGER REFERENCES free_qr_menus(id) ON DELETE CASCADE');
+      await addColumn('subscription_payments', 'payment_type', "TEXT NOT NULL DEFAULT 'tenant'");
+      await addColumn('subscription_history', 'free_qr_id', 'INTEGER REFERENCES free_qr_menus(id) ON DELETE CASCADE');
+      await addColumn('subscription_history', 'payment_type', "TEXT NOT NULL DEFAULT 'tenant'");
+      // tenant_id nullable part is handled by migration 012.
+    },
+  },
+  {
+    // v3.2 — Free QR payments have no tenant_id, so tenant_id must allow NULL.
+    name: '012-phase3-nullable-tenant',
+    async up() {
+      if (dialect() === 'postgres') {
+        await exec('ALTER TABLE subscription_payments ALTER COLUMN tenant_id DROP NOT NULL').catch(() => {});
+        await exec('ALTER TABLE subscription_history ALTER COLUMN tenant_id DROP NOT NULL').catch(() => {});
+        return;
+      }
+
+      // ---- SQLite: rebuild subscription_payments without NOT NULL on tenant_id ----
+      const payCols = await query('PRAGMA table_info(subscription_payments)');
+      const payTenant = payCols.find((c) => c.name === 'tenant_id');
+      if (payTenant && payTenant.notnull !== 0) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS subscription_payments_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+            plan            TEXT    NOT NULL,
+            amount          REAL    NOT NULL DEFAULT 0,
+            payment_method  TEXT    NOT NULL DEFAULT 'other',
+            payment_ref     TEXT,
+            status          TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','rejected','refunded')),
+            activated_by    TEXT,
+            activated_at    TEXT,
+            expires_at      TEXT,
+            notes           TEXT,
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+            free_qr_id      INTEGER REFERENCES free_qr_menus(id) ON DELETE CASCADE,
+            payment_type    TEXT    NOT NULL DEFAULT 'tenant'
+          );
+          INSERT OR IGNORE INTO subscription_payments_new
+            (id, tenant_id, plan, amount, payment_method, payment_ref, status, activated_by, activated_at, expires_at, notes, created_at, free_qr_id, payment_type)
+          SELECT id, tenant_id, plan, amount, payment_method, payment_ref, status, activated_by, activated_at, expires_at, notes, created_at, free_qr_id, payment_type
+          FROM subscription_payments;
+          DROP TABLE subscription_payments;
+          ALTER TABLE subscription_payments_new RENAME TO subscription_payments;
+          CREATE INDEX IF NOT EXISTS idx_sub_payments_tenant ON subscription_payments(tenant_id, status);
+          CREATE INDEX IF NOT EXISTS idx_sub_payments_status ON subscription_payments(status, created_at);
+        `);
+      }
+
+      // ---- SQLite: rebuild subscription_history the same way ----
+      const histCols = await query('PRAGMA table_info(subscription_history)');
+      const histTenant = histCols.find((c) => c.name === 'tenant_id');
+      if (histTenant && histTenant.notnull !== 0) {
+        await exec(`
+          CREATE TABLE IF NOT EXISTS subscription_history_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+            previous_plan   TEXT,
+            new_plan        TEXT    NOT NULL,
+            previous_status TEXT,
+            new_status      TEXT    NOT NULL,
+            amount          REAL,
+            payment_method  TEXT,
+            payment_ref     TEXT,
+            admin_email     TEXT,
+            notes           TEXT,
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+            free_qr_id      INTEGER REFERENCES free_qr_menus(id) ON DELETE CASCADE,
+            payment_type    TEXT    NOT NULL DEFAULT 'tenant'
+          );
+          INSERT OR IGNORE INTO subscription_history_new
+            (id, tenant_id, previous_plan, new_plan, previous_status, new_status, amount, payment_method, payment_ref, admin_email, notes, created_at, free_qr_id, payment_type)
+          SELECT id, tenant_id, previous_plan, new_plan, previous_status, new_status, amount, payment_method, payment_ref, admin_email, notes, created_at, free_qr_id, payment_type
+          FROM subscription_history;
+          DROP TABLE subscription_history;
+          ALTER TABLE subscription_history_new RENAME TO subscription_history;
+          CREATE INDEX IF NOT EXISTS idx_sub_history_tenant ON subscription_history(tenant_id, created_at);
+        `);
       }
     },
   },

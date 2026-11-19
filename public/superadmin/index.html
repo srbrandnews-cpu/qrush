@@ -111,9 +111,25 @@
         Free QR
         <span class="nav-count" id="nav-freeqr-count">0</span>
       </button>
+      <button class="nav-item" data-tab="subscriptions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Subscriptions
+      </button>
       <button class="nav-item" data-tab="access">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
         Access &amp; health
+      </button>
+      <button class="nav-item" data-tab="revenue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        Revenue
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+        Settings
+      </button>
+      <button class="nav-item" data-tab="ads">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Ads
       </button>
 
       <div class="grow"></div>
@@ -321,6 +337,54 @@
           </div>
         </section>
 
+        <!-- ============================ SUBSCRIPTIONS ============================ -->
+        <section class="tab-panel hidden" id="panel-subscriptions">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Subscriptions</div>
+              <h1>Subscription Management</h1>
+              <div class="sub">Manually activate, renew, or cancel subscription payments.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="sub-check-expiry">Check Expiry</button>
+            </div>
+          </div>
+          <div class="sa-toolbar mb16">
+            <select class="input sa-select" id="sub-status-filter">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="rejected">Rejected</option>
+              <option value="refunded">Refunded</option>
+            </select>
+            <select class="input sa-select" id="sub-plan-filter">
+              <option value="">All plans</option>
+              <option value="starter">Starter</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Restaurant</th>
+                    <th>Plan</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sub-rows">
+                  <tr><td colspan="7"><div class="sa-loading">Loading subscriptions…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- ============================ ACCESS ============================== -->
         <section class="tab-panel hidden" id="panel-access">
           <div class="page-head">
@@ -355,6 +419,139 @@
                 <div class="sa-check"><span class="sa-check-ico">3</span><div><b>Test venues delete karein</b><div class="tiny muted">Restaurants tab → Manage → Delete. Demo venue delete nahi hota.</div></div></div>
                 <div class="sa-check"><span class="sa-check-ico">4</span><div><b>Neon / JWT secrets rotate karein</b><div class="tiny muted">Render → Environment. Rotate karke deploy karein.</div></div></div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ REVENUE ============================ -->
+        <section class="tab-panel hidden" id="panel-revenue">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Revenue</div>
+              <h1>Subscription Revenue</h1>
+              <div class="sub">Manually recorded subscription collections and advertisement performance.</div>
+            </div>
+          </div>
+          <div class="stat-grid mb24" id="rev-stats">
+            <div class="stat"><div class="stat-top"><div class="label">Total Restaurants</div></div><div class="value" id="rev-total-rest">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Free Plan</div></div><div class="value" id="rev-free">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Starter Active</div></div><div class="value" id="rev-starter">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Business Active</div></div><div class="value" id="rev-business">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Pending Payments</div></div><div class="value" id="rev-pending-pay">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Expired</div></div><div class="value" id="rev-expired">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Total Collected</div></div><div class="value" id="rev-total-collected">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">This Month</div></div><div class="value" id="rev-monthly">—</div></div>
+          </div>
+          <div class="card mb24">
+            <div class="card-head"><h3>Advertisement Performance</h3></div>
+            <div class="card-pad" id="rev-ads">
+              <div class="empty">Loading...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ SETTINGS ============================ -->
+        <section class="tab-panel hidden" id="panel-settings">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Configuration</div>
+              <h1>Platform Settings</h1>
+              <div class="sub">WhatsApp number, plan prices, features, and subscription rules.</div>
+            </div>
+          </div>
+          <div class="card" style="max-width:640px">
+            <div class="card-pad">
+              <div class="field"><label>WhatsApp Business Number</label><input class="input" id="sa-whatsapp" placeholder="919876543210" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Include country code (e.g., 91 for India). Leave empty to disable WhatsApp button.</p>
+              <div class="field"><label>WhatsApp Support Message</label><textarea class="input" id="sa-whatsapp-msg" rows="3"></textarea></div>
+              <div class="row">
+                <div class="field"><label>Default Duration (days)</label><input class="input" id="sa-duration" type="number" min="1" /></div>
+                <div class="field"><label>Grace Period (days)</label><input class="input" id="sa-grace" type="number" min="0" /></div>
+              </div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Plan Prices (₹)</h3>
+              <div class="row">
+                <div class="field"><label>Free</label><input class="input" id="sa-price-free" type="number" min="0" /></div>
+                <div class="field"><label>Starter</label><input class="input" id="sa-price-starter" type="number" min="0" /></div>
+                <div class="field"><label>Business</label><input class="input" id="sa-price-business" type="number" min="0" /></div>
+              </div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Plan Features</h3>
+              <div class="field"><label>Free Features</label><textarea class="input" id="sa-features-free" rows="2"></textarea></div>
+              <div class="field"><label>Starter Features</label><textarea class="input" id="sa-features-starter" rows="2"></textarea></div>
+              <div class="field"><label>Business Features</label><textarea class="input" id="sa-features-business" rows="2"></textarea></div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Advertisement Settings</h3>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="sa-ad-enabled"><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45"><b>Ads Enabled</b><br><span class="muted">Show advertisements on free plan public menu pages.</span></span>
+              </label>
+              <button class="btn btn-primary" id="sa-save-settings">Save Settings</button>
+              <p class="tiny muted" id="sa-settings-status" style="margin-top:8px"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ ADS ============================ -->
+        <section class="tab-panel hidden" id="panel-ads">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Monetization</div>
+              <h1>Advertisements</h1>
+              <div class="sub">Free plan menu pages par dikhne wale ads. Paid plans (Starter/Business) ad-free rehte hain.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="ad-new">+ New Advertisement</button>
+            </div>
+          </div>
+
+          <div class="card mb24 hidden" id="ad-form-card">
+            <div class="card-head">
+              <h3 id="ad-form-title">New Advertisement</h3>
+              <button class="btn btn-ghost btn-sm" id="ad-form-cancel" type="button">Cancel</button>
+            </div>
+            <div class="card-pad">
+              <div class="field"><label>Title</label><input class="input" id="ad-title" placeholder="e.g. 20% off at Cafe Mocha" maxlength="120" /></div>
+              <div class="field"><label>Image URL</label><input class="input" id="ad-image" placeholder="https://example.com/banner.jpg" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Direct image link (jpg, png, webp, gif). Must start with https://</p>
+              <div class="field"><label>Destination URL</label><input class="input" id="ad-dest" placeholder="https://example.com" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Where the customer goes on click. Must start with https://</p>
+              <div class="row">
+                <div class="field"><label>Placement</label>
+                  <select class="input" id="ad-placement">
+                    <option value="public_menu">Public menu</option>
+                  </select>
+                </div>
+                <div class="field"><label>Start date (optional)</label><input class="input" id="ad-start" type="date" /></div>
+                <div class="field"><label>End date (optional)</label><input class="input" id="ad-end" type="date" /></div>
+              </div>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="ad-active" checked><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45"><b>Active</b><br><span class="muted">Inactive ads turant hide ho jate hain.</span></span>
+              </label>
+              <button class="btn btn-primary" id="ad-save" type="button">Save Advertisement</button>
+              <p class="tiny muted" id="ad-status" style="margin-top:8px"></p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Ad</th>
+                    <th>Placement</th>
+                    <th>Schedule</th>
+                    <th>Impressions</th>
+                    <th>Clicks</th>
+                    <th>Status</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ad-rows">
+                  <tr><td colspan="7"><div class="sa-loading">Loading ads…</div></td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>

@@ -745,6 +745,15 @@
         <p class="tiny muted" id="s-profile-hint" style="margin:10px 0 0"></p>
       </div>
 
+      <div class="dash-card" style="margin-bottom:18px" id="billing-card">
+        <div class="dash-card-head">
+          <h3>My Plan &amp; Billing</h3>
+        </div>
+        <div id="fq-billing-current"><div class="tiny muted">Loading...</div></div>
+        <div id="fq-billing-plans" style="margin-top:12px"></div>
+        <div id="fq-billing-history" style="margin-top:12px"></div>
+      </div>
+
       <div class="dash-cols">
         <div style="display:flex;flex-direction:column;gap:18px">
         <div class="dash-card">
@@ -1095,6 +1104,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const TOKEN_KEY = 'fq_token';
     let ownerToken = '';
     let current = null;        // publicFreeQr() payload
@@ -1352,7 +1362,7 @@
         const canvas = makeQr(tmp, absoluteMenuUrl(current), size);
         if (canvas) {
           const pad = Math.round(size * 0.07);
-          const footH = Math.round(size * 0.17);
+          const footH = Math.round(size * 0.26);
           const out = document.createElement('canvas');
           out.width = size + pad * 2;
           out.height = size + pad * 2 + footH;
@@ -1361,18 +1371,35 @@
           ctx.fillRect(0, 0, out.width, out.height);
           ctx.drawImage(canvas, pad, pad);
 
-          // ---- QRush branding: logo only, below the QR ----
+          // ---- Premium branding footer: restaurant name + tagline + QRush logo ----
           const footTop = size + pad * 2;
           const cx = out.width / 2;
+          const name = (current.restaurant || 'My Restaurant').trim();
+
+          ctx.fillStyle = '#0b1220';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          const nameSize = Math.max(14, Math.round(size * 0.055));
+          ctx.font = '800 ' + nameSize + 'px "Segoe UI", Arial, sans-serif';
+          ctx.fillText(name, cx, footTop + Math.round(size * 0.02), out.width - pad * 2);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '500 ' + Math.max(11, Math.round(size * 0.032)) + 'px "Segoe UI", Arial, sans-serif';
+          ctx.fillText('Scan to view our menu', cx, footTop + Math.round(size * 0.02) + nameSize + Math.round(size * 0.012));
+
           const logo = await loadQrushLogo();
           if (logo && logo.naturalWidth && logo.naturalHeight) {
-            const logoH = Math.round(size * 0.09);
+            const logoH = Math.round(size * 0.07);
             const logoW = Math.min(
               Math.round((logo.naturalWidth / logo.naturalHeight) * logoH),
               out.width - pad * 2
             );
-            const logoY = footTop + Math.round((footH - logoH) / 2);
+            const logoY = out.height - logoH - Math.round(size * 0.02);
             ctx.drawImage(logo, cx - logoW / 2, logoY, logoW, logoH);
+          } else {
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '600 ' + Math.max(10, Math.round(size * 0.028)) + 'px "Segoe UI", Arial, sans-serif';
+            ctx.fillText('Powered by QRush', cx, out.height - Math.round(size * 0.05));
           }
 
           url = out.toDataURL('image/png');
@@ -1514,7 +1541,130 @@
       }
       makeQr($('d-qr'), absoluteMenuUrl(current), 200);
       $('g-open-menu').href = absoluteMenuUrl(current);
+
+      // Load billing info
+      loadFqBilling();
     }
+
+    async function loadFqBilling() {
+      if (!current) return;
+      const token = ownerToken || getStoredToken();
+      try {
+        const res = await fetch('/api/public/free-qr/billing', { headers: { Authorization: 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load billing');
+        const r = data.restaurant || {};
+        const plan = String(r.plan || 'free').toLowerCase();
+        const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+        const price = plan === 'starter' ? '₹149/month' : plan === 'business' ? '₹299/month' : '₹0';
+        const remaining = data.remaining_days;
+        const expiry = r.plan_expires_at ? (TN.fmtDate ? TN.fmtDate(r.plan_expires_at) : r.plan_expires_at) : 'N/A';
+        const whatsappNumber = data.whatsapp_number || '';
+
+        const el = $('fq-billing-current');
+        if (el) {
+          el.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+              <div class="mini-stat"><div class="label">Current Plan</div><div class="value" style="font-size:20px">${esc(planLabel)}</div><div class="sub">${price}</div></div>
+              <div class="mini-stat"><div class="label">Status</div><div class="value" style="font-size:20px">${esc(r.plan_status || 'active')}</div></div>
+              <div class="mini-stat"><div class="label">Expires</div><div class="value" style="font-size:16px">${esc(expiry)}</div><div class="sub">${remaining !== null ? remaining + ' days left' : 'No expiry'}</div></div>
+            </div>
+            ${plan === 'free' ? `
+            <div class="tiny muted" style="margin-bottom:10px">Upgrade to Starter (₹149/month) or Business (₹299/month) for enhanced features. Contact us on WhatsApp to subscribe.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" id="fq-upgrade-starter">Upgrade to Starter ₹149</button>
+              <button class="btn btn-outline btn-sm" id="fq-upgrade-business">Upgrade to Business ₹299</button>
+            </div>
+            ` : `
+            <div class="tiny muted">Your plan is active. To renew or change plan, contact us on WhatsApp.</div>
+            <div style="margin-top:10px">
+              <button class="btn btn-outline btn-sm" id="fq-renew">Renew / Change Plan via WhatsApp</button>
+            </div>
+            `}
+          `;
+        }
+
+        // Wire upgrade buttons
+        const bindUpgrade = (btnId, p) => {
+          const btn = $(btnId);
+          if (btn) btn.addEventListener('click', () => fqRequestUpgrade(p));
+        };
+        bindUpgrade('fq-upgrade-starter', 'starter');
+        bindUpgrade('fq-upgrade-business', 'business');
+        if ($('fq-renew')) {
+          $('fq-renew').addEventListener('click', () => fqRequestUpgrade(plan === 'starter' ? 'business' : 'starter'));
+        }
+
+        // Plan comparison
+        const prices = data.plan_prices || {};
+        const features = data.plan_features || {};
+        const plans = ['free', 'starter', 'business'];
+        const planNames = { free: 'Free', starter: 'Starter', business: 'Business' };
+        const planPrices = { free: '₹0', starter: '₹' + (prices.starter || '149') + '/month', business: '₹' + (prices.business || '299') + '/month' };
+        const plansEl = $('fq-billing-plans');
+        if (plansEl) {
+          plansEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+              ${plans.map((p) => `
+                <div class="dash-card" style="border:2px solid ${p === plan ? 'var(--primary)' : 'var(--line)'};padding:12px">
+                  <div style="font-weight:800;font-size:16px;margin-bottom:2px">${planNames[p]}</div>
+                  <div style="font-size:20px;font-weight:900;margin-bottom:6px">${planPrices[p]}</div>
+                  <div class="tiny muted" style="margin-bottom:8px">${features[p] || ''}</div>
+                  ${p === plan ? '<span class="badge ready">Current</span>' : (p === 'free' ? '' : `<button class="btn btn-sm btn-primary" data-fq-upgrade="${p}">Upgrade</button>`)}
+                </div>
+              `).join('')}
+            </div>
+          `;
+          plansEl.querySelectorAll('[data-fq-upgrade]').forEach((btn) => {
+            btn.addEventListener('click', () => fqRequestUpgrade(btn.dataset.fqUpgrade));
+          });
+        }
+
+        // Payment history
+        const payments = data.payments || [];
+        const histEl = $('fq-billing-history');
+        if (histEl) {
+          histEl.innerHTML = payments.length ? `
+            <div class="tiny muted" style="margin-bottom:6px"><b>Payment History</b></div>
+            ${payments.map((p) => `
+              <div class="click-row" style="padding:6px 0">
+                <span class="click-name">${esc(p.plan)} · ₹${p.amount}</span>
+                <span class="badge ${p.status === 'confirmed' ? 'ready' : p.status === 'pending' ? 'preparing' : 'muted'}" style="margin-left:auto">${esc(p.status)}</span>
+              </div>
+            `).join('')}
+          ` : '';
+        }
+      } catch (err) {
+        console.error('FQ billing load error:', err);
+        const el = $('fq-billing-current');
+        if (el) el.innerHTML = '<div class="tiny muted">Could not load billing info.</div>';
+      }
+    }
+
+    async function fqRequestUpgrade(plan) {
+      try {
+        const token = ownerToken || getStoredToken();
+        const reqRes = await fetch('/api/public/free-qr/billing/request-upgrade', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan }),
+        });
+        const reqData = await reqRes.json();
+        if (!reqRes.ok) throw new Error(reqData.error || 'Request failed');
+        const wlRes = await fetch('/api/public/free-qr/billing/whatsapp-link?plan=' + plan, { headers: { Authorization: 'Bearer ' + token } });
+        const wlData = await wlRes.json();
+        if (wlData.link) {
+          window.open(wlData.link, '_blank');
+          toast('WhatsApp opened. Please complete payment and wait for admin confirmation.', false);
+        } else {
+          toast(wlData.message || 'WhatsApp not configured. Please contact support.', true);
+        }
+        loadFqBilling();
+      } catch (err) {
+        toast(err.message || 'Upgrade request failed', true);
+      }
+    }
+
 
     function showOwner(restaurant, stats, items) {
       current = restaurant;
@@ -1908,7 +2058,7 @@
     $('d-copy').addEventListener('click', () => copyMenuLink($('d-copy')));
 
     $('d-download').addEventListener('click', async () => {
-      const url = await qrDataUrl(720);
+      const url = await qrDataUrl(1024);
       if (!url) { toast('QR banane mein problem hui', true); return; }
       const a = document.createElement('a');
       const name = (current.restaurant || 'menu').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -1921,7 +2071,7 @@
     });
 
     $('d-print').addEventListener('click', async () => {
-      const url = await qrDataUrl(720);
+      const url = await qrDataUrl(1024);
       if (!url) { toast('QR banane mein problem hui', true); return; }
       const name = current.restaurant || 'My Restaurant';
       const w = window.open('', '_blank', 'width=520,height=720');

@@ -12,6 +12,11 @@ const { normalizeMenuData, normalizeLogo, convertHeicBuffer } = require('../util
 
 const router = express.Router();
 
+async function getSetting(key, fallback = '') {
+  const row = await get('SELECT value FROM admin_settings WHERE key = ?', [key]);
+  return row && row.value !== null && row.value !== undefined ? row.value : fallback;
+}
+
 /* ------------------------------------------------------------------ *
  * Free QR menu helpers
  * ------------------------------------------------------------------ */
@@ -1616,6 +1621,52 @@ async function hostedMenuPage(req, res, next) {
     if (row.facebook) socials.push(socialBtn('facebook', 'Facebook', '#1877f2'));
     if (row.website) socials.push(socialBtn('website', 'Website', '#ea580c'));
 
+    // ---- Ads (only for free plan users) ----
+    let adsHtml = '';
+    const rowPlan = String(row.plan || 'free').toLowerCase();
+    if (rowPlan === 'free') {
+      try {
+        const adEnabled = await get('SELECT value FROM admin_settings WHERE key = ?', ['ad_enabled']);
+        if (adEnabled && adEnabled.value === '1') {
+          const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+          const ads = await query(
+            `SELECT id, title, image_url, destination_url FROM advertisements
+             WHERE placement = 'public_menu' AND is_active = 1
+               AND (start_date IS NULL OR start_date <= ?)
+               AND (end_date IS NULL OR end_date >= ?)
+             ORDER BY created_at DESC LIMIT 2`,
+            [now, now]
+          );
+          if (ads && ads.length) {
+            adsHtml = `<section class="ads-section" style="margin:16px 0">
+              <div class="tiny muted" style="text-align:center;margin-bottom:8px;font-size:11px">Advertisement</div>
+              ${ads.map((ad) => `
+                <div class="ad-card" style="margin-bottom:12px;border-radius:12px;overflow:hidden;position:relative" data-ad-id="${ad.id}">
+                  ${ad.destination_url ? `<a href="${escapeHtml(ad.destination_url)}" target="_blank" rel="noopener" onclick="fetch('/api/public/ads/${ad.id}/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:'${escapeHtml(visitor)}'})})">` : ''}
+                  <img src="${escapeHtml(ad.image_url)}" alt="${escapeHtml(ad.title)}" style="width:100%;display:block" loading="lazy" />
+                  ${ad.destination_url ? '</a>' : ''}
+                  <div style="padding:6px 10px;font-size:12px;color:#64748b">${escapeHtml(ad.title)}</div>
+                </div>
+              `).join('')}
+            </section>
+            <script>
+              (function(){
+                var visitor = '${escapeHtml(visitor)}';
+                document.querySelectorAll('.ad-card').forEach(function(card){
+                  var adId = card.dataset.adId;
+                  if (adId) {
+                    fetch('/api/public/ads/' + adId + '/impression', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:visitor})}).catch(function(){});
+                  }
+                });
+              })();
+            </script>`;
+          }
+        }
+      } catch (e) {
+        // Ads are optional, don't break the page
+      }
+    }
+
     const phoneLink = row.phone
       ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">ðŸ“ž ${escapeHtml(prettyPhone(row.phone))}</a>`
       : '';
@@ -1820,6 +1871,8 @@ async function hostedMenuPage(req, res, next) {
 
     ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
 
+    ${adsHtml}
+
     <div class="foot">
       <a class="foot-brand" href="https://wa.me/919172941524" target="_blank" rel="noopener" aria-label="QRush">
         <img src="/img/qrush-logo.png?v=3" alt="QRush" />
@@ -1854,6 +1907,244 @@ function ensureUrl(value) {
   if (/^https?:\/\//i.test(s)) return s;
   return 'https://' + s.replace(/^\/+/, '');
 }
+
+/* ========================= PHASE 3: ADS (PUBLIC) ========================= */
+
+/**
+ * GET /api/public/ads — get active ads for a placement.
+ * query: placement, tenant_plan (to filter ads for paid plans)
+ */
+router.get('/ads', async (req, res, next) => {
+  try {
+    const placement = String(req.query.placement || 'public_menu').trim();
+    const tenantPlan = String(req.query.tenant_plan || 'free').toLowerCase().trim();
+    // Paid plans are ad-free
+    if (tenantPlan === 'starter' || tenantPlan === 'business') {
+      return res.json({ ads: [] });
+    }
+    const adEnabled = await getSetting('ad_enabled', '0');
+    if (adEnabled !== '1') return res.json({ ads: [] });
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const rows = await query(
+      `SELECT id, title, image_url, destination_url FROM advertisements
+       WHERE placement = ? AND is_active = 1
+         AND (start_date IS NULL OR start_date <= ?)
+         AND (end_date IS NULL OR end_date >= ?)
+       ORDER BY created_at DESC LIMIT 5`,
+      [placement, now, now]
+    );
+    res.json({ ads: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/public/ads/:id/impression — track ad impression (deduped).
+ */
+router.post('/ads/:id/impression', async (req, res, next) => {
+  try {
+    const adId = Number(req.params.id);
+    const ad = await get('SELECT id FROM advertisements WHERE id = ? AND is_active = 1', [adId]);
+    if (!ad) return res.status(404).json({ error: 'Ad not found' });
+    const visitor = String(req.body?.visitor || req.ip || '').slice(0, 64);
+    // Dedupe: only count once per visitor per ad per day
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = await get(
+      "SELECT id FROM ad_events WHERE ad_id = ? AND kind = 'impression' AND visitor = ? AND substr(created_at,1,10) = ?",
+      [adId, visitor, today]
+    );
+    if (!existing) {
+      await run(
+        'INSERT INTO ad_events (ad_id, kind, visitor, created_at) VALUES (?, ?, ?, ?)',
+        [adId, 'impression', visitor, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/public/ads/:id/click — track ad click (deduped).
+ */
+router.post('/ads/:id/click', async (req, res, next) => {
+  try {
+    const adId = Number(req.params.id);
+    const ad = await get('SELECT id, destination_url FROM advertisements WHERE id = ? AND is_active = 1', [adId]);
+    if (!ad) return res.status(404).json({ error: 'Ad not found' });
+    const visitor = String(req.body?.visitor || req.ip || '').slice(0, 64);
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = await get(
+      "SELECT id FROM ad_events WHERE ad_id = ? AND kind = 'click' AND visitor = ? AND substr(created_at,1,10) = ?",
+      [adId, visitor, today]
+    );
+    if (!existing) {
+      await run(
+        'INSERT INTO ad_events (ad_id, kind, visitor, created_at) VALUES (?, ?, ?, ?)',
+        [adId, 'click', visitor, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+      );
+    }
+    res.json({ ok: true, destination_url: ad.destination_url });
+  } catch (err) { next(err); }
+});
+
+
+/* ========================= PHASE 3: FREE QR BILLING ========================= */
+
+/**
+ * GET /api/public/free-qr/billing — get plan info, payments, whatsapp link for free QR owner.
+ */
+router.get('/free-qr/billing', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+
+    const payments = await query(
+      'SELECT * FROM subscription_payments WHERE free_qr_id = ? ORDER BY created_at DESC LIMIT 20',
+      [payload.fq]
+    );
+    const history = await query(
+      'SELECT * FROM subscription_history WHERE free_qr_id = ? ORDER BY created_at DESC LIMIT 20',
+      [payload.fq]
+    );
+    const whatsappNumber = await getSetting('whatsapp_number', '');
+    const whatsappMessage = await getSetting('whatsapp_support_message', 'Hello QRUSH Team, I want to upgrade my restaurant account.');
+    const planPrices = {
+      free: await getSetting('plan_free_price', '0'),
+      starter: await getSetting('plan_starter_price', '149'),
+      business: await getSetting('plan_business_price', '299'),
+    };
+    const planFeatures = {
+      free: await getSetting('plan_free_features', ''),
+      starter: await getSetting('plan_starter_features', ''),
+      business: await getSetting('plan_business_features', ''),
+    };
+    const durationDays = Number(await getSetting('default_subscription_duration_days', '30'));
+
+    let remainingDays = null;
+    if (row.plan_expires_at) {
+      const expiry = new Date(row.plan_expires_at.replace(' ', 'T') + 'Z');
+      const now = new Date();
+      remainingDays = Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+
+    res.json({
+      restaurant: {
+        id: row.id,
+        restaurant: row.restaurant,
+        plan: row.plan || 'free',
+        plan_status: row.plan_status || 'active',
+        plan_started_at: row.plan_started_at,
+        plan_expires_at: row.plan_expires_at,
+      },
+      payments: payments || [],
+      history: history || [],
+      whatsapp_number: whatsappNumber,
+      whatsapp_message: whatsappMessage,
+      plan_prices: planPrices,
+      plan_features: planFeatures,
+      duration_days: durationDays,
+      remaining_days: remainingDays,
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/public/free-qr/billing/whatsapp-link — generate WhatsApp upgrade link for free QR owner.
+ * query: plan (starter|business)
+ */
+router.get('/free-qr/billing/whatsapp-link', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const row = await get('SELECT restaurant, phone FROM free_qr_menus WHERE id = ?', [payload.fq]);
+    if (!row) return res.status(401).json({ error: 'Restaurant not found' });
+
+    const plan = String(req.query.plan || '').toLowerCase().trim();
+    if (!['starter', 'business'].includes(plan)) {
+      return res.status(400).json({ error: 'plan must be starter or business' });
+    }
+    const whatsappNumber = await getSetting('whatsapp_number', '');
+    if (!whatsappNumber) {
+      return res.json({ whatsapp_number: '', link: null, message: 'WhatsApp number not configured. Please contact support.' });
+    }
+    const price = await getSetting(plan === 'starter' ? 'plan_starter_price' : 'plan_business_price', plan === 'starter' ? '149' : '299');
+    const durationDays = await getSetting('default_subscription_duration_days', '30');
+    const baseMessage = await getSetting('whatsapp_support_message', 'Hello QRUSH Team, I want to upgrade my restaurant account.');
+    const message = `${baseMessage}
+
+Restaurant Name: ${row.restaurant}
+Registered Phone: ${row.phone || 'N/A'}
+Selected Plan: ${plan.charAt(0).toUpperCase() + plan.slice(1)}
+Plan Price: ₹${price}/month
+Duration: ${durationDays} days
+
+Please share payment details.`;
+    const encodedMessage = encodeURIComponent(message);
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    const link = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+    res.json({ whatsapp_number: whatsappNumber, link, message });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/public/free-qr/billing/request-upgrade — create pending payment for free QR owner.
+ * body: { plan }
+ */
+router.post('/free-qr/billing/request-upgrade', async (req, res, next) => {
+  try {
+    const payload = freeQrAuth(req);
+    if (!payload) return res.status(401).json({ error: 'Login required' });
+    const plan = String((req.body || {}).plan || '').toLowerCase().trim();
+    if (!['starter', 'business'].includes(plan)) {
+      return res.status(400).json({ error: 'plan must be starter or business' });
+    }
+    const freeQrId = payload.fq;
+    const existing = await get("SELECT id FROM subscription_payments WHERE free_qr_id = ? AND status = 'pending'", [freeQrId]);
+    if (existing) {
+      return res.status(400).json({ error: 'You already have a pending payment request. Please wait for admin confirmation.' });
+    }
+    const price = Number(await getSetting(plan === 'starter' ? 'plan_starter_price' : 'plan_business_price', plan === 'starter' ? '149' : '299'));
+    const durationDays = Number(await getSetting('default_subscription_duration_days', '30'));
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const runRes = await run(
+      `INSERT INTO subscription_payments (free_qr_id, plan, amount, payment_method, status, payment_type, notes, expires_at, created_at)
+       VALUES (?, ?, ?, 'other', 'pending', 'freeqr', 'Upgrade requested via WhatsApp', ?, ?)`,
+      [freeQrId, plan, price, expiresAt, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+    );
+    res.status(201).json({ payment: await get('SELECT * FROM subscription_payments WHERE id = ?', [runRes.lastInsertRowid]) });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/public/free-qr/ads — get active ads for free QR public menu.
+ * query: placement
+ */
+router.get('/free-qr/ads', async (req, res, next) => {
+  try {
+    const row = await get('SELECT plan FROM free_qr_menus WHERE slug = ?', [String(req.query.slug || '')]);
+    const tenantPlan = row ? (row.plan || 'free') : 'free';
+    if (tenantPlan === 'starter' || tenantPlan === 'business') {
+      return res.json({ ads: [] });
+    }
+    const settingRow = await get("SELECT value FROM admin_settings WHERE key = 'ad_enabled'");
+    const adEnabled = settingRow ? settingRow.value : '0';
+    if (adEnabled !== '1') return res.json({ ads: [] });
+
+    const placement = String(req.query.placement || 'public_menu').trim();
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const rows = await query(
+      `SELECT id, title, image_url, destination_url FROM advertisements
+       WHERE placement = ? AND is_active = 1
+         AND (start_date IS NULL OR start_date <= ?)
+         AND (end_date IS NULL OR end_date >= ?)
+       ORDER BY created_at DESC LIMIT 3`,
+      [placement, now, now]
+    );
+    res.json({ ads: rows || [] });
+  } catch (err) { next(err); }
+});
 
 module.exports = router;
 module.exports.hostedMenuPage = hostedMenuPage;

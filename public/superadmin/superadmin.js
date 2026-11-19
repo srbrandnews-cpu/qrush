@@ -10,7 +10,7 @@
   const money = (n, currency) => TN.fmtMoney(Number(n) || 0, currency || '₹');
   const plural = (n, one, many) => num(n) + ' ' + (Number(n) === 1 ? one : (many || one + 's'));
 
-  const TAB_TITLES = { overview: 'Overview', restaurants: 'Restaurants', freeqr: 'Free QR Menus', access: 'Access & health' };
+  const TAB_TITLES = { overview: 'Overview', restaurants: 'Restaurants', freeqr: 'Free QR Menus', subscriptions: 'Subscriptions', revenue: 'Revenue', settings: 'Settings', ads: 'Advertisements', access: 'Access & health' };
 
   const state = {
     me: null,
@@ -470,6 +470,322 @@
 
   /* -------------------------------- tabs -------------------------------- */
 
+  /* ------------------------------- revenue ------------------------------- */
+  async function loadRevenue() {
+    try {
+      const data = await saApi('/api/admin/super-admin/revenue');
+      const s = data.stats || {};
+      if ($('rev-total-rest')) $('rev-total-rest').textContent = num(s.total_restaurants);
+      if ($('rev-free')) $('rev-free').textContent = num(s.free_count);
+      if ($('rev-starter')) $('rev-starter').textContent = num(s.starter_active);
+      if ($('rev-business')) $('rev-business').textContent = num(s.business_active);
+      if ($('rev-pending-pay')) $('rev-pending-pay').textContent = num(s.pending_payments);
+      if ($('rev-expired')) $('rev-expired').textContent = num(s.expired_count);
+      if ($('rev-total-collected')) $('rev-total-collected').textContent = money(s.total_collected);
+      if ($('rev-monthly')) $('rev-monthly').textContent = money(s.monthly_collected);
+      const adsEl = $('rev-ads');
+      if (adsEl) {
+        adsEl.innerHTML = `<div class="tiny muted">Active ads: ${num(s.active_ads)} · Impressions: ${num(s.total_impressions)} · Clicks: ${num(s.total_clicks)}</div>`;
+      }
+    } catch (err) {
+      console.error('Revenue load error:', err);
+    }
+  }
+
+  /* ------------------------------- settings ------------------------------- */
+  async function loadSettings() {
+    try {
+      const data = await saApi('/api/admin/super-admin/settings');
+      const s = data.settings || {};
+      if ($('sa-whatsapp')) $('sa-whatsapp').value = s.whatsapp_number || '';
+      if ($('sa-whatsapp-msg')) $('sa-whatsapp-msg').value = s.whatsapp_support_message || '';
+      if ($('sa-duration')) $('sa-duration').value = s.default_subscription_duration_days || '30';
+      if ($('sa-grace')) $('sa-grace').value = s.grace_period_days || '7';
+      if ($('sa-price-free')) $('sa-price-free').value = s.plan_free_price || '0';
+      if ($('sa-price-starter')) $('sa-price-starter').value = s.plan_starter_price || '149';
+      if ($('sa-price-business')) $('sa-price-business').value = s.plan_business_price || '299';
+      if ($('sa-features-free')) $('sa-features-free').value = s.plan_free_features || '';
+      if ($('sa-features-starter')) $('sa-features-starter').value = s.plan_starter_features || '';
+      if ($('sa-features-business')) $('sa-features-business').value = s.plan_business_features || '';
+      if ($('sa-ad-enabled')) $('sa-ad-enabled').checked = s.ad_enabled === '1';
+    } catch (err) {
+      console.error('Settings load error:', err);
+    }
+  }
+
+  document.addEventListener('click', async (e) => {
+    if (e.target && e.target.id === 'sa-save-settings') {
+      e.preventDefault();
+      const settings = {
+        whatsapp_number: $('sa-whatsapp').value.trim(),
+        whatsapp_support_message: $('sa-whatsapp-msg').value.trim(),
+        default_subscription_duration_days: $('sa-duration').value.trim(),
+        grace_period_days: $('sa-grace').value.trim(),
+        plan_free_price: $('sa-price-free').value.trim(),
+        plan_starter_price: $('sa-price-starter').value.trim(),
+        plan_business_price: $('sa-price-business').value.trim(),
+        plan_free_features: $('sa-features-free').value.trim(),
+        plan_starter_features: $('sa-features-starter').value.trim(),
+        plan_business_features: $('sa-features-business').value.trim(),
+        ad_enabled: $('sa-ad-enabled').checked ? '1' : '0',
+      };
+      try {
+        await saApi('/api/admin/super-admin/settings', { method: 'PUT', body: { settings } });
+        if ($('sa-settings-status')) $('sa-settings-status').textContent = 'Settings saved!';
+        TN.toast('Settings saved', 'success');
+      } catch (err) {
+        TN.toast(err.message || 'Settings save nahi hua', 'error');
+      }
+    }
+  });
+
+  async function loadSubscriptions() {
+    try {
+      const statusFilter = $('sub-status-filter') ? $('sub-status-filter').value : '';
+      const planFilter = $('sub-plan-filter') ? $('sub-plan-filter').value : '';
+      let url = '/api/admin/super-admin/subscriptions';
+      const params = [];
+      if (statusFilter) params.push('status=' + encodeURIComponent(statusFilter));
+      if (planFilter) params.push('plan=' + encodeURIComponent(planFilter));
+      if (params.length) url += '?' + params.join('&');
+      const data = await saApi(url);
+      const rows = data.payments || [];
+      const body = $('sub-rows');
+      if (!body) return;
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="7"><div class="sa-empty">No subscription payments found.</div></td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map((p) => `
+        <tr>
+          <td><b>${esc(p.tenant_name || p.freeqr_restaurant || 'Unknown')}</b><br><span class="tiny muted">${esc(p.tenant_slug || p.freeqr_slug || '')}</span><br><span class="tiny muted">${p.payment_type === 'freeqr' ? 'Free QR' : 'Venue'}</span></td>
+          <td><span class="badge ${p.plan === 'business' ? 'ready' : 'preparing'}">${esc(p.plan)}</span></td>
+          <td>₹${num(p.amount)}</td>
+          <td class="tiny">${esc(p.payment_method || 'other')}</td>
+          <td><span class="badge ${p.status === 'confirmed' ? 'ready' : p.status === 'pending' ? 'preparing' : 'muted'}">${esc(p.status)}</span></td>
+          <td class="tiny muted">${fmtDate(p.created_at)}</td>
+          <td class="right">
+            <div class="sa-actions">
+              ${p.status === 'pending' ? `
+                <button class="btn btn-sm btn-primary" data-sub-confirm="${p.id}">Confirm</button>
+                <button class="btn btn-sm btn-danger" data-sub-reject="${p.id}">Reject</button>
+              ` : ''}
+              ${p.status === 'confirmed' ? `<button class="btn btn-sm" data-sub-refund="${p.id}">Refund</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      // Wire action buttons
+      body.querySelectorAll('[data-sub-confirm]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.subConfirm;
+          if (!confirm('Confirm this payment and activate the plan?')) return;
+          try {
+            await saApi(`/api/admin/super-admin/subscriptions/${id}/confirm`, { method: 'POST', body: {} });
+            TN.toast('Payment confirmed, plan activated', 'success');
+            loadSubscriptions();
+          } catch (err) {
+            TN.toast(err.message || 'Confirm nahi hua', 'error');
+          }
+        });
+      });
+      body.querySelectorAll('[data-sub-reject]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Reject this payment request?')) return;
+          try {
+            await saApi(`/api/admin/super-admin/subscriptions/${btn.dataset.subReject}/reject`, { method: 'POST', body: {} });
+            TN.toast('Payment rejected', 'success');
+            loadSubscriptions();
+          } catch (err) {
+            TN.toast(err.message || 'Reject nahi hua', 'error');
+          }
+        });
+      });
+      body.querySelectorAll('[data-sub-refund]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Refund this payment and move to Free plan?')) return;
+          try {
+            await saApi(`/api/admin/super-admin/subscriptions/${btn.dataset.subRefund}/refund`, { method: 'POST', body: {} });
+            TN.toast('Payment refunded, moved to Free', 'success');
+            loadSubscriptions();
+          } catch (err) {
+            TN.toast(err.message || 'Refund nahi hua', 'error');
+          }
+        });
+      });
+    } catch (err) {
+      console.error('Subscriptions load error:', err);
+    }
+  }
+
+  // Check expiry button
+  document.addEventListener('click', async (e) => {
+    if (e.target && e.target.id === 'sub-check-expiry') {
+      try {
+        const data = await saApi('/api/admin/super-admin/subscriptions/check-expiry', { method: 'POST' });
+        TN.toast(`Checked: ${data.expired_count} expired, ${data.checked} total`, 'success');
+        loadSubscriptions();
+      } catch (err) {
+        TN.toast(err.message || 'Check failed', 'error');
+      }
+    }
+  });
+
+  // Filter change handlers
+  ['sub-status-filter', 'sub-plan-filter'].forEach((id) => {
+    const el = $(id);
+    if (el) el.addEventListener('change', () => loadSubscriptions());
+  });
+
+  /* ---------------------------------- ads ---------------------------------- */
+  let adEditingId = null;
+  let adsCache = [];
+
+  function adFormReset() {
+    adEditingId = null;
+    if ($('ad-form-title')) $('ad-form-title').textContent = 'New Advertisement';
+    if ($('ad-title')) $('ad-title').value = '';
+    if ($('ad-image')) $('ad-image').value = '';
+    if ($('ad-dest')) $('ad-dest').value = '';
+    if ($('ad-placement')) $('ad-placement').value = 'public_menu';
+    if ($('ad-start')) $('ad-start').value = '';
+    if ($('ad-end')) $('ad-end').value = '';
+    if ($('ad-active')) $('ad-active').checked = true;
+    if ($('ad-status')) $('ad-status').textContent = '';
+  }
+
+  function adFormOpen(ad) {
+    adFormReset();
+    const card = $('ad-form-card');
+    if (card) card.classList.remove('hidden');
+    if (!ad) return;
+    adEditingId = ad.id;
+    if ($('ad-form-title')) $('ad-form-title').textContent = 'Edit Advertisement #' + ad.id;
+    if ($('ad-title')) $('ad-title').value = ad.title || '';
+    if ($('ad-image')) $('ad-image').value = ad.image_url || '';
+    if ($('ad-dest')) $('ad-dest').value = ad.destination_url || '';
+    if ($('ad-placement')) $('ad-placement').value = ad.placement || 'public_menu';
+    if ($('ad-start')) $('ad-start').value = ad.start_date ? String(ad.start_date).slice(0, 10) : '';
+    if ($('ad-end')) $('ad-end').value = ad.end_date ? String(ad.end_date).slice(0, 10) : '';
+    if ($('ad-active')) $('ad-active').checked = ad.is_active === 1 || ad.is_active === true || ad.is_active === '1';
+  }
+
+  async function saveAd() {
+    const title = ($('ad-title') && $('ad-title').value || '').trim();
+    const imageUrl = ($('ad-image') && $('ad-image').value || '').trim();
+    const destUrl = ($('ad-dest') && $('ad-dest').value || '').trim();
+    if (!title) return TN.toast('Title required', 'error');
+    if (!/^https?:\/\//i.test(imageUrl)) return TN.toast('Image URL https:// se start hona chahiye', 'error');
+    if (destUrl && !/^https?:\/\//i.test(destUrl)) return TN.toast('Destination URL https:// se start hona chahiye', 'error');
+    const payload = {
+      title,
+      image_url: imageUrl,
+      destination_url: destUrl || null,
+      placement: $('ad-placement') ? $('ad-placement').value : 'public_menu',
+      start_date: ($('ad-start') && $('ad-start').value) || null,
+      end_date: ($('ad-end') && $('ad-end').value) || null,
+      is_active: $('ad-active') && $('ad-active').checked ? 1 : 0,
+    };
+    try {
+      if (adEditingId) await saApi('/api/admin/super-admin/ads/' + adEditingId, { method: 'PUT', body: payload });
+      else await saApi('/api/admin/super-admin/ads', { method: 'POST', body: payload });
+      TN.toast(adEditingId ? 'Ad updated' : 'Ad created', 'success');
+      const card = $('ad-form-card');
+      if (card) card.classList.add('hidden');
+      adFormReset();
+      loadAds();
+    } catch (err) {
+      if ($('ad-status')) $('ad-status').textContent = err.message || 'Save failed';
+      TN.toast(err.message || 'Save failed', 'error');
+    }
+  }
+
+  async function loadAds() {
+    const body = $('ad-rows');
+    if (!body) return;
+    try {
+      const data = await saApi('/api/admin/super-admin/ads');
+      adsCache = data.ads || [];
+      if (!adsCache.length) {
+        body.innerHTML = '<tr><td colspan="7"><div class="sa-empty">No advertisements yet. Click "+ New Advertisement".</div></td></tr>';
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      body.innerHTML = adsCache.map((a) => {
+        const active = a.is_active === 1 || a.is_active === true || a.is_active === '1';
+        const start = a.start_date ? String(a.start_date).slice(0, 10) : '';
+        const end = a.end_date ? String(a.end_date).slice(0, 10) : '';
+        const live = active && (!start || start <= today) && (!end || end >= today);
+        const sched = (start || '—') + ' → ' + (end || '—');
+        return `
+          <tr>
+            <td>
+              <div style="display:flex;gap:10px;align-items:center">
+                <img src="${esc(a.image_url)}" alt="" style="width:56px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" onerror="this.style.opacity=.25" />
+                <div><b>${esc(a.title)}</b><br><span class="tiny muted">${esc(String(a.destination_url || '').slice(0, 40))}</span></div>
+              </div>
+            </td>
+            <td class="tiny">${esc(a.placement)}</td>
+            <td class="tiny muted">${esc(sched)}</td>
+            <td>${num(a.impressions)}</td>
+            <td>${num(a.clicks)}</td>
+            <td><span class="badge ${live ? 'ready' : 'muted'}">${live ? 'Live' : (active ? 'Scheduled' : 'Paused')}</span></td>
+            <td class="right">
+              <div class="sa-actions">
+                <button class="btn btn-sm" data-ad-edit="${a.id}">Edit</button>
+                <button class="btn btn-sm" data-ad-toggle="${a.id}">${active ? 'Pause' : 'Activate'}</button>
+                <button class="btn btn-sm btn-danger" data-ad-delete="${a.id}">Delete</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      body.querySelectorAll('[data-ad-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const ad = adsCache.find((x) => String(x.id) === String(btn.dataset.adEdit));
+          if (ad) adFormOpen(ad);
+        });
+      });
+      body.querySelectorAll('[data-ad-toggle]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const ad = adsCache.find((x) => String(x.id) === String(btn.dataset.adToggle));
+          if (!ad) return;
+          const active = ad.is_active === 1 || ad.is_active === true || ad.is_active === '1';
+          try {
+            await saApi('/api/admin/super-admin/ads/' + ad.id, { method: 'PUT', body: { is_active: active ? 0 : 1 } });
+            TN.toast(active ? 'Ad paused' : 'Ad activated', 'success');
+            loadAds();
+          } catch (err) {
+            TN.toast(err.message || 'Update failed', 'error');
+          }
+        });
+      });
+      body.querySelectorAll('[data-ad-delete]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Delete this advertisement? Its impression/click records will also be removed.')) return;
+          try {
+            await saApi('/api/admin/super-admin/ads/' + btn.dataset.adDelete, { method: 'DELETE' });
+            TN.toast('Ad deleted', 'success');
+            loadAds();
+          } catch (err) {
+            TN.toast(err.message || 'Delete failed', 'error');
+          }
+        });
+      });
+    } catch (err) {
+      body.innerHTML = '<tr><td colspan="7"><div class="sa-empty">' + esc(err.message || 'Failed to load ads') + '</div></td></tr>';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'ad-new') { adFormOpen(null); }
+    if (t.id === 'ad-form-cancel') { const c = $('ad-form-card'); if (c) c.classList.add('hidden'); adFormReset(); }
+    if (t.id === 'ad-save') { e.preventDefault(); saveAd(); }
+  });
+
   function showTab(tab) {
     if (state.denied) return;
     state.tab = tab;
@@ -479,6 +795,10 @@
     if (tab === 'restaurants') renderTenantTable();
     if (tab === 'freeqr') renderFreeQr();
     if (tab === 'access') { renderAccess(); checkHealth(); }
+    if (tab === 'revenue') loadRevenue();
+    if (tab === 'settings') loadSettings();
+    if (tab === 'subscriptions') loadSubscriptions();
+    if (tab === 'ads') loadAds();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

@@ -433,9 +433,440 @@ router.put('/super-admin/free-qr/:id/plan', async (req, res, next) => {
   }
 });
 
+/* ========================= PHASE 3: ADMIN SETTINGS ========================= */
+
+/**
+ * GET /api/admin/super-admin/settings — get all admin settings.
+ */
+router.get('/super-admin/settings', async (req, res, next) => {
+  try {
+    const rows = await query('SELECT key, value, updated_at, updated_by FROM admin_settings ORDER BY key');
+    const settings = {};
+    (rows || []).forEach((r) => { settings[r.key] = r.value; });
+    res.json({ settings, rows: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/**
+ * PUT /api/admin/super-admin/settings — update admin settings (super admin only).
+ * body: { key: value, ... } or { settings: { key: value, ... } }
+ */
+router.put('/super-admin/settings', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const settings = b.settings || b;
+    const keys = Object.keys(settings).filter((k) => k !== 'settings');
+    if (!keys.length) return res.status(400).json({ error: 'No settings provided' });
+    for (const key of keys) {
+      const val = settings[key];
+      await run(
+        `INSERT INTO admin_settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+        [key, val === null ? null : String(val), new Date().toISOString().replace('T', ' ').slice(0, 19), req.user.email]
+      );
+    }
+    const rows = await query('SELECT key, value, updated_at, updated_by FROM admin_settings ORDER BY key');
+    const out = {};
+    (rows || []).forEach((r) => { out[r.key] = r.value; });
+    res.json({ settings: out, rows: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/**
+ * Helper: get a single admin setting value.
+ */
+async function getSetting(key, fallback = '') {
+  const row = await get('SELECT value FROM admin_settings WHERE key = ?', [key]);
+  return row && row.value !== null && row.value !== undefined ? row.value : fallback;
+}
+
+/* ========================= PHASE 3: SUBSCRIPTION PAYMENTS ========================= */
+
+/**
+ * GET /api/admin/super-admin/subscriptions — list all subscription payments with filters.
+ * query: status, tenant_id, plan
+ */
+router.get('/super-admin/subscriptions', async (req, res, next) => {
+  try {
+    const status = (req.query.status || '').trim();
+    const tenantId = req.query.tenant_id ? Number(req.query.tenant_id) : null;
+    const freeQrId = req.query.free_qr_id ? Number(req.query.free_qr_id) : null;
+    const plan = (req.query.plan || '').trim().toLowerCase();
+    const type = (req.query.type || '').trim().toLowerCase();
+    let sql = `SELECT sp.*, t.name AS tenant_name, t.slug AS tenant_slug,
+               (SELECT u.name FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.id LIMIT 1) AS owner_name,
+               fqr.restaurant AS freeqr_restaurant, fqr.slug AS freeqr_slug
+               FROM subscription_payments sp
+               LEFT JOIN tenants t ON t.id = sp.tenant_id
+               LEFT JOIN free_qr_menus fqr ON fqr.id = sp.free_qr_id
+               WHERE 1=1`;
+    const params = [];
+    if (status) { sql += ' AND sp.status = ?'; params.push(status); }
+    if (tenantId) { sql += ' AND sp.tenant_id = ?'; params.push(tenantId); }
+    if (freeQrId) { sql += ' AND sp.free_qr_id = ?'; params.push(freeQrId); }
+    if (plan) { sql += ' AND sp.plan = ?'; params.push(plan); }
+    if (type) { sql += ' AND sp.payment_type = ?'; params.push(type); }
+    sql += ' ORDER BY sp.created_at DESC LIMIT 200';
+    const rows = await query(sql, params);
+    res.json({ payments: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/super-admin/subscriptions — create a pending subscription payment record.
+ * body: { tenant_id, plan, amount, payment_method, payment_ref, notes, expires_at }
+ */
+router.post('/super-admin/subscriptions', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const tenantId = b.tenant_id ? Number(b.tenant_id) : null;
+    const freeQrId = b.free_qr_id ? Number(b.free_qr_id) : null;
+    const plan = String(b.plan || '').toLowerCase().trim();
+    if ((!tenantId && !freeQrId) || !ALLOWED_PLANS.has(plan) || plan === 'free') {
+      return res.status(400).json({ error: 'tenant_id or free_qr_id and valid paid plan (starter/business) required' });
+    }
+    if (tenantId) {
+      const tenant = await get('SELECT id, name FROM tenants WHERE id = ?', [tenantId]);
+      if (!tenant) return res.status(404).json({ error: 'Restaurant not found' });
+    }
+    if (freeQrId) {
+      const fq = await get('SELECT id, restaurant FROM free_qr_menus WHERE id = ?', [freeQrId]);
+      if (!fq) return res.status(404).json({ error: 'Free QR restaurant not found' });
+    }
+    const amount = Number(b.amount) || 0;
+    const paymentMethod = String(b.payment_method || 'other').toLowerCase().trim();
+    const paymentRef = b.payment_ref ? String(b.payment_ref).trim().slice(0, 120) : null;
+    const notes = b.notes ? String(b.notes).trim().slice(0, 500) : null;
+    const expiresAt = b.expires_at ? String(b.expires_at).trim().slice(0, 32) : null;
+    const paymentType = freeQrId ? 'freeqr' : 'tenant';
+    const runRes = await run(
+      `INSERT INTO subscription_payments (tenant_id, free_qr_id, plan, amount, payment_method, payment_ref, status, payment_type, notes, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+      [tenantId, freeQrId, plan, amount, paymentMethod, paymentRef, paymentType, notes, expiresAt, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+    );
+    const payment = await get('SELECT * FROM subscription_payments WHERE id = ?', [runRes.lastInsertRowid]);
+    res.status(201).json({ payment });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/super-admin/subscriptions/:id/confirm — manually confirm payment and activate plan.
+ * body: { amount?, payment_method?, payment_ref?, expires_at?, notes? }
+ */
+router.post('/super-admin/subscriptions/:id/confirm', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const payment = await get('SELECT * FROM subscription_payments WHERE id = ?', [id]);
+    if (!payment) return res.status(404).json({ error: 'Payment record not found' });
+    if (payment.status !== 'pending') return res.status(400).json({ error: 'Only pending payments can be confirmed' });
+
+    const b = req.body || {};
+    const amount = b.amount !== undefined ? Number(b.amount) : payment.amount;
+    const paymentMethod = b.payment_method ? String(b.payment_method).toLowerCase().trim() : payment.payment_method;
+    const paymentRef = b.payment_ref !== undefined ? (b.payment_ref ? String(b.payment_ref).trim().slice(0, 120) : null) : payment.payment_ref;
+    const notes = b.notes !== undefined ? (b.notes ? String(b.notes).trim().slice(0, 500) : null) : payment.notes;
+    const currentTenant = payment.tenant_id ? await get('SELECT plan, plan_status, plan_started_at, plan_expires_at FROM tenants WHERE id = ?', [payment.tenant_id]) : null;
+    const durationDays = Number(await getSetting('default_subscription_duration_days', '30'));
+    const graceDays = Number(await getSetting('grace_period_days', '7'));
+    const now = new Date();
+    const startDate = now.toISOString().replace('T', ' ').slice(0, 19);
+    let expiresAt = b.expires_at ? String(b.expires_at).trim().slice(0, 32) : null;
+    if (!expiresAt) {
+      const exp = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      expiresAt = exp.toISOString().replace('T', ' ').slice(0, 19);
+    }
+
+    await transaction(async () => {
+      // Update payment record
+      await run(
+        `UPDATE subscription_payments SET status = 'confirmed', amount = ?, payment_method = ?, payment_ref = ?, notes = ?, activated_by = ?, activated_at = ?, expires_at = ? WHERE id = ?`,
+        [amount, paymentMethod, paymentRef, notes, req.user.email, startDate, expiresAt, id]
+      );
+      // Update plan based on type
+      if (payment.free_qr_id) {
+        await run(
+          `UPDATE free_qr_menus SET plan = ?, plan_status = 'active', plan_started_at = ?, plan_expires_at = ? WHERE id = ?`,
+          [payment.plan, startDate, expiresAt, payment.free_qr_id]
+        );
+      } else {
+        await run(
+          `UPDATE tenants SET plan = ?, plan_status = 'active', plan_started_at = ?, plan_expires_at = ? WHERE id = ?`,
+          [payment.plan, startDate, expiresAt, payment.tenant_id]
+        );
+      }
+      // Audit log
+      await run(
+        `INSERT INTO subscription_history (tenant_id, free_qr_id, payment_type, previous_plan, new_plan, previous_status, new_status, amount, payment_method, payment_ref, admin_email, notes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [payment.tenant_id, payment.free_qr_id, payment.payment_type || (payment.free_qr_id ? 'freeqr' : 'tenant'), currentTenant ? (currentTenant.plan || 'free') : 'free', payment.plan, currentTenant ? (currentTenant.plan_status || 'active') : 'active', 'active', amount, paymentMethod, paymentRef, req.user.email, notes, startDate]
+      );
+    });
+
+    res.json({
+      payment: await get('SELECT * FROM subscription_payments WHERE id = ?', [id]),
+      tenant: payment.tenant_id ? await get('SELECT id, name, slug, plan, plan_status, plan_started_at, plan_expires_at FROM tenants WHERE id = ?', [payment.tenant_id]) : null,
+      freeqr: payment.free_qr_id ? await get('SELECT id, slug, restaurant, plan, plan_status, plan_started_at, plan_expires_at FROM free_qr_menus WHERE id = ?', [payment.free_qr_id]) : null,
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/super-admin/subscriptions/:id/reject — reject a pending payment.
+ */
+router.post('/super-admin/subscriptions/:id/reject', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const payment = await get('SELECT * FROM subscription_payments WHERE id = ?', [id]);
+    if (!payment) return res.status(404).json({ error: 'Payment record not found' });
+    if (payment.status !== 'pending') return res.status(400).json({ error: 'Only pending payments can be rejected' });
+    const b = req.body || {};
+    const notes = b.notes ? String(b.notes).trim().slice(0, 500) : payment.notes;
+    await run(
+      `UPDATE subscription_payments SET status = 'rejected', notes = ?, activated_by = ? WHERE id = ?`,
+      [notes, req.user.email, id]
+    );
+    // Audit log
+    await run(
+      `INSERT INTO subscription_history (tenant_id, free_qr_id, payment_type, previous_plan, new_plan, previous_status, new_status, amount, payment_method, payment_ref, admin_email, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [payment.tenant_id, payment.free_qr_id, payment.payment_type || (payment.free_qr_id ? 'freeqr' : 'tenant'), null, payment.plan, 'pending', 'rejected', payment.amount, payment.payment_method, payment.payment_ref, req.user.email, notes, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+    );
+    res.json({ payment: await get('SELECT * FROM subscription_payments WHERE id = ?', [id]) });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/super-admin/subscriptions/:id/refund — mark a confirmed payment as refunded.
+ */
+router.post('/super-admin/subscriptions/:id/refund', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const payment = await get('SELECT * FROM subscription_payments WHERE id = ?', [id]);
+    if (!payment) return res.status(404).json({ error: 'Payment record not found' });
+    if (payment.status !== 'confirmed') return res.status(400).json({ error: 'Only confirmed payments can be refunded' });
+    const b = req.body || {};
+    const notes = b.notes ? String(b.notes).trim().slice(0, 500) : payment.notes;
+    const currentTenant = payment.tenant_id ? await get('SELECT plan, plan_status FROM tenants WHERE id = ?', [payment.tenant_id]) : null;
+    await transaction(async () => {
+      await run(`UPDATE subscription_payments SET status = 'refunded', notes = ?, activated_by = ? WHERE id = ?`, [notes, req.user.email, id]);
+      // Move to free plan
+      if (payment.free_qr_id) {
+        await run(`UPDATE free_qr_menus SET plan = 'free', plan_status = 'active', plan_started_at = NULL, plan_expires_at = NULL WHERE id = ?`, [payment.free_qr_id]);
+      } else if (payment.tenant_id) {
+        await run(`UPDATE tenants SET plan = 'free', plan_status = 'active', plan_started_at = NULL, plan_expires_at = NULL WHERE id = ?`, [payment.tenant_id]);
+      }
+      await run(
+        `INSERT INTO subscription_history (tenant_id, free_qr_id, payment_type, previous_plan, new_plan, previous_status, new_status, amount, payment_method, payment_ref, admin_email, notes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [payment.tenant_id, payment.free_qr_id, payment.payment_type || (payment.free_qr_id ? 'freeqr' : 'tenant'), currentTenant ? currentTenant.plan : 'free', 'free', currentTenant ? currentTenant.plan_status : 'active', 'active', -payment.amount, payment.payment_method, payment.payment_ref, req.user.email, notes, new Date().toISOString().replace('T', ' ').slice(0, 19)]
+      );
+    });
+    res.json({
+      payment: await get('SELECT * FROM subscription_payments WHERE id = ?', [id]),
+      tenant: payment.tenant_id ? await get('SELECT id, name, slug, plan, plan_status FROM tenants WHERE id = ?', [payment.tenant_id]) : null,
+      freeqr: payment.free_qr_id ? await get('SELECT id, slug, restaurant, plan, plan_status FROM free_qr_menus WHERE id = ?', [payment.free_qr_id]) : null,
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/admin/super-admin/subscription-history/:tenantId — get subscription history for a tenant.
+ */
+router.get('/super-admin/subscription-history/:tenantId', async (req, res, next) => {
+  try {
+    const raw = String(req.params.tenantId || '');
+    const freeQrId = raw.startsWith('fq') ? Number(raw.slice(2)) : (req.query.free_qr_id ? Number(req.query.free_qr_id) : null);
+    const tenantId = freeQrId ? null : Number(raw);
+    const rows = freeQrId
+      ? await query('SELECT * FROM subscription_history WHERE free_qr_id = ? ORDER BY created_at DESC LIMIT 50', [freeQrId])
+      : await query('SELECT * FROM subscription_history WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 50', [tenantId]);
+    res.json({ history: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/* ========================= PHASE 3: ADVERTISEMENTS ========================= */
+
+/**
+ * GET /api/admin/super-admin/ads — list all advertisements.
+ */
+router.get('/super-admin/ads', async (req, res, next) => {
+  try {
+    const rows = await query(`
+      SELECT a.*,
+             (SELECT COUNT(*) FROM ad_events e WHERE e.ad_id = a.id AND e.kind = 'impression') AS impressions,
+             (SELECT COUNT(*) FROM ad_events e WHERE e.ad_id = a.id AND e.kind = 'click') AS clicks
+      FROM advertisements a
+      ORDER BY a.created_at DESC`);
+    res.json({ ads: rows || [] });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/super-admin/ads — create advertisement.
+ * body: { title, image_url, destination_url, placement, start_date, end_date, is_active }
+ */
+router.post('/super-admin/ads', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const title = String(b.title || '').trim().slice(0, 200);
+    const imageUrl = String(b.image_url || '').trim();
+    if (!title || !imageUrl) return res.status(400).json({ error: 'title and image_url required' });
+    if (!/^https?:\/\//i.test(imageUrl) && !imageUrl.startsWith('data:')) {
+      return res.status(400).json({ error: 'image_url must be a valid URL or data URL' });
+    }
+    const destUrl = b.destination_url ? String(b.destination_url).trim().slice(0, 500) : null;
+    if (destUrl && !/^https?:\/\//i.test(destUrl)) return res.status(400).json({ error: 'destination_url must be a valid HTTP(S) URL' });
+    const placement = String(b.placement || 'public_menu').trim().slice(0, 50);
+    const startDate = b.start_date ? String(b.start_date).trim().slice(0, 32) : null;
+    const endDate = b.end_date ? String(b.end_date).trim().slice(0, 32) : null;
+    const isActive = b.is_active === false || b.is_active === 0 || b.is_active === '0' ? 0 : 1;
+    const runRes = await run(
+      `INSERT INTO advertisements (title, image_url, destination_url, placement, start_date, end_date, is_active, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [title, imageUrl, destUrl, placement, startDate, endDate, isActive, req.user.email,
+       new Date().toISOString().replace('T', ' ').slice(0, 19), new Date().toISOString().replace('T', ' ').slice(0, 19)]
+    );
+    res.status(201).json({ ad: await get('SELECT * FROM advertisements WHERE id = ?', [runRes.lastInsertRowid]) });
+  } catch (err) { next(err); }
+});
+
+/**
+ * PUT /api/admin/super-admin/ads/:id — update advertisement.
+ */
+router.put('/super-admin/ads/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const ad = await get('SELECT * FROM advertisements WHERE id = ?', [id]);
+    if (!ad) return res.status(404).json({ error: 'Ad not found' });
+    const b = req.body || {};
+    const title = b.title !== undefined ? String(b.title).trim().slice(0, 200) : ad.title;
+    const imageUrl = b.image_url !== undefined ? String(b.image_url).trim() : ad.image_url;
+    const destUrl = b.destination_url !== undefined ? (b.destination_url ? String(b.destination_url).trim().slice(0, 500) : null) : ad.destination_url;
+    const placement = b.placement !== undefined ? String(b.placement).trim().slice(0, 50) : ad.placement;
+    const startDate = b.start_date !== undefined ? (b.start_date ? String(b.start_date).trim().slice(0, 32) : null) : ad.start_date;
+    const endDate = b.end_date !== undefined ? (b.end_date ? String(b.end_date).trim().slice(0, 32) : null) : ad.end_date;
+    const isActive = b.is_active !== undefined ? (b.is_active === false || b.is_active === 0 || b.is_active === '0' ? 0 : 1) : ad.is_active;
+    await run(
+      `UPDATE advertisements SET title = ?, image_url = ?, destination_url = ?, placement = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = ? WHERE id = ?`,
+      [title, imageUrl, destUrl, placement, startDate, endDate, isActive, new Date().toISOString().replace('T', ' ').slice(0, 19), id]
+    );
+    res.json({ ad: await get('SELECT * FROM advertisements WHERE id = ?', [id]) });
+  } catch (err) { next(err); }
+});
+
+/**
+ * DELETE /api/admin/super-admin/ads/:id — delete advertisement.
+ */
+router.delete('/super-admin/ads/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const ad = await get('SELECT id FROM advertisements WHERE id = ?', [id]);
+    if (!ad) return res.status(404).json({ error: 'Ad not found' });
+    await run('DELETE FROM ad_events WHERE ad_id = ?', [id]);
+    await run('DELETE FROM advertisements WHERE id = ?', [id]);
+    res.json({ ok: true, deleted: id });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/admin/super-admin/revenue — revenue dashboard data.
+ */
+router.get('/super-admin/revenue', async (req, res, next) => {
+  try {
+    const stats = await get(`
+      SELECT
+        (SELECT COUNT(*) FROM tenants) AS total_restaurants,
+        (SELECT COUNT(*) FROM free_qr_menus) AS total_freeqr,
+        (SELECT COUNT(*) FROM tenants WHERE COALESCE(plan,'free') = 'free') AS free_count,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE COALESCE(plan,'free') = 'free') AS freeqr_free_count,
+        (SELECT COUNT(*) FROM tenants WHERE plan = 'starter' AND plan_status = 'active') AS starter_active,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan = 'starter' AND plan_status = 'active') AS freeqr_starter_active,
+        (SELECT COUNT(*) FROM tenants WHERE plan = 'business' AND plan_status = 'active') AS business_active,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan = 'business' AND plan_status = 'active') AS freeqr_business_active,
+        (SELECT COUNT(*) FROM tenants WHERE plan IN ('starter','business') AND plan_status = 'pending') AS pending_count,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan IN ('starter','business') AND plan_status = 'pending') AS freeqr_pending_count,
+        (SELECT COUNT(*) FROM tenants WHERE plan IN ('starter','business') AND plan_status = 'expired') AS expired_count,
+        (SELECT COUNT(*) FROM free_qr_menus WHERE plan IN ('starter','business') AND plan_status = 'expired') AS freeqr_expired_count,
+        (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments WHERE status = 'confirmed') AS total_collected,
+        (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments WHERE status = 'confirmed' AND substr(created_at,1,7) = ?) AS monthly_collected,
+        (SELECT COUNT(*) FROM subscription_payments WHERE status = 'pending') AS pending_payments,
+        (SELECT COUNT(*) FROM subscription_payments WHERE status = 'confirmed') AS confirmed_payments,
+        (SELECT COUNT(*) FROM subscription_payments WHERE status = 'refunded') AS refunded_payments,
+        (SELECT COUNT(*) FROM advertisements WHERE is_active = 1) AS active_ads,
+        (SELECT COUNT(*) FROM ad_events WHERE kind = 'impression') AS total_impressions,
+        (SELECT COUNT(*) FROM ad_events WHERE kind = 'click') AS total_clicks
+      `, [new Date().toISOString().slice(0, 7)]);
+    const normalized = {};
+    Object.keys(stats || {}).forEach((key) => {
+      const value = stats[key];
+      normalized[key] = value === null || value === undefined ? value : Number(value) || 0;
+    });
+    res.json({ stats: normalized });
+  } catch (err) { next(err); }
+});
+
+/* ========================= PHASE 3: SUBSCRIPTION EXPIRY CHECK ========================= */
+
+/**
+ * POST /api/admin/super-admin/subscriptions/check-expiry — check and expire subscriptions.
+ * Moves expired subscriptions to free plan.
+ */
+router.post('/super-admin/subscriptions/check-expiry', async (req, res, next) => {
+  try {
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    // Check tenant subscriptions
+    const expired = await query(
+      "SELECT id, id AS tenant_id, plan, plan_status, plan_expires_at FROM tenants WHERE plan IN ('starter','business') AND plan_status = 'active' AND plan_expires_at IS NOT NULL AND plan_expires_at < ?",
+      [now]
+    );
+    let count = 0;
+    for (const t of (expired || [])) {
+      const graceDays = Number(await getSetting('grace_period_days', '7'));
+      const expiry = new Date(t.plan_expires_at.replace(' ', 'T') + 'Z');
+      const graceEnd = new Date(expiry.getTime() + graceDays * 24 * 60 * 60 * 1000);
+      if (new Date() > graceEnd) {
+        await transaction(async () => {
+          await run("UPDATE tenants SET plan = 'free', plan_status = 'active', plan_started_at = NULL, plan_expires_at = NULL WHERE id = ?", [t.tenant_id]);
+          await run(
+            `INSERT INTO subscription_history (tenant_id, free_qr_id, payment_type, previous_plan, new_plan, previous_status, new_status, admin_email, notes, created_at)
+             VALUES (?, NULL, 'tenant', ?, 'free', ?, 'expired', ?, ?, ?)`,
+            [t.tenant_id, t.plan, 'active', 'system', 'Subscription expired and moved to Free plan', now]
+          );
+        });
+        count++;
+      }
+    }
+    // Check free_qr subscriptions
+    const expiredFq = await query(
+      "SELECT id, plan, plan_status, plan_expires_at FROM free_qr_menus WHERE plan IN ('starter','business') AND plan_status = 'active' AND plan_expires_at IS NOT NULL AND plan_expires_at < ?",
+      [now]
+    );
+    for (const fq of (expiredFq || [])) {
+      const graceDays = Number(await getSetting('grace_period_days', '7'));
+      const expiry = new Date(fq.plan_expires_at.replace(' ', 'T') + 'Z');
+      const graceEnd = new Date(expiry.getTime() + graceDays * 24 * 60 * 60 * 1000);
+      if (new Date() > graceEnd) {
+        await transaction(async () => {
+          await run("UPDATE free_qr_menus SET plan = 'free', plan_status = 'active', plan_started_at = NULL, plan_expires_at = NULL WHERE id = ?", [fq.id]);
+          await run(
+            `INSERT INTO subscription_history (tenant_id, free_qr_id, payment_type, previous_plan, new_plan, previous_status, new_status, admin_email, notes, created_at)
+             VALUES (NULL, ?, 'freeqr', ?, 'free', ?, 'expired', ?, ?, ?)`,
+            [fq.id, fq.plan, 'active', 'system', 'Subscription expired and moved to Free plan', now]
+          );
+        });
+        count++;
+      }
+    }
+    res.json({ expired_count: count, checked: (expired || []).length + (expiredFq || []).length });
+  } catch (err) { next(err); }
+});
+
 /* ========================= TENANT-SCOPED ADMIN ROUTES ========================= */
 // These require the user to be an 'owner' of their tenant.
 router.use(requireAuth, requireRole('owner'));
+
+
+
 
 /**
  * GET /api/admin/overview -> counts for the owner dashboard.
