@@ -4,6 +4,7 @@ Yeh folder **backup / baad mein use karne ke liye** hai.
 
 > **Live setup:** purani website abhi **INACTIVE** hai (code safe hai, serve
 > nahi hota). Sirf Free QR product live hai — `qrush.in` / `www.qrush.in`.
+> `tablenest.onrender.com` par ek "Website inactive" page dikhta hai.
 >
 > Baad mein purani website chalu karne ke liye Render → Environment:
 > `LEGACY_HOSTS=tablenest.onrender.com` (code change nahi chahiye).

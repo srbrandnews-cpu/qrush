@@ -2,7 +2,8 @@
 
 > **Status: legacy website INACTIVE.** Files `public/` mein maujood hain
 > (restore ke liye ready), lekin `server.js` unhe sirf tab serve karta hai jab
-> `LEGACY_HOSTS` env set ho. Abhi off hai — `qrush.in` par sirf Free QR chalta hai.
+> `LEGACY_HOSTS` env set ho. Abhi off hai — `tablenest.onrender.com` par
+> "Website inactive" page dikhta hai aur `qrush.in` par sirf Free QR chalta hai.
 >
 > Chalu karne ke liye Render → Environment:
 > `LEGACY_HOSTS=tablenest.onrender.com` (service restart, code change nahi).

@@ -50,6 +50,34 @@ function isLegacyHost(req) {
   return LEGACY_HOSTS.includes(String(req.hostname || '').toLowerCase());
 }
 
+// Hosts that should show the "website inactive" page instead of any product.
+// tablenest.onrender.com is the old website's URL: while LEGACY_HOSTS is unset
+// it stays dark; setting LEGACY_HOSTS re-enables the full site automatically.
+const INACTIVE_HOSTS = String(process.env.INACTIVE_HOSTS || 'tablenest.onrender.com')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+
+function isInactiveHost(req) {
+  if (isLegacyHost(req)) return false; // legacy website wins when enabled
+  return INACTIVE_HOSTS.includes(String(req.hostname || '').toLowerCase());
+}
+
+// Render's health check must keep answering even on inactive hosts, otherwise
+// the deploy would be marked unhealthy.
+app.use((req, res, next) => {
+  if (req.path === '/api/health') return next();
+  if (!isInactiveHost(req)) return next();
+
+  res.status(503);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  if (req.path.startsWith('/api')) {
+    return res.json({ error: 'Website temporarily inactive' });
+  }
+  return res.sendFile(path.join(__dirname, 'public', 'inactive.html'));
+});
+
 // Returns 404 for routes that only exist on the legacy website.
 const legacyOnly = (req, res, next) => {
   if (isLegacyHost(req)) return next();
@@ -297,6 +325,7 @@ async function boot() {
       console.log(`\n🚀 QRush running  (database: ${db})`);
       console.log(`   Free QR   http://localhost:${PORT}/   (qrush.in)`);
       console.log(`   Legacy    ${LEGACY_HOSTS.length ? LEGACY_HOSTS.join(', ') : 'OFF (set LEGACY_HOSTS to enable)'}`);
+      console.log(`   Inactive  ${INACTIVE_HOSTS.length ? INACTIVE_HOSTS.join(', ') : 'none'}`);
       console.log(`   Super     http://localhost:${PORT}/superadmin`);
       console.log(`   Menus     /m/<slug>   ·   Kitchen  /m/<slug>/kitchen\n`);
     });
