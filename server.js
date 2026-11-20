@@ -69,6 +69,13 @@ app.use((req, res, next) => {
   if (req.path === '/api/health') return next();
   if (!isInactiveHost(req)) return next();
 
+  // Printed QR codes created earlier point at this host (…/m/<slug>). They
+  // must keep working, so send guests to the live Free-QR domain instead of
+  // showing the inactive page. No reprint needed.
+  if (/^\/m\/[^/]+/.test(req.path)) {
+    return res.redirect(302, 'https://www.qrush.in' + req.originalUrl);
+  }
+
   res.status(503);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -179,7 +186,7 @@ app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
 // Page routes are registered above so express.static cannot hijack `/`,
 // `/admin`, `/superadmin` ... with a directory redirect or index.html.
 // On the Free-QR domain the legacy bundle stays unreachable.
-const LEGACY_STATIC_RE = /^\/(index\.html|admin|kitchen|cashier|login|menu|wait|video)(\/|$)|^\/(manifest\.json|sw\.js)$|^\/img\/(landing|icon-192|icon-512|apple-touch-icon)/i;
+const LEGACY_STATIC_RE = /^\/(index\.html|admin|kitchen|cashier|login|menu|wait|video)(\/|$)|^\/(manifest\.json|sw\.js)$|^\/img\/(icon-192|icon-512|apple-touch-icon)/i;
 app.use((req, res, next) => {
   if (!isLegacyHost(req) && LEGACY_STATIC_RE.test(req.path)) {
     return res.status(404).type('text/plain').send('Not found');
