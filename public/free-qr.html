@@ -3,414 +3,690 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#ea580c" />
-  <title>Free QR Menu Generator — QRush</title>
-  <script>try { if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed'); } catch (e) {}</script>
-  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
+  <meta name="theme-color" content="#06183F" />
+  <title>QRush — Free Digital QR Menu for Restaurants | QR Code Menu Generator</title>
+  <meta name="description" content="Turn your restaurant menu into a free digital QR menu in 2 minutes. Upload a menu photo or PDF, download your QR, and let customers view your menu without any app. Free scan analytics included." />
+  <meta name="keywords" content="free QR menu, digital menu, restaurant QR code, QR menu generator, contactless menu, restaurant menu QR" />
+  <meta name="author" content="QRush" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.qrush.in/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="QRush" />
+  <meta property="og:title" content="QRush — Free Digital QR Menu for Restaurants" />
+  <meta property="og:description" content="Upload your menu, get a free QR code in 2 minutes. No app for customers, no reprinting when the menu changes." />
+  <meta property="og:url" content="https://www.qrush.in/" />
+  <meta property="og:image" content="https://www.qrush.in/img/qrush-logo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="QRush — Free Digital QR Menu for Restaurants" />
+  <meta name="twitter:description" content="Free QR menu for restaurants. Upload a photo or PDF, print the QR, update anytime." />
+  <meta name="twitter:image" content="https://www.qrush.in/img/qrush-logo.png" />
+
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=4" />
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
+  <script>try { if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed'); } catch (e) {}</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "QRush",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "url": "https://www.qrush.in/",
+    "description": "Free digital QR menu generator for restaurants. Upload a menu photo or PDF and get a printable QR code in minutes.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is QRush really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Free plan includes one restaurant QR menu page, unlimited menu photo pages, QR download and print, scan analytics and social links. No card or payment details are required." } },
+      { "@type": "Question", "name": "Do customers need to download an app?", "acceptedAnswer": { "@type": "Answer", "text": "No. Customers scan the QR code with their phone camera and the menu opens in the browser on iPhone and Android." } },
+      { "@type": "Question", "name": "Can I change my menu later?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Log in, upload the new menu and customers see it immediately. The printed QR code stays the same." } },
+      { "@type": "Question", "name": "How do I print the QR code?", "acceptedAnswer": { "@type": "Answer", "text": "From the owner dashboard use Download QR (PNG) or Print QR, then place it on tables, stands or your menu card." } }
+    ]
+  }
+  </script>
   <style>
-    body { background: linear-gradient(180deg, #fff7ed 0%, var(--bg) 420px); }
-    html { scroll-behavior: smooth; }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    /* ======================================================================
+       QRUSH · Phase 1 landing + dashboard
+       Brand: Navy #06183F · Orange #FF6200 · White #FFFFFF
+       ====================================================================== */
+    :root {
+      --navy: #06183F;
+      --navy-2: #0B2550;
+      --navy-3: #123162;
+      --orange: #FF6200;
+      --orange-2: #FF7A1A;
+      --orange-deep: #E55700;
+      --orange-text: #B84000; /* AA-compliant orange for small text on white */
+      --muted-strong: #5b6980;
+      --orange-50: #FFF4EC;
+      --orange-100: #FFE3D2;
 
-    /* ------------------------- embedded inside main site ------------------- */
-    html.embed body { background: var(--bg); }
-    html.embed .site-head,
-    html.embed #marketing,
-    html.embed #site-foot { display: none !important; }
-    html.embed #generator { padding: 20px 0 44px; }
-    html.embed #generator .lp-wrap { display: none; }
-    html.embed #generator-panel > h2,
-    html.embed #generator-panel > p { display: none; }
-    html.embed #generator .gen-layout { margin-top: 0; }
-    html.embed body.owner-mode #generator { padding-top: 20px; }
+      --primary: #FF6200;
+      --primary-500: #FF7A1A;
+      --primary-600: #E55700;
+      --primary-700: #C24700;
+      --primary-50: #FFF4EC;
+      --primary-100: #FFE3D2;
+      --brand-grad: linear-gradient(135deg, #FF8A3D 0%, #FF6200 55%, #E55700 100%);
+      --ring: 0 0 0 4px rgba(255, 98, 0, .18);
 
-    /* ------------------------------- site header ----------------------------- */
+      --ink: #0B1220;
+      --ink-2: #334155;
+      --muted: #64748b;
+      --line: #e6ebf3;
+
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-head: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: #ffffff;
+      line-height: 1.5;
+    }
+    img { max-width: 100%; }
+    h1, h2, h3, h4 { font-family: var(--font-head); color: var(--navy); }
+    a { color: var(--orange-text); }
+    ::selection { background: rgba(255, 98, 0, .22); }
+    .skip-link {
+      position: absolute; left: -9999px; top: 8px; z-index: 200;
+      background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 10px;
+      font-weight: 700; text-decoration: none;
+    }
+    .skip-link:focus { left: 12px; }
+
+    .btn { border-radius: 11px; font-weight: 700; border-color: #d7dee9; }
+    .btn-primary {
+      background: var(--brand-grad); color: #fff; border-color: transparent;
+      box-shadow: 0 1px 2px rgba(229, 87, 0, .28), 0 12px 24px -16px rgba(229, 87, 0, .9);
+    }
+    .btn-primary:hover { filter: brightness(1.04); }
+    .btn-lg { padding: 15px 24px; font-size: 16px; border-radius: 13px; }
+    .btn-navy { background: var(--navy); border-color: var(--navy); color: #fff; box-shadow: 0 12px 26px -18px rgba(6, 24, 63, .9); }
+    .btn-navy:hover { background: var(--navy-2); border-color: var(--navy-2); color: #fff; }
+    .btn-wa { background: #25d366; border-color: #25d366; color: #05301c; }
+    .btn-wa:hover { background: #1fbe5b; border-color: #1fbe5b; color: #05301c; }
+
+    /* ------------------------------ header -------------------------------- */
     .site-head {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(255, 255, 255, .92); backdrop-filter: saturate(150%) blur(12px);
-      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 60;
+      background: rgba(255, 255, 255, .94);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+      backdrop-filter: saturate(160%) blur(14px);
+      border-bottom: 1px solid #eef1f6;
     }
     .site-head .inner {
-      max-width: 1120px; margin: 0 auto; padding: 0 20px; height: 64px;
-      display: flex; align-items: center; gap: 14px;
+      max-width: 1180px; margin: 0 auto; padding: 0 22px; height: 74px;
+      display: flex; align-items: center; gap: 16px;
     }
-    .site-head .brand { font-size: 19px; text-decoration: none; color: var(--ink); }
+    .brand { display: inline-flex; align-items: center; text-decoration: none; flex: none; }
+    .brand-logo { display: block; height: 44px; width: auto; }
     .site-nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
     .site-nav a {
-      padding: 8px 12px; border-radius: 9px; font-size: 14px; font-weight: 600;
-      color: var(--ink-2); text-decoration: none; white-space: nowrap;
+      padding: 9px 13px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      color: #24314b; text-decoration: none; white-space: nowrap;
     }
-    .site-nav a:hover { background: var(--primary-50); color: var(--primary-700); }
+    .site-nav a:hover { background: var(--orange-50); color: var(--orange-text); }
+    .site-nav a.active { color: var(--orange-text); }
     .nav-actions { display: flex; align-items: center; gap: 8px; }
+    .nav-actions .btn { white-space: nowrap; }
     .nav-toggle {
-      display: none; width: 42px; height: 42px; align-items: center; justify-content: center;
-      border: 1px solid var(--line-strong); background: #fff; border-radius: 11px;
-      font-size: 18px; line-height: 1; color: var(--ink); cursor: pointer;
+      display: none; width: 44px; height: 44px; align-items: center; justify-content: center;
+      border: 1px solid #d7dee9; background: #fff; border-radius: 12px;
+      color: var(--navy); cursor: pointer; padding: 0;
     }
+    .nav-toggle svg { width: 22px; height: 22px; }
     .nav-toggle:focus-visible { outline: none; box-shadow: var(--ring); }
-    .mobile-nav {
-      display: none; border-top: 1px solid var(--line); background: #fff;
-      padding: 6px 20px 18px;
-    }
+    .mobile-nav { display: none; border-top: 1px solid #eef1f6; background: #fff; padding: 8px 20px 20px; }
     .mobile-nav.open { display: block; }
     .mobile-nav a {
       display: block; padding: 13px 2px; font-size: 15px; font-weight: 600;
-      color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--line);
+      color: #24314b; text-decoration: none; border-bottom: 1px solid #eef1f6;
     }
-    .mobile-nav a:hover { color: var(--primary-700); }
-    .mobile-nav .btn { margin-top: 14px; }
-
-    @media (max-width: 900px) {
-      .site-nav { display: none; }
+    .mobile-nav a:hover { color: var(--orange-text); }
+    .mobile-nav .btn { margin-top: 14px; color: #fff; }
+    .mobile-nav .btn-outline { color: var(--navy); }
+    @media (max-width: 980px) {
+      .site-nav, #jump-login { display: none; }
       .nav-toggle { display: inline-flex; }
-      #jump-login { display: none; }
+      .site-head .inner { height: 66px; }
+      .brand-logo { height: 38px; }
     }
-    @media (max-width: 420px) {
+    @media (max-width: 520px) {
       .site-head .inner { padding: 0 14px; gap: 10px; }
-      .site-head .brand { font-size: 17px; }
-      .site-head .brand .brand-name { font-size: 17px; }
+      .brand-logo { height: 34px; }
+      .nav-actions .btn-sm { padding: 8px 12px; font-size: 12.5px; }
     }
 
+    /* ------------------------------ layout -------------------------------- */
+    .lp-wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px; }
+    .lp-section { padding: 76px 0; scroll-margin-top: 88px; }
+    .lp-section.tint { background: #F7F9FC; border-top: 1px solid #eef1f6; border-bottom: 1px solid #eef1f6; }
+    .lp-section.dark { background: var(--navy); color: #fff; }
+    .lp-head { text-align: center; max-width: 700px; margin: 0 auto 42px; }
+    .lp-kicker {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px;
+      font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--orange-text);
+    }
+    .lp-kicker::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: var(--orange); }
+    .lp-head h2 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.14; letter-spacing: -.03em; margin: 0; }
+    .lp-head p { margin: 12px 0 0; color: var(--muted); font-size: 15.5px; line-height: 1.65; }
+    .lp-section.dark .lp-head h2 { color: #fff; }
+    .lp-section.dark .lp-head p { color: rgba(255, 255, 255, .72); }
+    .lp-section.dark .lp-kicker { color: #FF9A5C; }
+
+    /* ------------------------------- hero --------------------------------- */
+    .lp-hero {
+      position: relative; overflow: hidden; padding: 64px 0 72px;
+      background:
+        radial-gradient(900px 460px at 88% -10%, rgba(255, 98, 0, .15), transparent 62%),
+        radial-gradient(760px 420px at 0% 0%, rgba(6, 24, 63, .07), transparent 60%),
+        linear-gradient(180deg, #ffffff 0%, #FFF9F4 100%);
+      border-bottom: 1px solid #f1ece6;
+    }
+    .lp-hero::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(6, 24, 63, .055) 1px, transparent 1px);
+      background-size: 26px 26px;
+      -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 70%);
+      mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 70%);
+    }
+    .lp-hero .lp-wrap { position: relative; z-index: 1; }
+    .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 54px; align-items: center; }
+    .lp-eyebrow {
+      display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--orange-100); color: var(--orange-text);
+      font-size: 12.5px; font-weight: 800; box-shadow: 0 6px 18px -14px rgba(6, 24, 63, .45);
+    }
+    .lp-eyebrow .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, .16);
+    }
+    .lp-hero h1 {
+      font-size: clamp(34px, 4.6vw, 58px); line-height: 1.04; letter-spacing: -.045em;
+      margin: 18px 0 0; color: var(--navy);
+    }
+    .lp-hero h1 .hl { color: var(--orange); display: inline; }
+    .lp-lede { font-size: clamp(15.5px, 1.5vw, 17.5px); line-height: 1.65; color: #4a5872; margin: 18px 0 0; max-width: 34em; }
+    .lp-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .lp-cta .btn { min-height: 52px; }
+    .lp-trust { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 22px; font-size: 13px; color: #5b6980; }
+    .lp-trust span { display: inline-flex; align-items: center; gap: 7px; }
+    .lp-trust svg { width: 16px; height: 16px; color: #16a34a; flex: none; }
+    .lp-trust b { color: var(--navy); }
+
+    /* phone mock + proof badges */
+    .lp-visual { position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
+    .lp-phone {
+      position: relative; width: 286px; max-width: 84vw; border-radius: 42px; padding: 11px;
+      background: linear-gradient(165deg, #1a2b4d, #06183F 62%);
+      box-shadow: 0 50px 90px -46px rgba(6, 24, 63, .75), 0 0 0 1px rgba(6, 24, 63, .08);
+      transform: rotate(-1.4deg);
+    }
+    .lp-phone-screen { background: #fff; border-radius: 32px; overflow: hidden; padding: 16px 13px 18px; }
+    .lp-mini-top { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px dashed #e6ebf3; }
+    .lp-mini-logo {
+      width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center;
+      font-size: 17px; font-weight: 800; color: #fff; background: var(--brand-grad);
+    }
+    .lp-mini-name { font-size: 13.5px; font-weight: 800; color: var(--navy); line-height: 1.2; }
+    .lp-mini-sub { font-size: 10.5px; color: #5b6980; margin-top: 2px; }
+    .lp-mini-list { display: grid; gap: 9px; padding: 13px 0; }
+    .lp-mini-row { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: #334155; font-weight: 600; }
+    .lp-mini-row img { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; flex: none; background: #f1f5f9; }
+    .lp-mini-row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lp-mini-row b { font-variant-numeric: tabular-nums; color: var(--navy); }
+    .lp-mini-qr {
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      padding: 12px; border-radius: 16px; background: var(--orange-50); border: 1px solid var(--orange-100);
+    }
+    .lp-mini-qr span { font-size: 10.5px; font-weight: 700; color: var(--orange-text); }
+    #lp-qr { background: #fff; padding: 7px; border-radius: 11px; line-height: 0; }
+    #lp-qr img, #lp-qr canvas { display: block; width: 104px; height: 104px; border-radius: 7px; }
+    .lp-badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .lp-float {
+      background: #fff; border: 1px solid #eef1f6;
+      border-radius: 14px; padding: 10px 14px; box-shadow: 0 14px 34px -24px rgba(6, 24, 63, .5);
+      display: flex; align-items: center; gap: 9px;
+    }
+    .lp-float .ic {
+      width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+      background: var(--orange-50); color: var(--orange-text); flex: none;
+    }
+    .lp-float .ic svg { width: 18px; height: 18px; }
+    .lp-float .v { display: block; font-size: 15px; font-weight: 800; color: var(--navy); line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .lp-float .l { display: block; font-size: 10px; font-weight: 700; color: #5b6980; letter-spacing: .04em; text-transform: uppercase; }
+    .lp-float.f2 .ic { background: #e8f9ee; color: #15803d; }
+
+    /* --------------------------- live demo -------------------------------- */
+    .lp-demo-grid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 46px; align-items: center; }
+    .lp-demo-copy h2 { font-size: clamp(26px, 3vw, 36px); line-height: 1.14; letter-spacing: -.03em; margin: 0; }
+    .lp-demo-copy p { color: #55637a; font-size: 15.5px; line-height: 1.7; margin: 14px 0 0; }
+    .lp-demo-list { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 12px; }
+    .lp-demo-list li { display: flex; gap: 11px; font-size: 14.5px; color: #33415a; line-height: 1.5; }
+    .lp-demo-list .tick {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--orange-50); color: var(--orange-text);
+      display: grid; place-items: center; flex: none; font-size: 12px; font-weight: 900;
+    }
+    .lp-demo-copy .btn { margin-top: 26px; }
+    .lp-browser {
+      background: #fff; border: 1px solid #e6ebf3; border-radius: 22px; overflow: hidden;
+      box-shadow: 0 34px 70px -40px rgba(6, 24, 63, .45);
+    }
+    .lp-browser-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: #f6f8fb; border-bottom: 1px solid #e9eef5; }
+    .lp-browser-bar i { width: 9px; height: 9px; border-radius: 50%; background: #d6dee9; display: block; }
+    .lp-browser-bar i:nth-child(1) { background: #ffb4a3; }
+    .lp-browser-bar i:nth-child(2) { background: #ffd79a; }
+    .lp-browser-bar i:nth-child(3) { background: #a7e6b8; }
+    .lp-browser-url {
+      margin-left: 8px; flex: 1; background: #fff; border: 1px solid #e9eef5; border-radius: 8px;
+      padding: 5px 10px; font-size: 11px; color: #5b6980; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .lp-browser-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; background: #FBFCFE; }
+    .lp-browser-body img { width: 100%; height: 150px; object-fit: cover; border-radius: 12px; display: block; }
+    .lp-browser-body .wide { grid-column: 1 / -1; height: 130px; }
+    @media (max-width: 860px) {
+      .lp-demo-grid { grid-template-columns: 1fr; gap: 32px; }
+      .lp-browser-body img { height: 120px; }
+    }
+
+    /* --------------------------- how it works ----------------------------- */
+    .lp-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; position: relative; }
+    .lp-step {
+      position: relative; background: #fff; border: 1px solid #e9eef5; border-radius: 20px;
+      padding: 28px 24px; box-shadow: 0 18px 44px -34px rgba(6, 24, 63, .4);
+    }
+    .lp-step .num {
+      width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+      font-weight: 800; font-size: 16px; color: #fff; background: var(--brand-grad);
+      box-shadow: 0 12px 24px -14px rgba(229, 87, 0, .9);
+    }
+    .lp-step h3 { font-size: 17px; margin: 16px 0 7px; letter-spacing: -.015em; }
+    .lp-step p { margin: 0; font-size: 14px; line-height: 1.65; color: #5b6980; }
+    .lp-step .mini { margin-top: 14px; font-size: 11.5px; font-weight: 700; color: var(--orange-text); letter-spacing: .04em; text-transform: uppercase; }
+
+    /* ----------------------------- features ------------------------------- */
+    .lp-feats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .lp-feat {
+      background: #fff; border: 1px solid #e9eef5; border-radius: 18px; padding: 24px;
+      transition: border-color .18s, box-shadow .18s, transform .18s;
+    }
+    .lp-feat:hover { border-color: var(--orange-100); box-shadow: 0 22px 48px -34px rgba(6, 24, 63, .45); transform: translateY(-2px); }
+    .lp-feat .ico {
+      width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+      background: var(--orange-50); border: 1px solid var(--orange-100); color: var(--orange-text);
+    }
+    .lp-feat .ico svg { width: 22px; height: 22px; }
+    .lp-feat h3 { font-size: 16px; margin: 15px 0 6px; letter-spacing: -.01em; }
+    .lp-feat p { margin: 0; font-size: 13.5px; line-height: 1.65; color: #5b6980; }
+
+    /* ----------------------------- benefits ------------------------------- */
+    .lp-benefits { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 52px; align-items: center; }
+    .lp-benefit-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 26px; }
+    .lp-benefit {
+      display: flex; gap: 11px; align-items: flex-start; padding: 16px;
+      border-radius: 15px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12);
+    }
+    .lp-benefit .tick {
+      width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: #fff;
+      display: grid; place-items: center; flex: none; font-size: 12px; font-weight: 900;
+    }
+    .lp-benefit b { display: block; color: #fff; font-size: 14px; line-height: 1.35; }
+    .lp-benefit span { display: block; color: rgba(255, 255, 255, .66); font-size: 12.5px; margin-top: 3px; line-height: 1.5; }
+    .lp-benefit-visual { position: relative; }
+    .lp-benefit-visual img { width: 100%; height: 380px; object-fit: cover; border-radius: 22px; display: block; box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .8); }
+    .lp-benefit-badge {
+      position: absolute; left: 18px; bottom: 18px; right: 18px;
+      background: rgba(255, 255, 255, .96); border-radius: 16px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px; box-shadow: 0 20px 40px -24px rgba(0, 0, 0, .6);
+    }
+    .lp-benefit-badge .ico { width: 40px; height: 40px; border-radius: 12px; background: var(--orange-50); color: var(--orange-text); display: grid; place-items: center; flex: none; }
+    .lp-benefit-badge b { display: block; font-size: 14px; color: var(--navy); }
+    .lp-benefit-badge span { display: block; font-size: 11.5px; color: #6b7890; margin-top: 2px; }
+    .lp-section.dark .lp-benefits h2 { color: #fff; font-size: clamp(24px, 2.9vw, 34px); line-height: 1.15; letter-spacing: -.03em; margin: 0; }
+    .lp-section.dark .lp-benefits > div > p { color: rgba(255, 255, 255, .72); font-size: 15px; line-height: 1.7; margin: 14px 0 0; }
+
+    /* ------------------------------ pricing ------------------------------- */
+    .lp-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+    .lp-plan {
+      position: relative; display: flex; flex-direction: column; background: #fff;
+      border: 1px solid #e6ebf3; border-radius: 22px; padding: 30px 26px;
+      box-shadow: 0 20px 48px -40px rgba(6, 24, 63, .45);
+    }
+    .lp-plan.featured { border: 2px solid var(--orange); box-shadow: 0 30px 70px -40px rgba(229, 87, 0, .65); }
+    .lp-plan .tag {
+      position: absolute; top: -13px; left: 24px; padding: 6px 12px; border-radius: 999px;
+      background: #C24700; color: #fff; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 10px 20px -12px rgba(229, 87, 0, .95);
+    }
+    .lp-plan .tag.soft { background: var(--navy); box-shadow: none; color: #fff; }
+    .lp-plan-name { font-family: var(--font-head); font-size: 17px; font-weight: 800; color: var(--navy); }
+    .lp-price { display: flex; align-items: baseline; gap: 6px; margin: 10px 0 3px; }
+    .lp-price .amt { font-family: var(--font-head); font-size: 40px; font-weight: 800; letter-spacing: -.045em; line-height: 1; color: var(--navy); }
+    .lp-price .per { font-size: 12.5px; color: #5b6980; font-weight: 600; }
+    .lp-plan-desc { font-size: 13px; color: #66738a; margin: 6px 0 0; min-height: 20px; }
+    .lp-plan ul { list-style: none; margin: 20px 0 24px; padding: 0; display: grid; gap: 10px; }
+    .lp-plan li { display: flex; gap: 9px; font-size: 13.5px; line-height: 1.5; color: #33415a; }
+    .lp-plan li::before { content: "✓"; flex: none; color: #16a34a; font-weight: 900; }
+    .lp-plan .btn { margin-top: auto; }
+    .lp-note {
+      margin: 22px auto 0; max-width: 700px; text-align: center; font-size: 12.5px;
+      line-height: 1.65; color: #5b6980; background: var(--orange-50);
+      border: 1px solid var(--orange-100); border-radius: 14px; padding: 13px 18px;
+    }
+
+    /* ---------------------------- testimonials ----------------------------- */
+    .lp-testi {
+      max-width: 860px; margin: 0 auto; background: #fff; border: 1px solid #e6ebf3;
+      border-radius: 22px; padding: 34px; text-align: center;
+      box-shadow: 0 24px 60px -46px rgba(6, 24, 63, .4);
+    }
+    .lp-testi .quote { font-size: 42px; line-height: 1; color: var(--orange-100); font-family: Georgia, serif; }
+    .lp-testi h3 { font-size: 20px; margin: 6px 0 10px; letter-spacing: -.02em; }
+    .lp-testi p { color: #5b6980; font-size: 14.5px; line-height: 1.7; margin: 0 auto; max-width: 560px; }
+    .lp-testi .btn { margin-top: 20px; }
+    .lp-testi .honest {
+      display: inline-flex; align-items: center; gap: 8px; margin-top: 18px;
+      font-size: 12px; color: #5b6980; background: #F7F9FC; border: 1px solid #e9eef5;
+      border-radius: 999px; padding: 6px 13px;
+    }
+
+    /* -------------------------------- faq --------------------------------- */
+    .lp-faq { display: grid; gap: 11px; max-width: 860px; margin: 0 auto; }
+    .lp-faq details { background: #fff; border: 1px solid #e6ebf3; border-radius: 15px; padding: 0 20px; transition: border-color .15s; }
+    .lp-faq details[open] { border-color: var(--orange-100); }
+    .lp-faq summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      cursor: pointer; list-style: none; padding: 17px 0;
+      font-size: 15px; font-weight: 700; color: var(--navy);
+    }
+    .lp-faq summary::-webkit-details-marker { display: none; }
+    .lp-faq summary::after { content: "+"; flex: none; font-size: 22px; line-height: 1; font-weight: 400; color: var(--orange); }
+    .lp-faq details[open] summary::after { content: "–"; }
+    .lp-faq summary:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 8px; }
+    .lp-faq .a { margin: 0 0 18px; font-size: 14px; line-height: 1.7; color: #5b6980; }
+
+    /* ------------------------------ contact -------------------------------- */
+    .lp-contact { display: grid; grid-template-columns: 1.05fr .95fr; gap: 22px; align-items: stretch; }
+    .lp-contact-card {
+      background: #fff; border: 1px solid #e6ebf3; border-radius: 22px; padding: 30px;
+      box-shadow: 0 22px 50px -42px rgba(6, 24, 63, .45);
+    }
+    .lp-contact-card h3 { font-size: 20px; margin: 0 0 7px; letter-spacing: -.02em; }
+    .lp-contact-card > p { margin: 0; font-size: 14px; color: #5b6980; line-height: 1.65; }
+    .lp-contact-list { display: grid; gap: 11px; margin-top: 20px; }
+    .lp-contact-item {
+      display: flex; align-items: center; gap: 13px; padding: 14px 15px;
+      border: 1px solid #e9eef5; border-radius: 14px; text-decoration: none; color: inherit;
+      transition: border-color .15s, background .15s;
+    }
+    .lp-contact-item:hover { border-color: var(--orange); background: var(--orange-50); }
+    .lp-contact-item .ic {
+      width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+      background: var(--orange-50); color: var(--orange-text); flex: none;
+    }
+    .lp-contact-item .ic svg { width: 19px; height: 19px; }
+    .lp-contact-item .t { display: block; font-size: 14.5px; font-weight: 700; color: var(--navy); }
+    .lp-contact-item .s { display: block; font-size: 12.5px; color: #5b6980; margin-top: 1px; }
+    .lp-contact-item .go { margin-left: auto; color: #a3aec0; font-size: 18px; }
+    .lp-wa-card {
+      position: relative; overflow: hidden; background: linear-gradient(160deg, #0d8a63, #25d366 68%);
+      color: #fff; border-radius: 22px; padding: 32px; display: flex; flex-direction: column;
+      box-shadow: 0 26px 58px -34px rgba(18, 140, 126, .75);
+    }
+    .lp-wa-card::after {
+      content: ""; position: absolute; right: -60px; bottom: -80px; width: 220px; height: 220px;
+      border-radius: 50%; background: rgba(255, 255, 255, .12);
+    }
+    .lp-wa-card h3 { color: #fff; font-size: 21px; margin: 0 0 7px; letter-spacing: -.02em; position: relative; z-index: 1; }
+    .lp-wa-card p { margin: 0 0 20px; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, .94); position: relative; z-index: 1; }
+    .lp-wa-card .btn { background: #fff; border-color: #fff; color: #0d7a57; font-weight: 800; position: relative; z-index: 1; margin-top: auto; }
+    .lp-wa-card .btn:hover { background: #f0fdf4; border-color: #f0fdf4; color: #0b6b4c; }
+    .lp-wa-card .tiny { color: rgba(255, 255, 255, .85); margin-top: 12px; position: relative; z-index: 1; }
+
+    /* ------------------------------- footer -------------------------------- */
+    .site-foot { background: var(--navy); color: rgba(255, 255, 255, .72); }
+    .site-foot .inner {
+      max-width: 1180px; margin: 0 auto; padding: 56px 22px 26px;
+      display: grid; grid-template-columns: 1.7fr 1fr 1fr 1.2fr; gap: 34px;
+    }
+    .site-foot .brand-logo { height: 40px; }
+    .site-foot h4 { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #fff; margin: 0 0 14px; }
+    .site-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .site-foot a { color: rgba(255, 255, 255, .7); text-decoration: none; font-size: 13.5px; }
+    .site-foot a:hover { color: #fff; }
+    .site-foot .about { font-size: 13.5px; color: rgba(255, 255, 255, .66); line-height: 1.7; margin: 14px 0 0; max-width: 34em; }
+    .site-foot .made { display: inline-flex; gap: 6px; align-items: center; margin-top: 14px; font-size: 12.5px; color: rgba(255, 255, 255, .55); }
+    .site-foot .copy {
+      grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, .12); padding-top: 20px; margin-top: 8px;
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      font-size: 12px; color: rgba(255, 255, 255, .5);
+    }
+    .site-foot .copy a { color: rgba(255, 255, 255, .65); }
+
+    /* ------------------------- generator & dashboard ------------------------ */
+    body.owner-mode { background: #F7F9FC; }
     .gen-layout {
-      max-width: 1080px; margin: 26px auto 0; padding: 0 20px 64px;
-      display: grid; grid-template-columns: minmax(0, 1fr) 344px; gap: 20px; align-items: start;
+      max-width: 1120px; margin: 0 auto; padding: 0 22px 80px;
+      display: grid; grid-template-columns: minmax(0, 1fr) 356px; gap: 24px; align-items: start;
     }
-    .panel { background: #fff; padding: 28px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
+    #generator { padding-top: 0; }
+    .generator-section { background: #F7F9FC; border-top: 1px solid #eef1f6; padding: 68px 0 20px; scroll-margin-top: 88px; }
+    .panel { background: #fff; padding: 30px; border-radius: 20px; border: 1px solid #e6ebf3; box-shadow: 0 20px 50px -42px rgba(6, 24, 63, .45); }
     .field { margin-bottom: 18px; }
-    .input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; font: inherit; }
-    textarea.input { resize: vertical; min-height: 80px; }
+    .field label { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+    .input { width: 100%; padding: 13px 14px; border: 1px solid #dbe3ee; border-radius: 11px; margin-top: 6px; font: inherit; background: #fff; color: var(--ink); }
+    .input:focus { outline: none; border-color: var(--orange); box-shadow: var(--ring); }
+    .input::placeholder { color: #5b6980; }
+    textarea.input { resize: vertical; min-height: 84px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 24px; padding: 24px; background: var(--primary-50); border-radius: 16px; border: 1px solid var(--primary-100); text-align: center; }
-    #qr-code { background: #fff; padding: 16px; border-radius: 12px; box-shadow: var(--shadow-xs); margin: 16px 0; }
+    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 24px; padding: 26px; background: var(--orange-50); border-radius: 18px; border: 1px solid var(--orange-100); text-align: center; }
+    #qr-code { background: #fff; padding: 16px; border-radius: 14px; box-shadow: 0 8px 22px -16px rgba(6, 24, 63, .5); margin: 16px 0; }
+    .form-error { color: #dc2626; font-size: 12.5px; line-height: 1.5; margin: 10px 0 0; min-height: 17px; }
+    .form-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 12px; color: #5b6980; }
+    .gen-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; }
+    .gen-step { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: #5b6980; }
+    .gen-step .n {
+      width: 20px; height: 20px; border-radius: 50%; background: #eef2f7; color: #5b6980;
+      display: grid; place-items: center; font-size: 11px; font-weight: 800;
+    }
+    .gen-step.on { color: var(--orange-text); }
+    .gen-step.on .n { background: #C24700; color: #fff; }
+    .gen-step-line { width: 18px; height: 1px; background: #dbe3ee; }
+    .form-part { padding-top: 22px; margin-top: 22px; border-top: 1px solid #eef1f6; }
+    .form-part:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }
+    .form-part h3 { font-size: 15px; margin: 0 0 3px; letter-spacing: -.01em; }
+    .form-part p.sub { margin: 0 0 16px; font-size: 12.5px; color: #5b6980; }
 
-    .side { position: sticky; top: 82px; display: flex; flex-direction: column; gap: 16px; }
-    .side .panel { padding: 22px; }
-    .side h3 { font-size: 16px; margin: 0 0 4px; }
-    .side .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.55; }
-    .login-error { color: var(--red); font-size: 12.5px; margin: 0 0 10px; min-height: 16px; }
-    .divider-or { display: flex; align-items: center; gap: 10px; color: var(--muted-2); font-size: 11.5px; margin: 18px 0 14px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
-    .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .side { position: sticky; top: 94px; display: flex; flex-direction: column; gap: 16px; }
+    .side .panel { padding: 24px; }
+    .side h3 { font-size: 17px; margin: 0 0 5px; letter-spacing: -.015em; }
+    .side .hint { font-size: 12.5px; color: #5b6980; margin: 0 0 16px; line-height: 1.6; }
+    .login-error { color: #dc2626; font-size: 12.5px; margin: 0 0 10px; min-height: 16px; }
+    .divider-or { display: flex; align-items: center; gap: 10px; color: #5b6980; font-size: 11.5px; margin: 18px 0 14px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: #e6ebf3; }
+    .need-card { background: var(--navy); color: #fff; border: 0; border-radius: 20px; padding: 24px; }
+    .need-card h3 { color: #fff; font-size: 15px; margin: 0 0 4px; }
+    .need-card p { color: rgba(255, 255, 255, .68); font-size: 12.5px; margin: 0 0 14px; line-height: 1.55; }
+    .need-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+    .need-card li { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: rgba(255, 255, 255, .9); line-height: 1.45; }
+    .need-card li i { color: var(--orange-2); font-style: normal; font-weight: 900; }
 
-    /* ------------------------------- dashboard ------------------------------ */
-    .dash { grid-column: 1 / -1; padding: 26px; }
-    .dash-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    /* ------------------------------ dashboard ------------------------------ */
+    .dash { max-width: 1180px; margin: 0 auto; padding: 30px 22px 70px; }
+    .dash.panel { border-radius: 0; border: 0; box-shadow: none; background: transparent; max-width: 1180px; padding: 30px 22px 70px; }
+    .dash-head { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; }
     .dash-id { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    .dash-logo, .dash-logo-fallback {
-      width: 68px; height: 68px; border-radius: 18px; flex: none;
-    }
-    .dash-logo { object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 5px; }
-    .dash-logo-fallback {
-      display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff;
-      background: linear-gradient(135deg, #ea580c, #f97316);
-    }
-    .dash-id h2 { margin: 0; font-size: 22px; letter-spacing: -.025em; line-height: 1.15; }
-    .dash-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .dash-logo, .dash-logo-fallback { width: 62px; height: 62px; border-radius: 16px; flex: none; }
+    .dash-logo { object-fit: contain; background: #fff; border: 1px solid #e6ebf3; padding: 5px; }
+    .dash-logo-fallback { display: grid; place-items: center; font-size: 26px; font-weight: 800; color: #fff; background: var(--brand-grad); }
+    .dash-id h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; line-height: 1.15; }
+    .dash-sub { color: #5b6980; font-size: 13px; margin-top: 4px; }
     .dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 24px 0 8px; }
-    .stat { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: 0 4px 14px -8px rgba(15,23,42,.08); transition: transform .15s ease, box-shadow .15s ease; }
-    .stat-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-    .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); margin: 6px 0 0; line-height: 1.1; font-variant-numeric: tabular-nums; }
-    .stat-foot { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-    .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
-    .dash-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 6px 20px -12px rgba(15,23,42,.1); }
-    .dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-    .dash-card-head h3 { margin: 0; font-size: 15px; }
-    .menu-preview {
-      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fbfcfe;
-      padding: 12px; min-height: 150px; max-height: 560px; overflow: auto;
-      display: flex; align-items: flex-start; justify-content: center;
+    .dash-banner {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: #fff; border: 1px solid #e6ebf3; border-radius: 16px; padding: 14px 18px;
+      margin-bottom: 18px; box-shadow: 0 12px 30px -28px rgba(6, 24, 63, .4);
     }
-    .menu-preview img { max-width: 100%; margin: 0 auto; border-radius: 10px; display: block; }
-    .menu-preview iframe { width: 100%; height: 560px; border: 0; border-radius: 10px; background: #fff; }
+    .dash-banner .live { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 13px; color: var(--navy); }
+    .dash-banner .live i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .16); }
+    .dash-banner .sep { width: 1px; height: 18px; background: #e6ebf3; }
+    .dash-banner .txt { font-size: 12.5px; color: #5b6980; }
+    .stat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat {
+      background: #fff; border: 1px solid #e6ebf3; border-radius: 16px; padding: 16px 17px;
+      box-shadow: 0 10px 26px -26px rgba(6, 24, 63, .45);
+    }
+    .stat-label { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #5b6980; }
+    .stat-value { font-family: var(--font-head); font-size: 27px; font-weight: 800; letter-spacing: -.03em; color: var(--navy); margin: 7px 0 0; line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .stat-foot { font-size: 11.5px; color: #5b6980; margin-top: 5px; }
+    .stat.accent { background: var(--navy); border-color: var(--navy); }
+    .stat.accent .stat-label { color: rgba(255, 255, 255, .62); }
+    .stat.accent .stat-value { color: #fff; }
+    .stat.accent .stat-foot { color: rgba(255, 255, 255, .6); }
+    .stat.accent .stat-value small { color: var(--orange-2); }
+    .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+    .dash-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .dash-card { background: #fff; border: 1px solid #e6ebf3; border-radius: 18px; padding: 22px; box-shadow: 0 14px 34px -30px rgba(6, 24, 63, .45); }
+    .dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .dash-card-head h3 { margin: 0; font-size: 15.5px; letter-spacing: -.01em; }
     .menu-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
-    .menu-gallery-item { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fbfcfe; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; }
+    .menu-gallery-item { position: relative; border: 1px solid #e6ebf3; border-radius: 12px; overflow: hidden; background: #fbfcfe; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; }
     .menu-gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .menu-gallery-item .mg-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(15,23,42,.75); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+    .menu-gallery-item .mg-remove { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(6, 24, 63, .78); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
     .menu-gallery-item .mg-remove:hover { background: #dc2626; }
-    .menu-gallery-empty { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 12.5px; padding: 24px 8px; border: 1px dashed var(--line-strong); border-radius: 12px; }
-    .menu-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    .ocr-status { font-size: 12px; color: var(--muted); margin: 8px 0 0; min-height: 16px; }
-    .menu-text-preview {
-      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fff;
-      padding: 14px 16px; margin-top: 8px; max-height: 340px; overflow: auto;
-    }
-    .menu-text-preview:empty { display: none; }
-    .pv-group + .pv-group { margin-top: 12px; }
-    .pv-cat { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 4px; }
-    .pv-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; }
-    .pv-name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
-    .pv-dots { flex: 1; min-width: 10px; border-bottom: 1px dotted #cbd5e1; transform: translateY(-3px); }
-    .pv-price { font-size: 13px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-    #d-qr { display: flex; justify-content: center; margin-bottom: 14px; }
-    #d-qr img, #d-qr canvas { display: block; border-radius: 10px; background: #fff; }
+    .menu-gallery-empty { grid-column: 1 / -1; text-align: center; color: #5b6980; font-size: 12.5px; padding: 26px 8px; border: 1px dashed #d7dee9; border-radius: 12px; }
+    .menu-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .ocr-status { font-size: 12px; color: #5b6980; margin: 8px 0 0; min-height: 16px; }
+    #d-qr { display: flex; justify-content: center; margin-bottom: 16px; }
+    #d-qr img, #d-qr canvas { display: block; border-radius: 12px; background: #fff; }
     .owner-actions { display: flex; flex-direction: column; gap: 8px; }
-
-    .click-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .click-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
     .click-row { display: flex; align-items: center; gap: 10px; }
     .click-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-    .click-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-    .click-count { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px; }
-    .click-today { font-size: 11px; color: var(--muted); min-width: 46px; text-align: right; }
+    .click-name { flex: 1; font-size: 13px; font-weight: 600; color: #33415a; }
+    .click-count { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px; color: var(--navy); }
+    .click-today { font-size: 11px; color: #5b6980; min-width: 52px; text-align: right; }
     .click-row.off { opacity: .45; }
 
     /* --------------------------------- modal -------------------------------- */
     .modal-backdrop {
-      position: fixed; inset: 0; z-index: 110; background: rgba(15, 23, 42, .45);
-      backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center;
+      position: fixed; inset: 0; z-index: 110; background: rgba(6, 24, 63, .48);
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+      display: flex; align-items: flex-start; justify-content: center;
       padding: 26px 14px; overflow: auto;
     }
-    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 620px; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .6); }
-    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .hidden { display: none !important; }
+    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 640px; box-shadow: 0 30px 80px -30px rgba(6, 24, 63, .65); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 19px 24px; border-bottom: 1px solid #eef1f6; }
     .modal-head h3 { margin: 0; font-size: 18px; }
-    .icon-btn { border: 0; background: transparent; font-size: 20px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 8px; }
-    .icon-btn:hover { background: #f1f5f9; color: var(--ink); }
-    .modal-body { padding: 20px 22px; }
-    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); position: sticky; bottom: 0; background: #fff; border-radius: 0 0 20px 20px; }
+    .icon-btn { border: 0; background: transparent; font-size: 20px; line-height: 1; cursor: pointer; color: #5b6980; padding: 5px 9px; border-radius: 8px; }
+    .icon-btn:hover { background: #f1f5f9; color: var(--navy); }
+    .modal-body { padding: 22px 24px; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 15px 24px; border-top: 1px solid #eef1f6; position: sticky; bottom: 0; background: #fff; border-radius: 0 0 20px 20px; }
     .edit-asset { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
-    .edit-logo { width: 64px; height: 64px; border-radius: 14px; object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 4px; flex: none; }
-    .edit-menu-thumb { width: 64px; height: 64px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; }
+    .edit-logo { width: 64px; height: 64px; border-radius: 14px; object-fit: contain; background: #fff; border: 1px solid #e6ebf3; padding: 4px; flex: none; }
+    .edit-menu-thumb { width: 64px; height: 64px; border-radius: 14px; background: #f8fafc; border: 1px solid #e6ebf3; display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; }
     .edit-menu-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
     #toast {
       position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
-      background: #0f172a; color: #fff; padding: 11px 18px; border-radius: 12px;
-      font-size: 13.5px; font-weight: 600; box-shadow: 0 16px 40px -16px rgba(15, 23, 42, .7);
+      background: var(--navy); color: #fff; padding: 12px 20px; border-radius: 12px;
+      font-size: 13.5px; font-weight: 600; box-shadow: 0 16px 40px -16px rgba(6, 24, 63, .7);
       opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200;
     }
     #toast.show { opacity: 1; transform: translate(-50%, 0); }
     #toast.err { background: #b91c1c; }
 
-    @media (max-width: 980px) {
-      .gen-layout { grid-template-columns: 1fr; }
-      .side { position: static; }
-      .row { grid-template-columns: 1fr; }
-      .dash-cols { grid-template-columns: 1fr; }
-    }
+    /* ----------------------------- embedding ------------------------------- */
+    html.embed body { background: var(--bg); }
+    html.embed .site-head, html.embed #marketing, html.embed #site-foot { display: none !important; }
+    html.embed #generator { padding: 20px 0 44px; }
+    html.embed #generator .lp-wrap { display: none; }
+    html.embed #generator-panel > h2, html.embed #generator-panel > p.block-lede { display: none; }
+    html.embed #generator .gen-layout { margin-top: 0; }
 
-    /* ========================== PHASE 1 · LANDING PAGE ======================= */
-    .lp-wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
-    .lp-section { padding: 62px 0; scroll-margin-top: 78px; }
-    .lp-section.alt { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .lp-head { text-align: center; max-width: 660px; margin: 0 auto 34px; }
-    .lp-head h2 { font-size: clamp(24px, 3.1vw, 34px); letter-spacing: -.03em; line-height: 1.15; }
-    .lp-head p { color: var(--muted); margin: 10px 0 0; font-size: 15px; line-height: 1.6; }
-
-    /* hero */
-    .lp-hero {
-      position: relative; overflow: hidden; padding: 54px 0 34px;
-      background:
-        radial-gradient(820px 380px at 82% -8%, rgba(249, 115, 22, .17), transparent 62%),
-        radial-gradient(680px 340px at 4% 8%, rgba(234, 88, 12, .10), transparent 60%);
-    }
-    .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr); gap: 44px; align-items: center; }
-    .lp-eyebrow {
-      display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 999px;
-      background: #fff; border: 1px solid var(--primary-100); color: var(--primary-700);
-      font-size: 12px; font-weight: 800; letter-spacing: .01em; box-shadow: var(--shadow-xs);
-    }
-    .lp-eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22, 163, 74, .15); }
-    .lp-hero h1 { font-size: clamp(30px, 4.3vw, 51px); line-height: 1.07; letter-spacing: -.035em; margin: 16px 0 0; }
-    .lp-hero h1 .hl { color: var(--primary); }
-    .lp-lede { font-size: clamp(15px, 1.5vw, 17px); line-height: 1.62; color: var(--muted); margin: 15px 0 0; max-width: 32em; }
-    .lp-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
-    .lp-cta .btn { min-height: 48px; }
-    .lp-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 20px; font-size: 12.5px; color: var(--muted); }
-    .lp-trust b { color: var(--ink-2); }
-
-    /* phone mock-up */
-    .lp-visual { display: flex; justify-content: center; }
-    .lp-phone {
-      position: relative; width: 272px; max-width: 82vw; border-radius: 38px; padding: 10px;
-      background: linear-gradient(165deg, #243043, #0f172a 60%);
-      box-shadow: 0 44px 90px -44px rgba(15, 23, 42, .65), 0 0 0 1px rgba(15, 23, 42, .08);
-    }
-    .lp-phone-screen { background: #fff; border-radius: 29px; overflow: hidden; padding: 14px 12px 16px; }
-    .lp-mini-top { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
-    .lp-mini-logo {
-      width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center;
-      font-size: 17px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ea580c, #f97316);
-    }
-    .lp-mini-name { font-size: 13.5px; font-weight: 800; color: var(--ink); line-height: 1.2; }
-    .lp-mini-sub { font-size: 10.5px; color: var(--muted-2); margin-top: 2px; }
-    .lp-mini-list { display: grid; gap: 8px; padding: 12px 0; }
-    .lp-mini-row { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--ink-2); font-weight: 600; }
-    .lp-mini-row img { width: 32px; height: 32px; border-radius: 9px; object-fit: cover; flex: none; background: #f1f5f9; }
-    .lp-mini-row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lp-mini-row b { font-variant-numeric: tabular-nums; color: var(--ink); }
-    .lp-mini-qr {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      padding: 12px; border-radius: 14px; background: var(--primary-50); border: 1px solid var(--primary-100);
-    }
-    .lp-mini-qr span { font-size: 10.5px; font-weight: 700; color: var(--primary-700); }
-    #lp-qr { background: #fff; padding: 7px; border-radius: 10px; line-height: 0; }
-    #lp-qr img, #lp-qr canvas { display: block; width: 104px; height: 104px; border-radius: 6px; }
-
-    /* how it works */
-    .lp-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .lp-step {
-      position: relative; background: #fff; border: 1px solid var(--line); border-radius: 18px;
-      padding: 24px 22px; box-shadow: 0 16px 38px -30px rgba(15, 23, 42, .45);
-    }
-    .lp-step .num {
-      width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
-      font-weight: 800; font-size: 15px; color: #fff; background: var(--brand-grad);
-      box-shadow: 0 10px 22px -12px rgba(234, 88, 12, .8);
-    }
-    .lp-step h3 { font-size: 16.5px; margin: 14px 0 6px; }
-    .lp-step p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
-
-    /* features */
-    .lp-feats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .lp-feat {
-      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 20px;
-      transition: border-color .15s, box-shadow .15s, transform .15s;
-    }
-    .lp-feat:hover { border-color: var(--primary-100); box-shadow: 0 18px 40px -30px rgba(15, 23, 42, .5); transform: translateY(-1px); }
-    .lp-feat .ico {
-      width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
-      font-size: 20px; background: var(--primary-50); border: 1px solid var(--primary-100);
-    }
-    .lp-feat h3 { font-size: 15.5px; margin: 14px 0 5px; }
-    .lp-feat p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
-
-    /* pricing */
-    .lp-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
-    .lp-plan {
-      position: relative; display: flex; flex-direction: column; background: #fff;
-      border: 1px solid var(--line); border-radius: 20px; padding: 26px 24px;
-      box-shadow: 0 18px 44px -36px rgba(15, 23, 42, .45);
-    }
-    .lp-plan.featured { border-color: var(--primary); box-shadow: 0 28px 64px -36px rgba(234, 88, 12, .6); }
-    .lp-plan .tag {
-      position: absolute; top: -12px; left: 22px; padding: 5px 11px; border-radius: 999px;
-      background: var(--primary); color: #fff; font-size: 10.5px; font-weight: 800;
-      letter-spacing: .07em; text-transform: uppercase; box-shadow: 0 8px 18px -10px rgba(234, 88, 12, .9);
-    }
-    .lp-plan .tag.soft { background: #334155; box-shadow: none; }
-    .lp-plan-name { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
-    .lp-price { display: flex; align-items: baseline; gap: 6px; margin: 8px 0 2px; }
-    .lp-price .amt { font-size: 38px; font-weight: 800; letter-spacing: -.045em; line-height: 1; }
-    .lp-price .per { font-size: 12.5px; color: var(--muted); font-weight: 600; }
-    .lp-plan-desc { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; min-height: 18px; }
-    .lp-plan ul { list-style: none; margin: 18px 0 22px; padding: 0; display: grid; gap: 9px; }
-    .lp-plan li { display: flex; gap: 8px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-    .lp-plan li::before { content: "✓"; flex: none; color: var(--green); font-weight: 800; }
-    .lp-plan .btn { margin-top: auto; }
-    .lp-note {
-      margin: 18px auto 0; max-width: 640px; text-align: center; font-size: 12.5px;
-      line-height: 1.6; color: var(--muted); background: var(--primary-50);
-      border: 1px solid var(--primary-100); border-radius: 12px; padding: 12px 16px;
-    }
-
-    /* faq */
-    .lp-faq { display: grid; gap: 10px; max-width: 820px; margin: 0 auto; }
-    .lp-faq details { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 0 18px; }
-    .lp-faq details[open] { border-color: var(--primary-100); }
-    .lp-faq summary {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      cursor: pointer; list-style: none; padding: 16px 0;
-      font-size: 14.5px; font-weight: 700; color: var(--ink);
-    }
-    .lp-faq summary::-webkit-details-marker { display: none; }
-    .lp-faq summary::after { content: "+"; flex: none; font-size: 21px; line-height: 1; font-weight: 400; color: var(--primary); }
-    .lp-faq details[open] summary::after { content: "–"; }
-    .lp-faq summary:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 8px; }
-    .lp-faq .a { margin: 0 0 16px; font-size: 13.5px; line-height: 1.7; color: var(--muted); }
-
-    /* contact */
-    .lp-contact { display: grid; grid-template-columns: 1.05fr .95fr; gap: 20px; align-items: start; }
-    .lp-contact-card {
-      background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 26px;
-      box-shadow: 0 20px 46px -38px rgba(15, 23, 42, .45);
-    }
-    .lp-contact-card h3 { font-size: 18px; margin: 0 0 6px; }
-    .lp-contact-card > p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.6; }
-    .lp-contact-list { display: grid; gap: 10px; margin-top: 18px; }
-    .lp-contact-item {
-      display: flex; align-items: center; gap: 12px; padding: 13px 14px;
-      border: 1px solid var(--line); border-radius: 13px; text-decoration: none; color: inherit;
-      transition: border-color .15s, background .15s;
-    }
-    .lp-contact-item:hover { border-color: var(--primary); background: var(--primary-50); }
-    .lp-contact-item .ic { font-size: 18px; width: 24px; text-align: center; flex: none; }
-    .lp-contact-item .t { display: block; font-size: 14px; font-weight: 700; color: var(--ink); }
-    .lp-contact-item .s { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
-    .lp-contact-item .go { margin-left: auto; color: var(--muted-2); font-size: 16px; }
-    .lp-wa-card {
-      background: linear-gradient(160deg, #128c7e, #25d366); color: #fff; border: 0;
-      border-radius: 20px; padding: 26px; box-shadow: 0 24px 54px -34px rgba(18, 140, 126, .8);
-    }
-    .lp-wa-card h3 { color: #fff; font-size: 18px; margin: 0 0 6px; }
-    .lp-wa-card p { margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; color: rgba(255, 255, 255, .92); }
-    .lp-wa-card .btn { background: #fff; border-color: #fff; color: #128c7e; font-weight: 800; }
-    .lp-wa-card .btn:hover { background: #f0fdf4; border-color: #f0fdf4; color: #0f766e; }
-    .lp-wa-card .tiny { color: rgba(255, 255, 255, .85); }
-
-    /* footer */
-    .site-foot { background: #fff; border-top: 1px solid var(--line); }
-    .site-foot .inner {
-      max-width: 1120px; margin: 0 auto; padding: 36px 20px 26px;
-      display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 26px;
-    }
-    .site-foot h4 { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
-    .site-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
-    .site-foot a { color: var(--ink-2); text-decoration: none; font-size: 13.5px; }
-    .site-foot a:hover { color: var(--primary-700); }
-    .site-foot .about { font-size: 13px; color: var(--muted); line-height: 1.65; margin: 10px 0 0; max-width: 34em; }
-    .site-foot .copy {
-      grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;
-      display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-      font-size: 12px; color: var(--muted-2);
-    }
-
-    /* form feedback */
-    .form-error { color: var(--red); font-size: 12.5px; line-height: 1.5; margin: 10px 0 0; min-height: 17px; }
-    .form-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
-
-    /* owner mode: hide marketing, widen generator */
+    /* owner mode */
     body.owner-mode .site-nav,
     body.owner-mode #jump-login,
     body.owner-mode #nav-register,
     body.owner-mode .nav-toggle { display: none; }
     body.owner-mode #marketing,
     body.owner-mode #site-foot { display: none; }
-    body.owner-mode .gen-layout { grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+    body.owner-mode .gen-layout { grid-template-columns: minmax(0, 1fr); max-width: 900px; }
     body.owner-mode #side-panel { display: none; }
-    body.owner-mode .lp-section { padding-top: 26px; }
+    body.owner-mode .dash { display: block; }
 
-    @media (max-width: 900px) {
-      .lp-hero { padding: 34px 0 26px; }
-      .lp-hero-grid { grid-template-columns: 1fr; gap: 34px; }
+    /* ----------------------------- responsive ------------------------------ */
+    @media (max-width: 1080px) {
+      .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .lp-benefits { gap: 34px; }
+    }
+    @media (max-width: 980px) {
+      .gen-layout { grid-template-columns: 1fr; }
+      .side { position: static; }
+      .row { grid-template-columns: 1fr; }
+      .dash-cols { grid-template-columns: 1fr; }
+      .lp-hero { padding: 44px 0 54px; }
+      .lp-hero-grid { grid-template-columns: 1fr; gap: 42px; }
       .lp-visual { order: 2; }
       .lp-steps { grid-template-columns: 1fr; }
       .lp-feats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .lp-plans { grid-template-columns: 1fr; max-width: 520px; margin: 0 auto; }
+      .lp-plans { grid-template-columns: 1fr; max-width: 540px; margin: 0 auto; }
       .lp-contact { grid-template-columns: 1fr; }
+      .lp-benefits { grid-template-columns: 1fr; }
+      .lp-benefit-visual { order: -1; }
+      .lp-benefit-visual img { height: 300px; }
       .site-foot .inner { grid-template-columns: 1fr 1fr; }
-      .lp-section { padding: 46px 0; }
+      .lp-section { padding: 58px 0; }
     }
-    @media (max-width: 600px) {
+    @media (max-width: 640px) {
+      .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .lp-feats { grid-template-columns: 1fr; }
+      .lp-benefit-list { grid-template-columns: 1fr; }
       .lp-plan.featured { order: -1; }
       .lp-cta .btn { flex: 1 1 100%; }
-      .lp-plan .tag { left: 18px; }
-      .site-foot .inner { grid-template-columns: 1fr; gap: 22px; }
+      .lp-plan .tag { left: 20px; }
+      .site-foot .inner { grid-template-columns: 1fr; gap: 26px; }
+      .lp-hero h1 { font-size: 36px; }
+      .lp-browser-body { grid-template-columns: 1fr 1fr; }
+      .lp-browser-body .wide { display: none; }
+      .dash { padding: 22px 14px 60px; }
+      .gen-layout { padding: 0 14px 64px; }
+      .panel { padding: 22px 18px; }
+      .lp-wrap { padding: 0 16px; }
+      .lp-section { padding: 48px 0; }
     }
   </style>
 </head>
 <body>
-  <header class="site-head">
+  <a class="skip-link" href="#home">Skip to content</a>
+
+  <header class="site-head" id="site-head">
     <div class="inner">
       <a class="brand" id="brand-home" href="#home" aria-label="QRush home">
-        <img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="" />
-        <span class="brand-name">QRush</span>
+        <img class="brand-logo" src="/img/qrush-logo.png?v=4" alt="QRush — Smart QR Ordering for Restaurants" width="180" height="77" />
       </a>
       <nav class="site-nav" aria-label="Main navigation">
         <a href="#home">Home</a>
-        <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
@@ -419,12 +695,13 @@
       <div class="nav-actions">
         <button class="btn btn-ghost btn-sm" id="jump-login" type="button">Owner Login</button>
         <a class="btn btn-primary btn-sm" id="nav-register" href="#generator">Register Free</a>
-        <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">☰</button>
+        <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
       </div>
     </div>
     <div class="mobile-nav" id="mobile-nav">
       <a href="#home">Home</a>
-      <a href="#how">How it works</a>
       <a href="#features">Features</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
@@ -436,7 +713,7 @@
 
   <main>
     <div id="marketing">
-      <!-- -------------------------------- hero -------------------------------- -->
+      <!-- ============================== HERO ============================== -->
       <section class="lp-hero" id="home">
         <div class="lp-wrap">
           <div class="lp-hero-grid">
@@ -444,17 +721,20 @@
               <span class="lp-eyebrow"><span class="dot"></span> Free during launch · No card required</span>
               <h1>Your Restaurant's Digital Menu, <span class="hl">One Scan Away</span></h1>
               <p class="lp-lede">
-                Apni menu ki photo upload karein — 2 minute me aapka QR menu live.
-                Customer QR scan karega aur seedha aapki menu dekhega. Bina app, bina reprinting, bina monthly fees.
+                Upload a photo or PDF of your menu — your QR menu goes live in 2 minutes.
+                Customers scan the QR and see your menu instantly. No app, no reprinting, no monthly fee.
               </p>
               <div class="lp-cta">
-                <a class="btn btn-primary btn-lg" href="#generator">Get Started Free</a>
-                <a class="btn btn-outline btn-lg" href="/demo-menu.html" target="_blank" rel="noopener">▶ Live Demo</a>
+                <a class="btn btn-primary btn-lg" href="#generator">Get Your Free QR</a>
+                <a class="btn btn-outline btn-lg" href="/demo-menu.html" target="_blank" rel="noopener">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                  Live Menu Demo
+                </a>
               </div>
               <div class="lp-trust">
-                <span>✅ <b>No setup fee</b></span>
-                <span>✅ Ready in <b>2 minutes</b></span>
-                <span>✅ Works on <b>any phone</b></span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> <b>No setup fee</b></span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Ready in <b>2 minutes</b></span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Works on <b>any phone</b></span>
               </div>
             </div>
 
@@ -465,7 +745,7 @@
                     <div class="lp-mini-logo">S</div>
                     <div>
                       <div class="lp-mini-name">Spice Garden</div>
-                      <div class="lp-mini-sub">Kolhapur · Menu</div>
+                      <div class="lp-mini-sub">Kolhapur · Digital Menu</div>
                     </div>
                   </div>
                   <div class="lp-mini-list">
@@ -479,111 +759,190 @@
                   </div>
                 </div>
               </div>
+              <div class="lp-badges">
+                <div class="lp-float f1">
+                  <span class="ic">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>
+                  </span>
+                  <span><span class="v">Live</span><span class="l">Scan analytics</span></span>
+                </div>
+                <div class="lp-float f2">
+                  <span class="ic">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v.01M17 20v.01M20 17v.01"/></svg>
+                  </span>
+                  <span><span class="v">2 min</span><span class="l">QR ready</span></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ----------------------------- how it works ---------------------------- -->
-      <section class="lp-section alt" id="how">
+      <!-- ============================ LIVE DEMO =========================== -->
+      <section class="lp-section" id="demo">
+        <div class="lp-wrap">
+          <div class="lp-demo-grid">
+            <div class="lp-demo-copy">
+              <span class="lp-kicker">Live menu demo</span>
+              <h2>See exactly what your customers will see</h2>
+              <p>
+                A clean, mobile-first menu that opens in seconds. Your logo, restaurant name,
+                contact details and social links sit right at the top — your menu below.
+              </p>
+              <ul class="lp-demo-list">
+                <li><span class="tick">✓</span> Opens in the browser — no app download, no login</li>
+                <li><span class="tick">✓</span> Menu photo or PDF, optimised for mobile screens</li>
+                <li><span class="tick">✓</span> WhatsApp, Instagram, Facebook and website buttons</li>
+                <li><span class="tick">✓</span> Menu changes appear instantly — the QR never changes</li>
+              </ul>
+              <a class="btn btn-navy btn-lg" href="/demo-menu.html" target="_blank" rel="noopener">Open Live Demo →</a>
+            </div>
+            <div class="lp-browser" aria-hidden="true">
+              <div class="lp-browser-bar"><i></i><i></i><i></i><span class="lp-browser-url">www.qrush.in/m/spice-garden</span></div>
+              <div class="lp-browser-body">
+                <img src="/img/demo/paneer-butter-masala.jpg" alt="" loading="lazy" />
+                <img src="/img/demo/butter-chicken.jpg" alt="" loading="lazy" />
+                <img class="wide" src="/img/landing/thali.jpg" alt="" loading="lazy" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================== HOW IT WORKS ========================= -->
+      <section class="lp-section tint" id="how">
         <div class="lp-wrap">
           <div class="lp-head">
-            <h2>How it works</h2>
-            <p>Teen simple steps — koi technical knowledge ki zaroorat nahi.</p>
+            <span class="lp-kicker">How QRush works</span>
+            <h2>Your QR menu live in three easy steps</h2>
+            <p>No technical knowledge needed — and nothing to install.</p>
           </div>
           <div class="lp-steps">
             <div class="lp-step">
               <div class="num">1</div>
-              <h3>Apni menu upload karein</h3>
-              <p>Menu card ki photo ya PDF apne phone se upload karein. Ek se zyada page bhi add kar sakte hain.</p>
+              <h3>Upload your menu</h3>
+              <p>Take a photo of your menu card or choose a PDF from your phone. You can add more than one page.</p>
+              <div class="mini">Photo or PDF</div>
             </div>
             <div class="lp-step">
               <div class="num">2</div>
-              <h3>QR code turant milega</h3>
-              <p>Restaurant ka naam, logo aur details bhariye. QR code ready — download karein ya seedha print karein.</p>
+              <h3>Get your QR instantly</h3>
+              <p>Add your restaurant name, number and logo. Your QR code is ready to download or print.</p>
+              <div class="mini">Ready in 2 minutes</div>
             </div>
             <div class="lp-step">
               <div class="num">3</div>
-              <h3>Table par laga dein</h3>
-              <p>Customer QR scan karega aur menu browser me khul jayegi. Koi app download nahi, koi login nahi.</p>
+              <h3>Place it on the table</h3>
+              <p>Customers scan with their phone camera and the menu opens in the browser. No app, no login.</p>
+              <div class="mini">Scan &amp; view</div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ------------------------------ features ------------------------------- -->
+      <!-- ============================= FEATURES =========================== -->
       <section class="lp-section" id="features">
         <div class="lp-wrap">
           <div class="lp-head">
-            <h2>Everything a restaurant menu needs</h2>
-            <p>Sirf ek QR menu — lekin usme wo sab kuch jo customer ko chahiye.</p>
+            <span class="lp-kicker">Features</span>
+            <h2>Everything your menu needs</h2>
+            <p>Simple for you, effortless for your customers.</p>
           </div>
           <div class="lp-feats">
             <div class="lp-feat">
-              <div class="ico">📷</div>
-              <h3>Menu photo ya PDF</h3>
-              <p>Phone se menu card ki photo ya PDF upload karein. Badi photos automatically compress ho jaati hain.</p>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16V5a1 1 0 0 1 1-1h11"/><path d="M8 20h11a1 1 0 0 0 1-1V8"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <h3>Menu photo or PDF</h3>
+              <p>Upload a photo card or a PDF straight from your phone. Large photos are compressed automatically.</p>
             </div>
             <div class="lp-feat">
-              <div class="ico">📱</div>
-              <h3>Customer ko app nahi chahiye</h3>
-              <p>Camera se QR scan karo aur menu browser me khul jaati hai — iPhone ho ya Android.</p>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
+              <h3>No app for customers</h3>
+              <p>Guests scan the QR and the menu opens in the browser — on iPhone and Android alike.</p>
             </div>
             <div class="lp-feat">
-              <div class="ico">🖼️</div>
-              <h3>Multi-page menu</h3>
-              <p>Starters, main course, desserts — har page alag image me. Purane pages remove bhi kar sakte hain.</p>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
+              <h3>Multi-page menus</h3>
+              <p>Starters, main course, desserts — each page as its own image. Add or remove pages anytime.</p>
             </div>
             <div class="lp-feat">
-              <div class="ico">✨</div>
-              <h3>Photo se text menu</h3>
-              <p>Menu card ki photo se items aur prices automatically nikaal kar clean text menu banayein.</p>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg></div>
+              <h3>Photo to text menu</h3>
+              <p>Convert your menu card photo into a clean text menu with items and prices in a few taps.</p>
             </div>
             <div class="lp-feat">
-              <div class="ico">📊</div>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div>
               <h3>Real scan analytics</h3>
-              <p>Total scans, unique visitors aur kis social link par kitne clicks — sab apne dashboard me.</p>
+              <p>See total views, unique visitors, 7-day and 30-day trends, and which social link gets clicked.</p>
             </div>
             <div class="lp-feat">
-              <div class="ico">🔗</div>
-              <h3>Logo aur social links</h3>
-              <p>Apna logo lagayein aur WhatsApp, Instagram, Facebook aur website ke buttons menu par jodein.</p>
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div>
+              <h3>Logo &amp; social links</h3>
+              <p>Show your logo and add WhatsApp, Instagram, Facebook and website buttons right on your menu.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ------------------------------- pricing ------------------------------- -->
-      <section class="lp-section alt" id="pricing">
+      <!-- ============================= BENEFITS =========================== -->
+      <section class="lp-section dark" id="benefits">
+        <div class="lp-wrap">
+          <div class="lp-benefits">
+            <div>
+              <span class="lp-kicker">Owner benefits</span>
+              <h2>Built for restaurant owners, not for developers</h2>
+              <p>Everything is designed so you can manage your menu from your phone — between services, without training.</p>
+              <div class="lp-benefit-list">
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Change prices anytime</b><span>Update the menu and customers see it instantly.</span></span></div>
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Never reprint the QR</b><span>One QR for life, even when the menu changes.</span></span></div>
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Know your footfall</b><span>Scans and unique visitors in one dashboard.</span></span></div>
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Look professional</b><span>Your logo, your colours, your contact details.</span></span></div>
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Save printing cost</b><span>No paper menus to reprint every season.</span></span></div>
+                <div class="lp-benefit"><span class="tick">✓</span><span><b>Works on every phone</b><span>No app, no login for your customers.</span></span></div>
+              </div>
+            </div>
+            <div class="lp-benefit-visual">
+              <img src="/img/landing/interior.jpg" alt="Restaurant interior with guests" loading="lazy" />
+              <div class="lp-benefit-badge">
+                <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></span>
+                <span><b>Dashboard included</b><span>Views, visitors, social clicks and your QR — all in one place.</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== PRICING =========================== -->
+      <section class="lp-section tint" id="pricing">
         <div class="lp-wrap">
           <div class="lp-head">
-            <h2>Simple pricing</h2>
-            <p>Shuruaat free — jab aapka restaurant badhe, tab upgrade karein.</p>
+            <span class="lp-kicker">Pricing</span>
+            <h2>Start free. Upgrade when you grow.</h2>
+            <p>No credit card needed for the Free plan.</p>
           </div>
           <div class="lp-plans">
             <div class="lp-plan featured">
               <span class="tag">Free now</span>
               <div class="lp-plan-name">Free</div>
               <div class="lp-price"><span class="amt">₹0</span><span class="per">/ forever</span></div>
-              <p class="lp-plan-desc">Chhote restaurants aur cafes ke liye.</p>
+              <p class="lp-plan-desc">For small restaurants and cafes.</p>
               <ul>
                 <li>1 restaurant QR menu page</li>
                 <li>Unlimited menu photo pages</li>
-                <li>QR download aur print</li>
-                <li>Scans aur visitor analytics</li>
-                <li>Logo aur social links</li>
+                <li>QR download and print</li>
+                <li>Scan and visitor analytics</li>
+                <li>Logo and social links</li>
               </ul>
               <a class="btn btn-primary btn-block" href="#generator">Start free</a>
             </div>
 
             <div class="lp-plan">
-              <span class="tag soft">Planned</span>
+              <span class="tag soft">Proposed</span>
               <div class="lp-plan-name">Starter</div>
               <div class="lp-price"><span class="amt">₹149</span><span class="per">/ month</span></div>
-              <p class="lp-plan-desc">Growing restaurants ke liye.</p>
+              <p class="lp-plan-desc">For growing restaurants.</p>
               <ul>
-                <li>Free plan ka sab kuch</li>
-                <li>Custom menu cover aur branding</li>
+                <li>Everything in Free</li>
+                <li>Custom menu cover and branding</li>
                 <li>Monthly scan report</li>
                 <li>Priority WhatsApp support</li>
               </ul>
@@ -591,12 +950,12 @@
             </div>
 
             <div class="lp-plan">
-              <span class="tag soft">Planned</span>
+              <span class="tag soft">Proposed</span>
               <div class="lp-plan-name">Business</div>
               <div class="lp-price"><span class="amt">₹299</span><span class="per">/ month</span></div>
-              <p class="lp-plan-desc">Hotels aur multi-outlet owners ke liye.</p>
+              <p class="lp-plan-desc">For hotels and multi-outlet owners.</p>
               <ul>
-                <li>Starter plan ka sab kuch</li>
+                <li>Everything in Starter</li>
                 <li>Multiple outlets</li>
                 <li>Table-wise QR codes</li>
                 <li>Dedicated onboarding</li>
@@ -605,76 +964,99 @@
             </div>
           </div>
           <p class="lp-note">
-            <b>Launch period:</b> Starter aur Business plans proposed hain — payment gateway abhi active nahi hai.
-            Aaj ke din Free plan me saare current features bilkul free milte hain.
+            <b>Launch period:</b> Starter and Business are proposed plans. The payment gateway is not active yet,
+            so nothing on this page charges you. Every current feature is included in the Free plan.
           </p>
         </div>
       </section>
 
-      <!-- --------------------------------- faq -------------------------------- -->
-      <section class="lp-section" id="faq">
+      <!-- =========================== TESTIMONIALS ========================= -->
+      <section class="lp-section" id="testimonials">
         <div class="lp-wrap">
           <div class="lp-head">
+            <span class="lp-kicker">Testimonials</span>
+            <h2>Restaurant owners ki zubani</h2>
+            <p>We publish only real, verified reviews from restaurants using QRush.</p>
+          </div>
+          <div class="lp-testi">
+            <div class="quote" aria-hidden="true">“</div>
+            <h3>Aap pehle restaurants me se honge</h3>
+            <p>
+              QRush abhi launch phase me hai. Hum apne users ke real experiences hi publish karte hain —
+              koi banaya hua review nahi. Apna QR menu banayein aur apna feedback WhatsApp par share karein.
+            </p>
+            <a class="btn btn-primary" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20maine%20apna%20QR%20menu%20banaya%20hai%20aur%20feedback%20share%20karna%20hai." target="_blank" rel="noopener">Share your experience</a>
+            <div class="honest">Verified reviews only · No paid or invented testimonials</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================== FAQ ============================== -->
+      <section class="lp-section tint" id="faq">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <span class="lp-kicker">FAQ</span>
             <h2>Frequently asked questions</h2>
-            <p>Jo sabse zyada poocha jaata hai.</p>
+            <p>Everything owners ask before creating their first QR menu.</p>
           </div>
           <div class="lp-faq">
-            <details>
-              <summary>Kya QRush sach me free hai?</summary>
-              <p class="a">Haan. Free plan me apni restaurant ka QR menu page, unlimited menu photo pages, QR download/print, scan analytics aur social links — sab free milte hain. Koi card ya payment detail nahi maangi jaati.</p>
+            <details open>
+              <summary>Is QRush really free?</summary>
+              <p class="a">Yes. The Free plan includes your restaurant QR menu page, unlimited menu photo pages, QR download and print, scan analytics and social links. No card or payment details are asked.</p>
             </details>
             <details>
-              <summary>Customer ko koi app download karna padega?</summary>
-              <p class="a">Nahi. Customer sirf phone camera se QR scan karega aur menu seedha browser me khul jayegi. iPhone, Android — sab par kaam karta hai.</p>
+              <summary>Do customers need to download an app?</summary>
+              <p class="a">No. Customers scan the QR with their phone camera and the menu opens directly in the browser — iPhone, Android, any modern phone.</p>
             </details>
             <details>
-              <summary>Menu kaise upload karun?</summary>
-              <p class="a">Apne phone se menu card ki photo khinchein ya PDF chunein. Photos automatically compress ho jaati hain, isliye badi camera photo bhi upload ho jaati hai. Ek se zyada image add kar sakte hain.</p>
+              <summary>How do I upload my menu?</summary>
+              <p class="a">Take a photo of your menu card or choose a PDF from your phone. Photos are compressed automatically, so large camera files upload fine. You can add more than one image.</p>
             </details>
             <details>
-              <summary>QR code kaise print karun?</summary>
-              <p class="a">Dashboard me "Download QR (PNG)" se image download karein, ya "Print QR" se seedha print nikaalein. Table stand, acrylic frame ya menu card par laga dein.</p>
+              <summary>How do I print the QR code?</summary>
+              <p class="a">In your dashboard use “Download QR (PNG)” to save the image, or “Print QR” to print directly. Place it on a table stand, acrylic frame or your menu card.</p>
             </details>
             <details>
-              <summary>Menu baad me change kar sakta hoon?</summary>
-              <p class="a">Bilkul. Contact number aur password se login karein, "Edit my page" kholein aur naya menu upload karein — customer ko turant naya menu dikhega. QR code same rehta hai.</p>
+              <summary>Can I change my menu later?</summary>
+              <p class="a">Yes. Log in with your contact number and password, open “Edit my page” and upload the new menu — customers see it immediately. The QR code stays the same.</p>
             </details>
             <details>
-              <summary>Password bhool gaya to?</summary>
-              <p class="a">Login box ke neeche "Forgot password?" par click karein. Apna registered contact number aur naya password daal kar reset kar lein.</p>
+              <summary>What if I forget my password?</summary>
+              <p class="a">Use “Forgot password?” below the login box. Enter your registered contact number and set a new password.</p>
             </details>
             <details>
-              <summary>Kya mujhe online payment karni hogi?</summary>
-              <p class="a">Abhi nahi. Phase 1 me payment gateway active nahi hai — koi button aapse paise nahi maangega. Paid plans sirf propose kiye gaye hain.</p>
+              <summary>Do I have to pay online right now?</summary>
+              <p class="a">No. Phase 1 has no payment gateway. Starter and Business are proposed plans and no button on this page takes money.</p>
             </details>
           </div>
         </div>
       </section>
 
-      <!-- ------------------------------- contact ------------------------------- -->
-      <section class="lp-section alt" id="contact">
+      <!-- ============================= CONTACT ============================ -->
+      <section class="lp-section" id="contact">
         <div class="lp-wrap">
           <div class="lp-head">
+            <span class="lp-kicker">Contact</span>
             <h2>Baat karein</h2>
-            <p>Koi sawaal ya setup me madad chahiye? WhatsApp par message karein.</p>
+            <p>Questions, setup help or a custom plan — message us on WhatsApp.</p>
           </div>
           <div class="lp-contact">
             <div class="lp-contact-card">
-              <h3>Contact</h3>
-              <p>Kolhapur aur aas-paas ke restaurants, cafes aur hotels ke saath kaam karte hain.</p>
+              <h3>QRush support</h3>
+              <p>We work with restaurants, cafes and hotels in Kolhapur and nearby areas. On-site setup is available.</p>
               <div class="lp-contact-list">
                 <a class="lp-contact-item" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mujhe%20apne%20restaurant%20ke%20liye%20QR%20menu%20chahiye." target="_blank" rel="noopener">
-                  <span class="ic">💬</span>
+                  <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.9 8.9 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></span>
                   <span><span class="t">WhatsApp</span><span class="s">+91 91729 41524</span></span>
                   <span class="go">→</span>
                 </a>
                 <a class="lp-contact-item" href="tel:+919172941524">
-                  <span class="ic">📞</span>
+                  <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></span>
                   <span><span class="t">Call</span><span class="s">+91 91729 41524</span></span>
                   <span class="go">→</span>
                 </a>
                 <div class="lp-contact-item" style="cursor:default">
-                  <span class="ic">📍</span>
+                  <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
                   <span><span class="t">Kolhapur, Maharashtra</span><span class="s">India · on-site setup available</span></span>
                 </div>
               </div>
@@ -682,17 +1064,17 @@
 
             <div class="lp-wa-card">
               <h3>WhatsApp par turant jawab</h3>
-              <p>Apne restaurant ka naam aur menu ki photo bhej dein — hum QR menu setup me madad kar denge.</p>
-              <a class="btn btn-block btn-lg" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mera%20restaurant%20hai%20____%20aur%20mujhe%20QR%20menu%20banana%20hai." target="_blank" rel="noopener">💬 Chat on WhatsApp</a>
-              <p class="tiny" style="margin:12px 0 0">Usually reply within business hours.</p>
+              <p>Send your restaurant name and a photo of your menu — we will help you set up the QR menu.</p>
+              <a class="btn btn-block btn-lg" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mera%20restaurant%20hai%20____%20aur%20mujhe%20QR%20menu%20banana%20hai." target="_blank" rel="noopener">Chat on WhatsApp</a>
+              <p class="tiny">Usually replies within business hours.</p>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <!-- --------------------------- Owner dashboard --------------------------- -->
-    <section class="panel dash hidden" id="dashboard">
+    <!-- ========================= OWNER DASHBOARD ======================== -->
+    <section class="dash hidden" id="dashboard">
       <div class="dash-head">
         <div class="dash-id">
           <img class="dash-logo hidden" id="d-logo" alt="Restaurant logo" />
@@ -703,90 +1085,126 @@
           </div>
         </div>
         <div class="dash-actions">
-          <button class="btn btn-ghost btn-sm" id="d-newqr" type="button">➕ Naya QR</button>
-          <button class="btn btn-primary btn-sm" id="d-edit" type="button">✏️ Edit my page</button>
+          <button class="btn btn-outline btn-sm" id="d-newqr" type="button">+ New QR</button>
+          <button class="btn btn-primary btn-sm" id="d-edit" type="button">Edit my page</button>
           <button class="btn btn-ghost btn-sm" id="d-logout" type="button">Logout</button>
         </div>
       </div>
 
+      <div class="dash-banner">
+        <span class="live"><i></i> <span id="s-status">—</span></span>
+        <span class="sep"></span>
+        <span class="txt" id="s-plan">Plan: Free · Active</span>
+        <span class="sep"></span>
+        <span class="txt" id="s-live">Menu live since —</span>
+        <span class="sep"></span>
+        <span class="txt" id="s-view-today">0 today</span>
+      </div>
+
       <div class="stat-grid">
-        <div class="stat">
-          <div class="stat-label">👀 Total menu views / scans</div>
+        <div class="stat accent">
+          <div class="stat-label">Total menu views</div>
           <div class="stat-value" id="s-view-total">0</div>
-          <div class="stat-foot" id="s-view-today">0 today · 0 last 7 days · 0 last 30 days</div>
+          <div class="stat-foot">All time · real scans</div>
         </div>
         <div class="stat">
-          <div class="stat-label">🧑 Unique visitors</div>
+          <div class="stat-label">Unique visitors</div>
           <div class="stat-value" id="s-view-unique">0</div>
-          <div class="stat-foot">all time (real recorded)</div>
+          <div class="stat-foot">All time</div>
         </div>
         <div class="stat">
-          <div class="stat-label">📋 Profile &amp; plan</div>
-          <div class="stat-value" id="s-profile" style="font-size:22px">0%</div>
-          <div class="stat-foot" id="s-plan">Plan: Free · Active</div>
+          <div class="stat-label">Last 7 days</div>
+          <div class="stat-value" id="s-week">0</div>
+          <div class="stat-foot">Views / scans</div>
         </div>
         <div class="stat">
-          <div class="stat-label">✅ Menu &amp; QR status</div>
-          <div class="stat-value" id="s-status" style="font-size:20px">—</div>
-          <div class="stat-foot" id="s-live">Menu live since —</div>
+          <div class="stat-label">Last 30 days</div>
+          <div class="stat-value" id="s-month">0</div>
+          <div class="stat-foot">Views / scans</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Social link clicks</div>
+          <div class="stat-value" id="s-click-total">0</div>
+          <div class="stat-foot">WhatsApp · Instagram · more</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Profile completion</div>
+          <div class="stat-value" id="s-profile">0%</div>
+          <div class="stat-foot" id="s-profile-hint">—</div>
         </div>
       </div>
 
-      <div class="dash-card" style="margin-bottom:18px">
+      <div class="dash-card" style="margin-bottom:20px">
         <div class="dash-card-head">
           <h3>Quick actions</h3>
+          <span class="tiny muted">Manage everything from here</span>
         </div>
-        <div class="owner-actions" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-top:0">
+        <div class="quick-grid">
           <a class="btn btn-primary btn-sm" id="qa-open" target="_blank" rel="noopener">Open public menu</a>
           <button class="btn btn-outline btn-sm" id="qa-copy" type="button">Copy menu link</button>
           <button class="btn btn-outline btn-sm" id="qa-download" type="button">Download QR (PNG)</button>
-          <button class="btn btn-ghost btn-sm" id="qa-print" type="button">Print QR</button>
+          <button class="btn btn-outline btn-sm" id="qa-print" type="button">Print QR</button>
+          <button class="btn btn-outline btn-sm" id="qa-edit" type="button" onclick="document.getElementById('d-edit').click()">Edit menu &amp; profile</button>
         </div>
-        <p class="tiny muted" id="s-profile-hint" style="margin:10px 0 0"></p>
-      </div>
-
-      <div class="dash-card" style="margin-bottom:18px" id="billing-card">
-        <div class="dash-card-head">
-          <h3>My Plan &amp; Billing</h3>
-        </div>
-        <div id="fq-billing-current"><div class="tiny muted">Loading...</div></div>
-        <div id="fq-billing-plans" style="margin-top:12px"></div>
-        <div id="fq-billing-history" style="margin-top:12px"></div>
       </div>
 
       <div class="dash-cols">
-        <div style="display:flex;flex-direction:column;gap:18px">
-        <div class="dash-card">
-          <div class="dash-card-head">
-            <h3>Your uploaded menu</h3>
-            <label class="btn btn-outline btn-sm" style="cursor:pointer">
-              ➕ Add images
-              <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
-            </label>
+        <div class="dash-col">
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Menu views — last 7 days</h3>
+              <span class="badge no-dot" style="background:var(--orange-50);color:var(--orange-text)">Real data</span>
+            </div>
+            <div id="d-daily" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
-          <div class="menu-gallery" id="d-menu-gallery"></div>
-          <p class="tiny muted" style="margin:10px 0 0">Ek se zyada images upload kar sakte hain (page 1, 2...). Replace karne ke liye nayi images add karein, purani remove karein.</p>
 
-          <div class="menu-tools">
-            <button class="btn btn-primary btn-sm" id="d-ocr" type="button">✨ Convert image to text</button>
-            <span class="tiny muted">Pehli image se items auto-fill ho jayenge</span>
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Your uploaded menu</h3>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                + Add images
+                <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
+              </label>
+            </div>
+            <div class="menu-gallery" id="d-menu-gallery"></div>
+            <p class="tiny muted" style="margin:10px 0 0">You can upload more than one image (page 1, 2...). To replace, add the new images and remove the old ones.</p>
+            <div class="menu-tools">
+              <button class="btn btn-primary btn-sm" id="d-ocr" type="button">Convert image to text</button>
+              <span class="tiny muted">Items from the first image are filled automatically</span>
+            </div>
+            <p class="ocr-status" id="d-ocr-status"></p>
           </div>
-          <p class="ocr-status" id="d-ocr-status"></p>
-        </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Recent activity</h3>
+            </div>
+            <ul class="click-list" id="d-recent"></ul>
+            <p class="tiny muted" style="margin:12px 0 0">Recent scan and view events (no personal visitor data shown).</p>
+          </div>
+
+          <div class="dash-card" id="billing-card">
+            <div class="dash-card-head">
+              <h3>My plan &amp; billing</h3>
+            </div>
+            <div id="fq-billing-current"><div class="tiny muted">Loading...</div></div>
+            <div id="fq-billing-plans" style="margin-top:12px"></div>
+            <div id="fq-billing-history" style="margin-top:12px"></div>
+          </div>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="dash-col">
           <div class="dash-card">
             <div class="dash-card-head">
               <h3>Your QR code</h3>
-              <span class="badge" style="background:var(--primary-50);color:var(--primary-700)">Printable</span>
+              <span class="badge" style="background:var(--orange-50);color:var(--orange-text)">Printable</span>
             </div>
             <div id="d-qr"></div>
             <div class="owner-actions">
               <a class="btn btn-primary btn-block" id="d-open" target="_blank" rel="noopener">Open my menu →</a>
-              <button class="btn btn-outline btn-block" id="d-copy" type="button">📋 Copy menu link</button>
-              <button class="btn btn-outline btn-block" id="d-download" type="button">⬇️ Download QR (PNG)</button>
-              <button class="btn btn-ghost btn-block" id="d-print" type="button">🖨️ Print QR</button>
+              <button class="btn btn-outline btn-block" id="d-copy" type="button">Copy menu link</button>
+              <button class="btn btn-outline btn-block" id="d-download" type="button">Download QR (PNG)</button>
+              <button class="btn btn-ghost btn-block" id="d-print" type="button">Print QR</button>
             </div>
           </div>
 
@@ -795,142 +1213,166 @@
               <h3>Social link clicks</h3>
             </div>
             <ul class="click-list" id="d-click-list"></ul>
-            <p class="tiny muted" style="margin:12px 0 0">Har button par kitne logon ne click kiya (real recorded).</p>
+            <p class="tiny muted" style="margin:12px 0 0">How many guests tapped each button (real recorded).</p>
           </div>
 
           <div class="dash-card">
             <div class="dash-card-head">
-              <h3>Recent activity</h3>
+              <h3>Profile &amp; plan</h3>
             </div>
-            <ul class="click-list" id="d-recent"></ul>
-            <p class="tiny muted" style="margin:12px 0 0">Recent scan/view events (no personal visitor data shown).</p>
-          </div>
-
-          <div class="dash-card">
-            <div class="dash-card-head">
-              <h3>Menu views — last 7 days</h3>
-            </div>
-            <div id="d-daily" style="display:flex;flex-direction:column;gap:8px"></div>
-            <p class="tiny muted" style="margin:12px 0 0">Real recorded views/scans per day.</p>
+            <p class="tiny muted" style="margin:0 0 8px">Restaurant profile, plan and QR status.</p>
+            <p class="tiny muted" id="s-profile-missing" style="margin:0 0 12px">—</p>
+            <button class="btn btn-navy btn-block btn-sm" id="d-edit-2" type="button" onclick="document.getElementById('d-edit').click()">Edit profile</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ------------------------- Free QR generator --------------------------- -->
-    <section class="lp-section" id="generator">
+    <!-- ========================= FREE QR GENERATOR ====================== -->
+    <section class="generator-section" id="generator">
       <div class="lp-wrap">
-        <div class="lp-head" style="margin-bottom:24px">
+        <div class="lp-head" style="margin-bottom:28px">
+          <span class="lp-kicker">Free registration</span>
           <h2>Create your free QR menu</h2>
-          <p>Details bhariye, menu upload karein — QR code turant ready. OTP verify hoga, koi payment nahi.</p>
+          <p>Fill in your details, upload your menu, and your QR code is ready. OTP verified — no payment.</p>
         </div>
       </div>
       <div class="gen-layout">
 
-      <!-- ------------------------------ Generator ------------------------------ -->
-      <div class="panel" id="generator-panel">
-      <h2 style="margin:0">🍽️ Free Digital QR Menu Generator</h2>
-      <p class="muted" style="margin-top:6px;margin-bottom:24px">Apni restaurant details bhariye aur instant free QR code banayein.</p>
+        <div class="panel" id="generator-panel">
+          <h2 style="margin:0;font-size:22px;letter-spacing:-.02em">Free Digital QR Menu Generator</h2>
+          <p class="muted block-lede" style="margin:6px 0 20px;font-size:14px">Everything you need is below. It takes about 2 minutes.</p>
 
-      <div class="field">
-        <label>Restaurant Name <span style="color:var(--red)">*</span></label>
-        <input class="input" id="g-rest" placeholder="e.g. Spice Garden" />
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Owner Name <span style="color:var(--red)">*</span></label>
-          <input class="input" id="g-owner" placeholder="e.g. Rahul Sharma" />
-        </div>
-        <div class="field">
-          <label>Contact Number <span style="color:var(--red)">*</span></label>
-          <input class="input" id="g-phone" type="tel" placeholder="e.g. 9172941524" />
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Password (for future access) <span style="color:var(--red)">*</span></label>
-        <input class="input" id="g-pass" type="password" placeholder="••••••••" />
-      </div>
-
-      <div class="field" id="g-otp-wrap" style="display:none">
-        <label>OTP <span style="color:var(--red)">*</span></label>
-        <input class="input" id="g-otp" type="text" inputmode="numeric" placeholder="6-digit OTP" maxlength="6" />
-        <p class="tiny muted" id="g-otp-hint" style="margin:4px 0 0"></p>
-      </div>
-
-      <div class="field">
-        <label>Restaurant Logo (Image)</label>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-          <input class="input" id="g-logo" placeholder="Image URL ya file upload karein..." style="flex:1;margin-top:0" />
-          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
-            📁 Upload <input type="file" id="g-logo-file" accept="image/*" style="display:none" />
-          </label>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Menu Photo / PDF <span style="color:var(--red)">*</span></label>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-          <input class="input" id="g-menu" placeholder="File upload karein..." style="flex:1;margin-top:0" readonly />
-          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
-            📁 Upload <input type="file" id="g-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
-          </label>
-        </div>
-        <p class="tiny muted" style="margin:4px 0 0">Phone se photo ya PDF chunein — ek se zyada images (page 1, 2...) bhi select kar sakte hain. Badi photos automatically compress ho jaati hain.</p>
-      </div>
-
-      <div class="field">
-        <label>Social Media Links (optional)</label>
-        <div class="row">
-          <input class="input" id="g-whatsapp" placeholder="WhatsApp number (e.g. 919172941524)" />
-          <input class="input" id="g-instagram" placeholder="Instagram URL" />
-        </div>
-        <div class="row" style="margin-top:10px">
-          <input class="input" id="g-facebook" placeholder="Facebook URL" />
-          <input class="input" id="g-website" placeholder="Website URL" />
-        </div>
-      </div>
-
-      <button class="btn btn-primary btn-block btn-lg" id="g-gen" type="button" style="margin-top:10px">Generate Free QR Code 🚀</button>
-      <p class="form-error" id="g-error" role="alert" aria-live="polite"></p>
-      <p class="form-note">🔒 OTP se verify hota hai · koi payment nahi · aapka data safe</p>
-
-      <div id="qr-container" class="hidden">
-        <h3 style="color:var(--primary-700)">🎉 Aapka QR Code Tayar Hai!</h3>
-        <p class="tiny muted" id="qr-subtitle" style="margin:4px 0 12px"></p>
-        <div id="qr-code"></div>
-        <p class="tiny muted">Is QR code ko save karke apne restaurant ke tables par print karwa lein.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
-          <button class="btn btn-outline btn-sm" id="g-print" type="button">🖨️ Print QR Code</button>
-          <a class="btn btn-ghost btn-sm hidden" id="g-open-menu" target="_blank" rel="noopener">👀 Open my menu</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- --------------------------- Owner side panel --------------------------- -->
-    <aside class="side" id="side-panel">
-      <div class="panel" id="login-card">
-        <h3>Restaurant Owner Login</h3>
-        <p class="hint">Pehle QR banaya tha? Apna contact number aur password daal kar apni restaurant dekhein.</p>
-        <form id="login-form" autocomplete="on">
-          <div class="field" style="margin-bottom:12px">
-            <label for="l-phone">Contact Number</label>
-            <input class="input" id="l-phone" type="tel" placeholder="9172941524" required />
+          <div class="gen-steps" aria-hidden="true">
+            <span class="gen-step on"><span class="n">1</span> Details</span>
+            <span class="gen-step-line"></span>
+            <span class="gen-step on"><span class="n">2</span> Menu</span>
+            <span class="gen-step-line"></span>
+            <span class="gen-step on"><span class="n">3</span> QR</span>
           </div>
-          <div class="field" style="margin-bottom:12px">
-            <label for="l-pass">Password</label>
-            <input class="input" id="l-pass" type="password" placeholder="••••••••" required />
+
+          <div class="form-part">
+            <h3>1. Restaurant details</h3>
+            <p class="sub">Only what customers should see on your menu.</p>
+
+            <div class="field">
+              <label for="g-rest">Restaurant Name <span style="color:#dc2626">*</span></label>
+              <input class="input" id="g-rest" placeholder="e.g. Spice Garden" autocomplete="organization" />
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="g-owner">Owner Name <span class="tiny muted">(optional)</span></label>
+                <input class="input" id="g-owner" placeholder="e.g. Rahul Sharma" autocomplete="name" />
+              </div>
+              <div class="field">
+                <label for="g-phone">WhatsApp / Contact Number <span style="color:#dc2626">*</span></label>
+                <input class="input" id="g-phone" type="tel" placeholder="e.g. 9172941524" autocomplete="tel" inputmode="tel" />
+              </div>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
+              <label for="g-pass">Password <span style="color:#dc2626">*</span></label>
+              <input class="input" id="g-pass" type="password" placeholder="At least 4 characters — you will need this to edit later" autocomplete="new-password" />
+            </div>
           </div>
-          <p class="login-error" id="login-error"></p>
-          <button class="btn btn-primary btn-block" id="login-submit" type="submit">Login</button>
-        </form>
-        <p style="text-align:right;margin:8px 0 0"><a href="#" id="forgot-link" style="font-size:12.5px;color:var(--primary-700);font-weight:700;text-decoration:none">Forgot password?</a></p>
-        <div class="divider-or">or</div>
-        <p class="tiny muted" style="margin:0">Naya restaurant? Upar diye gaye form se free QR banayein.</p>
-        <p class="tiny muted" style="margin:10px 0 0">Restaurant staff? Upar diye gaye <b>Owner Login</b> se apna dashboard kholein.</p>
-      </div>
-    </aside>
+
+          <div class="form-part">
+            <h3>2. Your menu</h3>
+            <p class="sub">Upload a photo of your menu card or a PDF. More than one image is allowed.</p>
+
+            <div class="field">
+              <label for="g-menu">Menu Photo / PDF <span style="color:#dc2626">*</span></label>
+              <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+                <input class="input" id="g-menu" placeholder="Choose a file..." style="flex:1;margin-top:0" readonly />
+                <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none">
+                  Upload
+                  <input type="file" id="g-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
+                </label>
+              </div>
+              <p class="tiny muted" style="margin:6px 0 0">Take a photo or select a PDF. Large photos are compressed automatically.</p>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
+              <label for="g-logo">Restaurant Logo <span class="tiny muted">(optional)</span></label>
+              <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+                <input class="input" id="g-logo" placeholder="Image URL or upload a file..." style="flex:1;margin-top:0" />
+                <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none">
+                  Upload
+                  <input type="file" id="g-logo-file" accept="image/*" style="display:none" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-part">
+            <h3>3. Social links <span class="tiny muted">(optional)</span></h3>
+            <p class="sub">Add the buttons you want guests to see on your menu.</p>
+            <div class="field">
+              <div class="row">
+                <input class="input" id="g-whatsapp" placeholder="WhatsApp number (e.g. 919172941524)" autocomplete="off" />
+                <input class="input" id="g-instagram" placeholder="Instagram URL" autocomplete="off" />
+              </div>
+              <div class="row" style="margin-top:10px">
+                <input class="input" id="g-facebook" placeholder="Facebook URL" autocomplete="off" />
+                <input class="input" id="g-website" placeholder="Website URL" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="field" id="g-otp-wrap" style="display:none;margin-bottom:0">
+              <label for="g-otp">OTP <span style="color:#dc2626">*</span></label>
+              <input class="input" id="g-otp" type="text" inputmode="numeric" placeholder="6-digit OTP" maxlength="6" autocomplete="one-time-code" />
+              <p class="tiny muted" id="g-otp-hint" style="margin:6px 0 0"></p>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg" id="g-gen" type="button" style="margin-top:22px">Get My Free QR</button>
+          <p class="form-error" id="g-error" role="alert" aria-live="polite"></p>
+          <p class="form-note">OTP verified · no payment · your data stays private</p>
+
+          <div id="qr-container" class="hidden">
+            <h3 style="color:var(--navy);margin:0">Aapka QR code tayar hai!</h3>
+            <p class="tiny muted" id="qr-subtitle" style="margin:4px 0 12px"></p>
+            <div id="qr-code"></div>
+            <p class="tiny muted">Save this QR and print it for your restaurant tables.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+              <button class="btn btn-outline btn-sm" id="g-print" type="button">Print QR Code</button>
+              <a class="btn btn-ghost btn-sm hidden" id="g-open-menu" target="_blank" rel="noopener">Open my menu</a>
+            </div>
+          </div>
+        </div>
+
+        <aside class="side" id="side-panel">
+          <div class="need-card">
+            <h3>Kya chahiye?</h3>
+            <p>Free QR banane ke liye bas ye 3 cheezein:</p>
+            <ul>
+              <li><i>1</i> Restaurant ka naam aur contact number</li>
+              <li><i>2</i> Menu ki photo ya PDF</li>
+              <li><i>3</i> 4+ character ka password (baad me edit karne ke liye)</li>
+            </ul>
+          </div>
+
+          <div class="panel" id="login-card">
+            <h3>Restaurant Owner Login</h3>
+            <p class="hint">Pehle QR banaya tha? Apna contact number aur password daal kar apni restaurant dekhein.</p>
+            <form id="login-form" autocomplete="on">
+              <div class="field" style="margin-bottom:12px">
+                <label for="l-phone">Contact Number</label>
+                <input class="input" id="l-phone" type="tel" placeholder="9172941524" required autocomplete="tel" />
+              </div>
+              <div class="field" style="margin-bottom:12px">
+                <label for="l-pass">Password</label>
+                <input class="input" id="l-pass" type="password" placeholder="••••••••" required autocomplete="current-password" />
+              </div>
+              <p class="login-error" id="login-error"></p>
+              <button class="btn btn-primary btn-block" id="login-submit" type="submit">Login</button>
+            </form>
+            <p style="text-align:right;margin:10px 0 0"><a href="#" id="forgot-link" style="font-size:12.5px;color:var(--orange-text);font-weight:700;text-decoration:none">Forgot password?</a></p>
+            <div class="divider-or">or</div>
+            <p class="tiny muted" style="margin:0">New restaurant? Use the form on the left to create your free QR.</p>
+          </div>
+        </aside>
       </div>
     </section>
   </main>
@@ -938,19 +1380,18 @@
   <footer class="site-foot" id="site-foot">
     <div class="inner">
       <div>
-        <a class="brand" href="#home">
-          <img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="" />
-          <span class="brand-name">QRush</span>
+        <a class="brand" href="#home" aria-label="QRush home" style="background:#fff;padding:9px 14px;border-radius:12px">
+          <img class="brand-logo" src="/img/qrush-logo.png?v=4" alt="QRush" width="180" height="77" />
         </a>
-        <p class="about">Restaurants, cafes aur hotels ke liye free digital QR menu. Menu photo upload karein, QR print karein, aur customers ko instant menu dikhayein.</p>
-        <p class="about" style="margin-top:8px">Made in Kolhapur, Maharashtra 🇮🇳</p>
+        <p class="about">Free digital QR menu for restaurants, cafes and hotels. Upload a menu photo, print the QR, and give customers an instant menu — without any app.</p>
+        <p class="made">Made in Kolhapur, Maharashtra, India</p>
       </div>
       <div>
         <h4>Product</h4>
         <ul>
           <li><a href="#features">Features</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="/demo-menu.html" target="_blank" rel="noopener">Live demo</a></li>
+          <li><a href="#demo">Live menu demo</a></li>
           <li><a href="#generator">Create free QR</a></li>
         </ul>
       </div>
@@ -961,6 +1402,15 @@
           <li><a href="#contact">Contact</a></li>
           <li><a href="https://wa.me/919172941524" target="_blank" rel="noopener">WhatsApp</a></li>
           <li><a href="#login-card" id="foot-login">Owner login</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="tel:+919172941524">+91 91729 41524</a></li>
+          <li><a href="https://wa.me/919172941524" target="_blank" rel="noopener">WhatsApp support</a></li>
+          <li><span style="color:rgba(255,255,255,.7);font-size:13.5px">Kolhapur, Maharashtra</span></li>
+          <li><span style="color:rgba(255,255,255,.7);font-size:13.5px">Mon–Sat · 10 AM – 8 PM</span></li>
         </ul>
       </div>
       <div class="copy">
@@ -1149,9 +1599,21 @@
     }
 
     /* ---------------------------- small helpers ---------------------------- */
+    // Every QR code and shared menu link must point at the live QRush domain,
+    // never at the old website URL. Local development keeps localhost.
+    const PUBLIC_BASE = 'https://www.qrush.in';
+    function publicBase() {
+      const h = String(location.hostname || '');
+      if (!h || h === 'localhost' || h === '127.0.0.1' || /^192\.168\./.test(h) || h === '[::1]') {
+        return location.origin;
+      }
+      if (/(^|\.)qrush\.in$/i.test(h)) return location.origin;
+      return PUBLIC_BASE;
+    }
+
     function absoluteMenuUrl(restaurant) {
       const rel = (restaurant && (restaurant.url || ('/m/' + restaurant.slug))) || '/';
-      return rel.startsWith('http') ? rel : location.origin + rel;
+      return rel.startsWith('http') ? rel : publicBase() + rel;
     }
 
     function prettyPhone(value) {
@@ -1321,7 +1783,8 @@
     function updateKitchenLink() {
       if (!current) return;
       const base = absoluteMenuUrl(current).replace(/\/+$/, '');
-      $('d-kitchen').href = base + '/kitchen#t=' + encodeURIComponent(ownerToken || '');
+      const el = $('d-kitchen');
+      if (el) el.href = base + '/kitchen#t=' + encodeURIComponent(ownerToken || '');
     }
 
     /* ------------------------------ QR code -------------------------------- */
@@ -1331,10 +1794,12 @@
         text,
         width: size,
         height: size,
-        colorDark: '#0b1220',
+        colorDark: '#06183F',
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.H,
       });
+      const qrImg = container.querySelector('img');
+      if (qrImg) qrImg.alt = 'QR code';
       return container.querySelector('canvas');
     }
 
@@ -1441,19 +1906,28 @@
       const clicks = s.clicks || {};
       const clickTotal = s.click_total || { total: 0, today: 0 };
       $('s-view-total').textContent = views.total || 0;
-      $('s-view-today').textContent = (views.today || 0) + ' today · ' + (views.week || 0) + ' last 7 days · ' + (views.month || 0) + ' last 30 days';
       $('s-view-unique').textContent = views.unique || 0;
+      if ($('s-week')) $('s-week').textContent = views.week || 0;
+      if ($('s-month')) $('s-month').textContent = views.month || 0;
+      const clickTotalAll = s.click_total
+        ? (Number(s.click_total.total) || 0)
+        : Object.keys(clicks).reduce((sum, k) => sum + (Number(clicks[k] && clicks[k].total) || 0), 0);
+      if ($('s-click-total')) $('s-click-total').textContent = clickTotalAll;
+      $('s-view-today').textContent = (views.today || 0) + ' today';
       const pc = (current.profile_completion || { percent: 0, done: 0, total: 0 });
       $('s-profile').textContent = (pc.percent || 0) + '%';
+      $('s-profile-hint').textContent = (pc.done || 0) + ' of ' + (pc.total || 0) + ' complete';
       const planName = String(current.plan || 'free').charAt(0).toUpperCase() + String(current.plan || 'free').slice(1);
       $('s-plan').textContent = 'Plan: ' + planName + ' · ' + (current.plan_status || 'active');
       const menuOk = (current.menu_status === 'active');
       $('s-status').textContent = (menuOk ? 'Menu ready' : 'Menu missing') + ' · QR ' + (current.qr_status || 'active');
       $('s-live').textContent = 'Menu live since ' + fmtDate(current.created_at);
       const missing = (pc.checks || []).filter(c => !c.ok).map(c => c.key);
-      $('s-profile-hint').textContent = missing.length
-        ? 'Profile incomplete: ' + missing.join(', ') + '. “Edit my page” se poori karein.'
-        : 'Profile complete. Aap apni details aur menu kabhi bhi update kar sakte hain.';
+      if ($('s-profile-missing')) {
+        $('s-profile-missing').textContent = missing.length
+          ? 'Missing: ' + missing.join(', ')
+          : 'Your profile is complete.';
+      }
 
       const publicUrl = absoluteMenuUrl(current);
       if ($('qa-open')) $('qa-open').href = publicUrl;
@@ -2282,8 +2756,8 @@
       const menu = $('g-menu').value.trim();
       const logo = $('g-logo').value.trim();
 
-      if (!rest || !owner || !phone || !pass || !menu) {
-        genError('Kripya sabhi zaroori fields (* waale) bhariye.');
+      if (!rest || !phone || !pass || !menu) {
+        genError('Kripya zaroori fields (* waale) bhariye — restaurant name, contact number, password aur menu.');
         return;
       }
 
@@ -2409,10 +2883,7 @@
       const box = $('lp-qr');
       if (!box || typeof QRCode === 'undefined') return;
       try {
-        const base = (location.protocol === 'file:' || !location.origin || location.origin === 'null')
-          ? 'https://tablenest.onrender.com'
-          : location.origin;
-        makeQr(box, base + '/demo-menu.html', 104);
+        makeQr(box, publicBase() + '/demo-menu.html', 104);
       } catch (_) {
         box.innerHTML = '';
       }

@@ -203,7 +203,7 @@ function visitorId(req) {
 }
 
 // One "view" per visitor per 30 minutes (refreshing the page shouldn't inflate
-// the scan count). In-memory only â€” good enough for a free analytics tile.
+// the scan count). In-memory only — good enough for a free analytics tile.
 const viewSeen = new Map();
 const VIEW_WINDOW = 30 * 60 * 1000;
 
@@ -219,7 +219,7 @@ function shouldCountView(id, visitor) {
   return true;
 }
 
-/** Record one analytics event. Never throws â€” analytics must not break a page. */
+/** Record one analytics event. Never throws — analytics must not break a page. */
 // Tenant menu view/scan analytics (privacy-conscious, basic dedupe).
 const tenantViewSeen = new Map();
 const TENANT_VIEW_DEDUPE_MS = 30 * 60 * 1000;
@@ -539,7 +539,7 @@ router.get('/orders/:id', async (req, res, next) => {
 /**
  * GET /api/public/tables/:token/orders?phone=...&deviceId=...
  * This guest's open orders on the table. Lets a customer reopen the page
- * later and still track their food â€” without exposing another guest's bill.
+ * later and still track their food — without exposing another guest's bill.
  */
 router.get('/tables/:token/orders', async (req, res, next) => {
   try {
@@ -853,7 +853,7 @@ router.post('/free-qr/login', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/free-qr/me â€” owner dashboard data from a free-QR token.
+ * GET /api/public/free-qr/me — owner dashboard data from a free-QR token.
  */
 router.post('/free-qr/reset-password', async (req, res, next) => {
   try {
@@ -893,7 +893,7 @@ router.get('/free-qr/me', async (req, res, next) => {
 });
 
 /**
- * PATCH /api/public/free-qr/me â€” owner edits their own hosted page.
+ * PATCH /api/public/free-qr/me — owner edits their own hosted page.
  * body: { restaurant, owner_name, phone, logo_url, menu_data, menu_type,
  *         instagram, facebook, whatsapp, website, password }
  * Every field is optional; only what's sent gets updated.
@@ -996,8 +996,8 @@ router.patch('/free-qr/me', async (req, res, next) => {
 });
 
 /**
- * GET  /api/public/free-qr/items â€” the owner's orderable menu.
- * PUT  /api/public/free-qr/items â€” replace it (bulk paste from the dashboard).
+ * GET  /api/public/free-qr/items — the owner's orderable menu.
+ * PUT  /api/public/free-qr/items — replace it (bulk paste from the dashboard).
  *      body: { ordering_enabled, items: [{ name, price, category, available }] }
  */
 router.get('/free-qr/menu-data', async (req, res, next) => {
@@ -1071,8 +1071,8 @@ router.put('/free-qr/items', async (req, res, next) => {
 });
 
 /**
- * GET   /api/public/free-qr/kitchen/orders â€” live board for the owner.
- * PATCH /api/public/free-qr/kitchen/orders/:id â€” advance/cancel an order.
+ * GET   /api/public/free-qr/kitchen/orders — live board for the owner.
+ * PATCH /api/public/free-qr/kitchen/orders/:id — advance/cancel an order.
  */
 router.get('/free-qr/kitchen/orders', async (req, res, next) => {
   try {
@@ -1142,7 +1142,7 @@ router.patch('/free-qr/kitchen/orders/:id', async (req, res, next) => {
 });
 
 /**
- * GET /api/public/m/:slug/order/:token â€” customer's own order status.
+ * GET /api/public/m/:slug/order/:token — customer's own order status.
  */
 router.get('/m/:slug/order/:token', async (req, res, next) => {
   try {
@@ -1163,7 +1163,7 @@ router.get('/m/:slug/order/:token', async (req, res, next) => {
 });
 
 /**
- * POST /api/public/m/:slug/order â€” place an order straight from the QR menu.
+ * POST /api/public/m/:slug/order — place an order straight from the QR menu.
  * body: { table, name, phone, note, items: [{ id, qty }] }
  */
 router.post('/m/:slug/order', async (req, res, next) => {
@@ -1246,7 +1246,7 @@ router.post('/m/:slug/order', async (req, res, next) => {
 });
 
 /**
- * GET /m/:slug/logo and /m/:slug/menu â€” serve the uploaded files.
+ * GET /m/:slug/logo and /m/:slug/menu — serve the uploaded files.
  * Stored as data-URIs in the DB, but browsers get a normal, cacheable image
  * URL (and external links simply redirect).
  */
@@ -1323,7 +1323,7 @@ async function hostedMenuMenu(req, res, next) {
 }
 
 /**
- * GET /m/:slug/go/:network â€” tracked redirect for a social button.
+ * GET /m/:slug/go/:network — tracked redirect for a social button.
  * Logs the click, then forwards the visitor to the real destination.
  */
 async function hostedMenuGo(req, res, next) {
@@ -1566,7 +1566,7 @@ function orderingScript() {
 }
 
 /**
- * GET /m/:slug â€” serves the uploaded free menu.
+ * GET /m/:slug — serves the uploaded free menu.
  * Exported as `hostedMenuPage` so server.js can mount it at the site root
  * (`/m/<slug>`), which is what the generated QR code points to.
  */
@@ -1614,12 +1614,12 @@ async function hostedMenuPage(req, res, next) {
     }
 
     const socials = [];
-    const socialBtn = (network, label, bg) =>
-      `<a class="soc" href="/m/${escapeHtml(row.slug)}/go/${network}" target="_blank" rel="noopener" style="background:${bg}">${label}</a>`;
-    if (row.whatsapp && phoneDigits(row.whatsapp)) socials.push(socialBtn('whatsapp', 'WhatsApp', '#25d366'));
+    const socialBtn = (network, label, bg, fg) =>
+      `<a class="soc" href="/m/${escapeHtml(row.slug)}/go/${network}" target="_blank" rel="noopener" style="background:${bg};color:${fg || '#fff'}">${label}</a>`;
+    if (row.whatsapp && phoneDigits(row.whatsapp)) socials.push(socialBtn('whatsapp', 'WhatsApp', '#25d366', '#05301c'));
     if (row.instagram) socials.push(socialBtn('instagram', 'Instagram', 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)'));
-    if (row.facebook) socials.push(socialBtn('facebook', 'Facebook', '#1877f2'));
-    if (row.website) socials.push(socialBtn('website', 'Website', '#ea580c'));
+    if (row.facebook) socials.push(socialBtn('facebook', 'Facebook', '#1466c0'));
+    if (row.website) socials.push(socialBtn('website', 'Website', '#C24700'));
 
     // ---- Ads (only for free plan users) ----
     let adsHtml = '';
@@ -1668,7 +1668,7 @@ async function hostedMenuPage(req, res, next) {
     }
 
     const phoneLink = row.phone
-      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">ðŸ“ž ${escapeHtml(prettyPhone(row.phone))}</a>`
+      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
       : '';
 
     // ---- Menu: the owner's text menu (converted from the menu card) ----
@@ -1711,15 +1711,16 @@ async function hostedMenuPage(req, res, next) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#ea580c" />
-  <title>${escapeHtml(row.restaurant)} â€” Menu</title>
+  <meta name="theme-color" content="#06183F" />
+  <meta name="description" content="${escapeHtml(row.restaurant)} — digital menu${row.address ? ' in ' + escapeHtml(row.address) : ''}. Scan the QR, view the menu on your phone and connect on WhatsApp. Powered by QRush." />
+  <title>${escapeHtml(row.restaurant)} — Menu</title>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
   <style>
-    body { background: linear-gradient(180deg, #fff7ed 0%, #f6f8fb 340px); margin:0; padding:0; font-family: var(--font); }
+    body { background: linear-gradient(180deg, #FFF4EC 0%, #F7F9FC 340px); margin:0; padding:0; font-family: var(--font); }
     .mwrap { max-width: 620px; margin: 0 auto; padding: 22px 16px 56px; }
 
-    /* 1 â€” restaurant logo, right at the top */
+    /* 1 — restaurant logo, right at the top */
     .mhead { text-align: center; padding: 8px 0 22px; }
     .mlogo {
       display: inline-flex; align-items: center; justify-content: center;
@@ -1730,9 +1731,9 @@ async function hostedMenuPage(req, res, next) {
     .menu-logo-fallback {
       width: 104px; height: 104px; display: grid; place-items: center;
       font-size: 44px; font-weight: 800; color: #fff; border-radius: 22px;
-      background: linear-gradient(135deg, #ea580c, #f97316);
+      background: linear-gradient(135deg, #FF8A3D, #FF6200 55%, #E55700);
     }
-    .mhead h1 { font-size: 27px; line-height: 1.2; margin: 18px 0 4px; color: var(--ink); letter-spacing: -.02em; }
+    .mhead h1 { font-size: 27px; line-height: 1.2; margin: 18px 0 4px; color: #06183F; font-weight: 800; letter-spacing: -.025em; }
     .mhint { font-size: 13px; color: var(--muted); margin: 3px 0 0; }
     .mdesc { font-size: 13.5px; color: var(--ink-2, #334155); max-width: 460px; margin: 10px auto 0; line-height: 1.55; }
     .mhead .msub { color: var(--muted); font-size: 13.5px; margin: 0; }
@@ -1743,7 +1744,7 @@ async function hostedMenuPage(req, res, next) {
       border: 1px solid var(--primary-100); text-decoration: none;
     }
 
-    /* 2 â€” the uploaded menu */
+    /* 2 — the uploaded menu */
     .menu-card {
       background: #fff; border: 1px solid var(--line); border-radius: 22px;
       padding: 14px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35); text-align: center;
@@ -1757,7 +1758,7 @@ async function hostedMenuPage(req, res, next) {
     .menu-card .sec-title { padding: 4px 4px 0; }
     .menu-card img { display: block; margin: 0 auto; }
 
-    /* 3 â€” social links */
+    /* 3 — social links */
     .socials { margin-top: 26px; }
     .socials .sec-title { padding: 0 4px; }
     .soc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
@@ -1777,8 +1778,11 @@ async function hostedMenuPage(req, res, next) {
     }
     .foot-brand:active { transform: scale(.99); }
     .foot-brand img { display: block; width: 150px; height: auto; }
+    .foot-note { margin: 10px 0 0; font-size: 11.5px; color: var(--muted-2); }
+    .foot-note a { color: var(--muted); font-weight: 700; text-decoration: none; }
+    .foot-note a:hover { color: var(--primary-700); }
 
-    /* 2b â€” ordering */
+    /* 2b — ordering */
     body.has-cart .mwrap { padding-bottom: 120px; }
     .order-card {
       margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 22px;
@@ -1819,8 +1823,8 @@ async function hostedMenuPage(req, res, next) {
       position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
       width: min(560px, calc(100% - 24px)); z-index: 60;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      background: #0f172a; color: #fff; border-radius: 16px; padding: 9px 10px 9px 18px;
-      box-shadow: 0 20px 50px -18px rgba(15, 23, 42, .75);
+      background: #06183F; color: #fff; border-radius: 16px; padding: 9px 10px 9px 18px;
+      box-shadow: 0 20px 50px -18px rgba(6, 24, 63, .75);
     }
     .cartbar-info { font-size: 13.5px; }
     .cartbar-info b { font-size: 16px; }
@@ -1856,7 +1860,7 @@ async function hostedMenuPage(req, res, next) {
   </style>
 </head>
 <body>
-  <div class="mwrap">
+  <main class="mwrap">
     <header class="mhead">
       <div class="mlogo">${logoHtml}</div>
       <h1>${escapeHtml(row.restaurant)}</h1>
@@ -1877,8 +1881,9 @@ async function hostedMenuPage(req, res, next) {
       <a class="foot-brand" href="https://wa.me/919172941524" target="_blank" rel="noopener" aria-label="QRush">
         <img src="/img/qrush-logo.png?v=3" alt="QRush" />
       </a>
+      <p class="foot-note">Digital menu by <a href="https://www.qrush.in" target="_blank" rel="noopener">QRush</a></p>
     </div>
-  </div>
+  </main>
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');
