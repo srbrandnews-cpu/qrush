@@ -1713,6 +1713,14 @@ async function hostedMenuPage(req, res, next) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#06183F" />
   <meta name="description" content="${escapeHtml(row.restaurant)} — digital menu${row.address ? ' in ' + escapeHtml(row.address) : ''}. Scan the QR, view the menu on your phone and connect on WhatsApp. Powered by QRush." />
+  <link rel="canonical" href="${siteUrl()}/m/${encodeURIComponent(row.slug)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="QRush" />
+  <meta property="og:title" content="${escapeHtml(row.restaurant)} — Menu" />
+  <meta property="og:description" content="${escapeHtml(row.restaurant)}'s digital menu on QRush. Scan the QR and view it on your phone." />
+  <meta property="og:url" content="${siteUrl()}/m/${encodeURIComponent(row.slug)}" />
+  <meta property="og:image" content="${siteUrl()}/img/qrush-logo.png" />
+  <meta name="twitter:card" content="summary" />
   <title>${escapeHtml(row.restaurant)} — Menu</title>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
@@ -1903,6 +1911,54 @@ router.get('/m/:slug/go/:network', hostedMenuGo);
 // tiny html escape helper
 function escapeHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/**
+ * Public canonical origin used in <link rel="canonical"> and sitemap.xml.
+ * Always the apex marketing domain so old hostnames never become duplicates;
+ * override with SITE_URL if the domain ever changes.
+ */
+function siteUrl() {
+  return (process.env.SITE_URL || 'https://www.qrush.in').replace(/\/+$/, '');
+}
+
+/** SQLite "YYYY-MM-DD HH:MM:SS" (UTC) -> W3C date for sitemaps. */
+function sitemapDate(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  const d = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z');
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+/**
+ * GET /sitemap.xml — every page that deserves a place in Google.
+ * Registered at the site root (not under /api/public) in server.js.
+ */
+async function sitemapXml(req, res, next) {
+  try {
+    const site = siteUrl();
+    const urls = [
+      `<url><loc>${site}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${site}/demo-menu.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
+    ];
+    const rows = await query('SELECT slug, updated_at FROM free_qr_menus ORDER BY updated_at DESC');
+    for (const row of rows || []) {
+      if (!row.slug) continue;
+      const lastmod = sitemapDate(row.updated_at);
+      urls.push(
+        `<url><loc>${site}/m/${encodeURIComponent(row.slug)}</loc>` +
+        (lastmod ? `<lastmod>${lastmod}</lastmod>` : '') +
+        `<changefreq>weekly</changefreq><priority>0.8</priority></url>`
+      );
+    }
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      urls.join('\n') + '\n</urlset>\n'
+    );
+  } catch (err) { next(err); }
 }
 
 /** Owners often type "instagram.com/foo" without the protocol. */
@@ -2156,3 +2212,4 @@ module.exports.hostedMenuPage = hostedMenuPage;
 module.exports.hostedMenuLogo = hostedMenuLogo;
 module.exports.hostedMenuMenu = hostedMenuMenu;
 module.exports.hostedMenuGo = hostedMenuGo;
+module.exports.sitemapXml = sitemapXml;

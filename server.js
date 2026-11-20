@@ -131,6 +131,9 @@ app.get('/m/:slug/menu', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/menu/:idx', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/go/:network', publicRouter.hostedMenuGo);
 
+// Search engines: sitemap lists the homepage, the demo and every live menu.
+app.get('/sitemap.xml', publicRouter.sitemapXml);
+
 app.get('/api/health', async (req, res) => {
   const mem = process.memoryUsage();
   const health = {

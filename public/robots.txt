@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Private app screens and APIs — never useful in search results.
+Disallow: /api/
+Disallow: /superadmin
+Disallow: /m/*/kitchen
+Disallow: /m/*/go/
+
+# Binary menu files (images/PDFs) are served through the menu page itself.
+Disallow: /m/*/logo
+Disallow: /m/*/menu
+
+Sitemap: https://www.qrush.in/sitemap.xml
