@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body { background: radial-gradient(1400px 900px at 10% 10%, #1f2937, #05070f); }
+    .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.2fr 0.8fr; align-items: center; gap: 70px; max-width: 1320px; margin: 0 auto; padding: 28px; }
+    .flow-hero { display: flex; flex-direction: column; gap: 28px; color: #fff; }
+    .flow-hero-head h2 { color: #fff; font-size: clamp(32px, 4.4vw, 56px); letter-spacing: -.045em; margin: 10px 0 12px; line-height: 1.01; }
+    .flow-hero-head p { color: rgba(255,255,255,.82); margin: 0; font-size: 17px; max-width: 660px; }
+    .flow-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: radial-gradient(circle, rgba(255,255,255,.22), rgba(255,255,255,.1)); border: 1px solid rgba(255,255,255,.32); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; backdrop-filter: blur(10px); }
+    .flow-split { display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: center; }
+    .phone-mock { position: relative; width: 288px; height: 596px; border-radius: 40px; padding: 10px; background: radial-gradient(circle at top, #2f3545, #05070f); box-shadow: 0 100px 160px -110px rgba(249,115,22,.95), 0 40px 90px -70px rgba(15,23,42,.9); border: 1px solid rgba(255,255,255,.18); flex: none; }
+    .phone-notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 128px; height: 24px; border-radius: 0 0 16px 16px; background: radial-gradient(circle at top, #2f3545, #05070f); z-index: 5; }
+    .phone-screen { position: relative; width: 100%; height: 100%; border-radius: 32px; overflow: hidden; background: #fff; }
+    .flow-step { position: absolute; inset: 0; display: flex; flex-direction: column; opacity: 0; transform: scale(.98); transition: all .9s ease; pointer-events: none; }
+    .flow-step.active { opacity: 1; transform: scale(1); pointer-events: auto; }
+    .fs-real { display: flex; flex-direction: column; height: 100%; background: #f8fafc; }
+    .fs-real-head { display: flex; align-items: center; gap: 9px; padding: 36px 14px 10px; background: linear-gradient(90deg, #fff, #f8fafc); border-bottom: 1px solid rgba(15,23,42,.06); }
+    .fs-real-logo { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, #ea580c, #fb923c); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 11px; }
+    .fs-real-meta { flex: 1; min-width: 0; }
+    .fs-real-meta b { display: block; font-size: 11.5px; line-height: 1.2; }
+    .fs-real-meta span { display: block; font-size: 9.5px; color: var(--muted); margin-top: 1px; }
+    .fs-real-chip { padding: 3px 8px; border-radius: 999px; background: rgba(234,88,12,.1); color: #c2410c; font-size: 9px; font-weight: 800; }
+    .fs-real-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 9px; padding: 10px 12px; }
+    .fs-cats { display: flex; gap: 6px; overflow-x: auto; }
+    .fs-cat { flex: none; padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid rgba(15,23,42,.08); font-size: 9px; font-weight: 700; color: var(--muted); }
+    .fs-cat.active { background: linear-gradient(90deg, #ea580c, #fb923c); color: #fff; border-color: transparent; }
+    .fs-item { display: grid; grid-template-columns: 46px 1fr auto; gap: 9px; align-items: center; padding: 8px; border-radius: 12px; background: #fff; border: 1px solid rgba(15,23,42,.06); box-shadow: 0 10px 20px -18px rgba(15,23,42,.9); }
+    .fs-thumb { width: 46px; height: 46px; border-radius: 10px; background: radial-gradient(circle at top, #fed7aa, #fdba74); display: grid; place-items: center; font-size: 20px; }
+    .fs-item-text b { display: block; font-size: 10.5px; }
+    .fs-item-text span { display: block; font-size: 9px; color: var(--muted); margin-top: 1px; }
+    .fs-item-text small { display: block; font-size: 9.5px; font-weight: 800; margin-top: 2px; }
+    .fs-add { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(135deg, #ea580c, #fb923c); color: #fff; font-weight: 800; }
+    .fs-cartbar { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 12px; background: linear-gradient(90deg, #ea580c, #fb923c); color: #fff; font-size: 10px; font-weight: 800; }
+    .fs-klist { display: flex; flex-direction: column; gap: 8px; }
+    .fs-kcard { border-radius: 12px; background: #fff; border: 1px solid rgba(15,23,42,.06); overflow: hidden; box-shadow: 0 12px 24px -20px rgba(15,23,42,.9); }
+    .fs-khead { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: linear-gradient(90deg, #fff7ed, #fff); border-bottom: 1px solid rgba(15,23,42,.05); }
+    .fs-khead b { font-size: 10.5px; }
+    .fs-khead span { font-size: 9px; padding: 3px 7px; border-radius: 999px; background: rgba(234,88,12,.12); color: #c2410c; font-weight: 800; }
+    .fs-kbody { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; }
+    .fs-krow { display: flex; align-items: center; justify-content: space-between; font-size: 9.5px; }
+    .fs-krow span:last-child { color: var(--muted); }
+    .fs-kfoot { display: flex; gap: 6px; padding: 0 10px 9px; }
+    .fs-kbtn { flex: 1; text-align: center; padding: 6px; border-radius: 9px; font-size: 9px; font-weight: 800; }
+    .fs-kbtn.ghost { background: rgba(148,163,184,.12); color: var(--muted); }
+    .fs-kbtn.primary { background: linear-gradient(90deg, #22c55e, #16a34a); color: #fff; }
+    .fs-status { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin-top: 10px; }
+    .fs-status-ring { width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: radial-gradient(circle, rgba(34,197,94,.18), rgba(34,197,94,.08)); position: relative; }
+    .fs-status-ring::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 1px solid rgba(34,197,94,.22); animation: pulse-ring 2s infinite; }
+    @keyframes pulse-ring { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.08); opacity: .4; } }
+    .fs-status h4 { margin: 0; font-size: 14px; }
+    .fs-status p { margin: 2px 0 0; font-size: 10px; color: var(--muted); }
+    .fs-steps { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+    .fs-sdot { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; background: rgba(148,163,184,.3); color: #fff; }
+    .fs-sdot.done { background: #22c55e; }
+    .fs-sdot.active { background: linear-gradient(135deg, #ea580c, #fb923c); box-shadow: 0 0 0 4px rgba(234,88,12,.14); }
+    .fs-sline { flex: 1; height: 2px; background: rgba(148,163,184,.25); }
+    .fs-bill { border-radius: 12px; background: #fff; border: 1px solid rgba(15,23,42,.06); overflow: hidden; }
+    .fs-bhead { padding: 8px 10px; background: linear-gradient(90deg, #fff7ed, #fff); border-bottom: 1px solid rgba(15,23,42,.05); font-size: 10.5px; font-weight: 800; }
+    .fs-brow { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 9.5px; }
+    .fs-btotal { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-top: 1px dashed rgba(148,163,184,.4); font-size: 11px; font-weight: 800; }
+    .fs-pay { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .fs-paybtn { text-align: center; padding: 8px; border-radius: 10px; font-size: 10px; font-weight: 800; }
+    .fs-paybtn.upi { background: linear-gradient(90deg, #22c55e, #16a34a); color: #fff; }
+    .fs-paybtn.cash { background: rgba(148,163,184,.14); color: var(--muted); }
+    .fs-cash { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; margin-top: 12px; }
+    .fs-cash-icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; background: radial-gradient(circle, rgba(234,88,12,.16), rgba(234,88,12,.08)); }
+    .fs-cash h4 { margin: 0; font-size: 13px; }
+    .fs-cash p { margin: 2px 0 0; font-size: 10px; color: var(--muted); }
+    .fs-done { text-align: center; padding: 8px; border-radius: 10px; background: rgba(34,197,94,.12); color: #166534; font-size: 10px; font-weight: 800; margin-top: 10px; }
+    .fs-bar { display: none; }
+    .fs-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(148,163,184,.36); }
+    .fs-dot.active { width: 24px; border-radius: 999px; background: linear-gradient(90deg, #ea580c, #fb923c); }
+    .flow-steps-list { display: flex; flex-direction: column; gap: 10px; }
+    .flow-item { display: grid; grid-template-columns: 38px 1fr; gap: 14px; align-items: start; padding: 14px 18px; border-radius: 16px; border: 1px solid transparent; transition: all .6s ease; }
+    .flow-item.active { background: radial-gradient(circle at top left, rgba(255,255,255,.16), rgba(255,255,255,.08)); border-color: rgba(255,255,255,.28); backdrop-filter: blur(10px); box-shadow: 0 40px 70px -60px rgba(249,115,22,.9); }
+    .flow-num { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26); color: #fff; }
+    .flow-item.active .flow-num { background: linear-gradient(135deg, #ea580c, #fb923c); border-color: transparent; }
+    .flow-item h4 { color: #fff; margin: 0; font-size: 15px; }
+    .flow-item p { color: rgba(255,255,255,.78); margin: 4px 0 0; font-size: 13px; }
+    .auth-main { display: flex; align-items: center; justify-content: center; padding: 40px 22px; background: transparent; }
+    .auth-card { width: 100%; max-width: 424px; }
+    @media (max-width: 1240px) { .auth-wrap { grid-template-columns: 1fr; gap: 36px; justify-items: center; } .flow-hero { width: min(980px, 100%); } .flow-split { grid-template-columns: 1fr; justify-items: center; gap: 28px; } .flow-steps-list { width: min(560px, 100%); } }
+    @media (max-width: 640px) { .phone-mock { width: 268px; height: 556px; } .flow-steps-list { padding: 0 10px; } }
+
+    .auth-main {
+      display: flex; align-items: center; justify-content: center; padding: 40px 22px;
+      background: radial-gradient(700px 400px at 100% 0%, rgba(234, 88, 12, .10), transparent 60%);
+    }
+    .auth-card { width: 100%; max-width: 424px; }
+    .auth-card .secure {
+      display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700;
+      color: var(--primary-700); background: var(--primary-50); border: 1px solid var(--primary-100);
+      padding: 5px 10px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .02em;
+    }
+    .auth-card .secure svg { width: 13px; height: 13px; }
+    .auth-panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 26px;
+      box-shadow: 0 30px 70px -34px rgba(15, 23, 42, .35), 0 2px 6px rgba(15, 23, 42, .04);
+    }
+    .tabs { display: flex; background: #f1f5f9; padding: 5px; border-radius: 12px; margin-bottom: 22px; gap: 4px; }
+    .tab {
+      flex: 1; text-align: center; padding: 9px; border-radius: 9px; font-weight: 600; font-size: 13.5px;
+      cursor: pointer; border: none; background: transparent; color: var(--muted); transition: .15s;
+    }
+    .tab:hover { color: var(--ink-2); }
+    .tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 6px 14px -10px rgba(16,24,40,.25); }
+    .demo-box {
+      margin-top: 18px; background: linear-gradient(180deg, #fff7ed, #fff); border: 1px dashed var(--primary);
+      border-radius: 12px; padding: 12px 14px; font-size: 12.5px; line-height: 1.8; color: var(--ink-2);
+    }
+    .demo-box code { background: #fff; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); font-size: 12px; }
+    @media (max-width: 900px) {
+      .auth { grid-template-columns: 1fr; }
+      .auth-aside { display: none; }
+      .auth-main { padding: 26px 16px; }
+    }
+
+    [data-theme="dark"] body { background: var(--bg); }
+    [data-theme="dark"] .auth-main {
+      background: radial-gradient(700px 420px at 100% 0%, rgba(234, 88, 12, .12), transparent 62%);
+    }
+    [data-theme="dark"] .auth-panel { background: var(--card); }
+    [data-theme="dark"] .tabs { background: rgba(255, 255, 255, .06); }
+    [data-theme="dark"] .tab.active { background: #16243a; }
+    [data-theme="dark"] .demo-box { background: linear-gradient(180deg, rgba(234, 88, 12, .1), var(--card)); }
+    [data-theme="dark"] .demo-box code { background: #0b1524; }
+    [data-theme="dark"] .auth-card .secure { color: #fdba74; background: rgba(234, 88, 12, .12); border-color: rgba(234, 88, 12, .3); }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" data-theme-toggle title="Dark mode" style="position:fixed;top:16px;right:16px;z-index:50">
+    <span data-theme-icon>☾</span>
+  </button>
+  <div class="auth-wrap">
+    <section class="flow-hero">
+      <div class="flow-hero-head">
+        <span class="flow-pill">QR Table Ordering Flow</span>
+        <h2>Table par QR scan se lekar bill submit tak</h2>
+        <p>Customer bina app install kiye order karta hai. Kitchen, Cashier aur Staff sab ek system par live connected hote hain.</p>
+      </div>
+      <div class="flow-split">
+        <div class="phone-mock">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="flow-step active">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">ZP</div>
+                  <div class="fs-real-meta"><b>Zaika Point</b><span>Table 5 · Dine In</span></div>
+                  <span class="fs-real-chip">MENU</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-cats">
+                    <span class="fs-cat active">All</span><span class="fs-cat">Starters</span><span class="fs-cat">Main Course</span><span class="fs-cat">Breads</span><span class="fs-cat">Drinks</span><span class="fs-cat">Desserts</span>
+                  </div>
+                  <div class="fs-item">
+                    <div class="fs-thumb">🍗</div>
+                    <div class="fs-item-text"><b>Chicken Tikka</b><span>Charcoal grilled with mint chutney</span><small>₹299</small></div>
+                    <div class="fs-add">+</div>
+                  </div>
+                  <div class="fs-item">
+                    <div class="fs-thumb">🍛</div>
+                    <div class="fs-item-text"><b>Butter Chicken</b><span>Rich & creamy tomato gravy</span><small>₹349</small></div>
+                    <div class="fs-add">+</div>
+                  </div>
+                  <div class="fs-item">
+                    <div class="fs-thumb">🍚</div>
+                    <div class="fs-item-text"><b>Chicken Dum Biryani</b><span>Hyderabadi style dum biryani</span><small>₹379</small></div>
+                    <div class="fs-add">+</div>
+                  </div>
+                  <div class="fs-item">
+                    <div class="fs-thumb">🫓</div>
+                    <div class="fs-item-text"><b>Butter Naan</b><span>Fresh from tandoor</span><small>₹55</small></div>
+                    <div class="fs-add">+</div>
+                  </div>
+                  <div class="fs-cartbar"><span>4 items · ₹1,082</span><span>View Cart →</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">ZP</div>
+                  <div class="fs-real-meta"><b>Zaika Point</b><span>Table 5 · Confirm Order</span></div>
+                  <span class="fs-real-chip">CART</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-bill">
+                    <div class="fs-bhead">Your Order</div>
+                    <div class="fs-brow"><span>1 x Chicken Tikka</span><span>₹299</span></div>
+                    <div class="fs-brow"><span>1 x Butter Chicken</span><span>₹349</span></div>
+                    <div class="fs-brow"><span>1 x Chicken Dum Biryani</span><span>₹379</span></div>
+                    <div class="fs-brow"><span>2 x Butter Naan</span><span>₹110</span></div>
+                    <div class="fs-btotal"><span>Item Total</span><span>₹1,137</span></div>
+                    <div class="fs-brow"><span>CGST (2.5%)</span><span>₹28.43</span></div>
+                    <div class="fs-brow"><span>SGST (2.5%)</span><span>₹28.43</span></div>
+                    <div class="fs-btotal"><span>Grand Total</span><span>₹1,193.86</span></div>
+                  </div>
+                  <div class="fs-pay">
+                    <div class="fs-paybtn upi">Place Order</div>
+                    <div class="fs-paybtn cash">Add Order Notes</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">KD</div>
+                  <div class="fs-real-meta"><b>Kitchen Display</b><span>Live Orders</span></div>
+                  <span class="fs-real-chip">NEW</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-klist">
+                    <div class="fs-kcard">
+                      <div class="fs-khead"><b>Table 5 • Order #K-125</b><span>NEW</span></div>
+                      <div class="fs-kbody">
+                        <div class="fs-krow"><span>1 x Chicken Tikka</span><span>Starter</span></div>
+                        <div class="fs-krow"><span>1 x Butter Chicken</span><span>Main Course</span></div>
+                        <div class="fs-krow"><span>1 x Chicken Dum Biryani</span><span>Main Course</span></div>
+                        <div class="fs-krow"><span>2 x Butter Naan</span><span>Breads</span></div>
+                      </div>
+                      <div class="fs-kfoot">
+                        <div class="fs-kbtn ghost">Reject</div>
+                        <div class="fs-kbtn primary">Accept Order</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">KD</div>
+                  <div class="fs-real-meta"><b>Kitchen Display</b><span>Table 5</span></div>
+                  <span class="fs-real-chip">PREPARING</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-klist">
+                    <div class="fs-kcard">
+                      <div class="fs-khead"><b>Table 5 • Order #K-125</b><span style="background:rgba(234,88,12,.12);color:#c2410c">PREPARING</span></div>
+                      <div class="fs-kbody">
+                        <div class="fs-krow"><span>1 x Chicken Tikka</span><span>On Tandoor</span></div>
+                        <div class="fs-krow"><span>1 x Butter Chicken</span><span>On Flame</span></div>
+                        <div class="fs-krow"><span>1 x Chicken Dum Biryani</span><span>Dum</span></div>
+                        <div class="fs-krow"><span>2 x Butter Naan</span><span>Tandoor</span></div>
+                      </div>
+                      <div class="fs-kfoot">
+                        <div class="fs-kbtn primary" style="background:linear-gradient(90deg,#ea580c,#fb923c)">Mark as Ready</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">ZP</div>
+                  <div class="fs-real-meta"><b>Zaika Point</b><span>Table 5 · Order #K-125 · Order Status</span></div>
+                  <span class="fs-real-chip">READY</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-status">
+                    <div class="fs-status-ring">🔔</div>
+                    <div>
+                      <h4>Order Ready!</h4>
+                      <p>Khana table par serve hone wala hai</p>
+                    </div>
+                  </div>
+                  <div class="fs-steps">
+                    <div class="fs-sdot done">✓</div>
+                    <div class="fs-sline"></div>
+                    <div class="fs-sdot done">✓</div>
+                    <div class="fs-sline"></div>
+                    <div class="fs-sdot active">✓</div>
+                    <div class="fs-sline"></div>
+                    <div class="fs-sdot">•</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">ZP</div>
+                  <div class="fs-real-meta"><b>Zaika Point</b><span>Table 5 · Order #K-125 · Order Status</span></div>
+                  <span class="fs-real-chip">SERVED</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-status">
+                    <div class="fs-status-ring">🍽️</div>
+                    <div>
+                      <h4>Order Served</h4>
+                      <p>Khana aapke table par serve ho chuka hai</p>
+                    </div>
+                  </div>
+                  <div class="fs-done">Enjoy your meal!</div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">SG</div>
+                  <div class="fs-real-meta"><b>Spice Garden</b><span>Table 4 · Pay Bill</span></div>
+                  <span class="fs-real-chip">BILL</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-bill">
+                    <div class="fs-bhead">Bill Summary</div>
+                    <div class="fs-brow"><span>1 x Tandoori Kebab</span><span>₹299</span></div>
+                    <div class="fs-brow"><span>1 x Dal Makhani</span><span>₹249</span></div>
+                    <div class="fs-btotal"><span>Total Amount</span><span>₹548</span></div>
+                  </div>
+                  <div class="fs-pay">
+                    <div class="fs-paybtn upi">Pay with UPI</div>
+                    <div class="fs-paybtn cash">Pay at Cash Counter</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="fs-real">
+                <div class="fs-real-head">
+                  <div class="fs-real-logo">CS</div>
+                  <div class="fs-real-meta"><b>Cash Counter</b><span>Table 5 · Order #K-125</span></div>
+                  <span class="fs-real-chip">COLLECT</span>
+                </div>
+                <div class="fs-real-body">
+                  <div class="fs-cash">
+                    <div class="fs-cash-icon">💰</div>
+                    <div>
+                      <h4>Collect Payment</h4>
+                      <p>Amount Due: ₹548</p>
+                    </div>
+                  </div>
+                  <div class="fs-pay">
+                    <div class="fs-paybtn upi">Mark as Paid (UPI)</div>
+                    <div class="fs-paybtn cash">Mark as Paid (Cash)</div>
+                  </div>
+                  <div class="fs-done">Bill Submitted • Order Closed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-steps-list">
+          <div class="flow-item active">
+            <div class="flow-num">1</div>
+            <div>
+              <h4>QR Scan</h4>
+              <p>Table par lage QR ko scan karke digital menu open hota hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">2</div>
+            <div>
+              <h4>Order Place</h4>
+              <p>Dishes select karke cart se order place karta hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">3</div>
+            <div>
+              <h4>Kitchen Ko Order Milta Hai</h4>
+              <p>Order turant Kitchen Display par dikh jata hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">4</div>
+            <div>
+              <h4>Preparing</h4>
+              <p>Chef order accept karke khana banana shuru karta hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">5</div>
+            <div>
+              <h4>Ready</h4>
+              <p>Khana taiyar hone par Ready mark hota hai aur alert milta hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">6</div>
+            <div>
+              <h4>Table Par Serve</h4>
+              <p>Staff khana table par serve karke Served mark karta hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">7</div>
+            <div>
+              <h4>UPI ya Cash Payment</h4>
+              <p>Customer UPI se ya Cash Counter par payment karta hai</p>
+            </div>
+          </div>
+          <div class="flow-item">
+            <div class="flow-num">8</div>
+            <div>
+              <h4>Cashier Par Bill Submit</h4>
+              <p>Cashier bill verify karke payment complete karta hai</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main class="auth-main">
+      <div class="auth-card">
+        <img class="auth-brand-logo" src="/img/qrush-logo.png?v=3" alt="QRush — Smart QR Ordering for Restaurants" />
+        <div class="secure">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          Secure staff access
+        </div>
+        <div class="auth-panel">
+        <!-- ---------------------------- LOGIN ---------------------------- -->
+        <form id="form-login">
+          <h1 style="font-size:24px;margin-bottom:6px">Welcome back</h1>
+          <p class="muted small" style="margin:0 0 20px">Apne staff account mein login karein.</p>
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input class="input" id="login-email" type="email" placeholder="you@restaurant.com" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input class="input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" id="login-submit" type="submit">Login</button>
+          <p class="tiny muted center-text" style="margin:16px 0 0">
+            Naya restaurant add karna hai? Platform admin se access maangein.
+          </p>
+        </form>
+        </div><!-- /auth-panel -->
+        <p class="tiny muted center-text" style="margin:16px 0 0">QRush · Restaurant QR ordering</p>
+        <p class="tiny muted center-text" style="margin:10px 0 0">
+          Platform admin? <a href="/superadmin" style="color:var(--primary-700);font-weight:700">Open platform console →</a>
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function(){
+      const steps = document.querySelectorAll('.flow-step');
+      const items = document.querySelectorAll('.flow-item');
+      if (!steps.length) return;
+      let idx = 0;
+      setInterval(()=>{
+        steps[idx].classList.remove('active');
+        items[idx].classList.remove('active');
+        idx = (idx+1)%steps.length;
+        steps[idx].classList.add('active');
+        items[idx].classList.add('active');
+      }, 2400);
+    })();
+  </script>
+  <script src="/js/common.js"></script>
+  <script src="/login/login.js"></script>
+</body>
+</html>

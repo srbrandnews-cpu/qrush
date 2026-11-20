@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Platform console · QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/superadmin/superadmin.css" />
+</head>
+<body>
+  <!-- Boot splash: decides between sign-in and console. -->
+  <div class="sa-boot" id="sa-boot"><span class="spinner"></span></div>
+
+  <!-- ========================= PLATFORM SIGN IN ========================= -->
+  <main class="sa-login hidden" id="sa-login">
+    <div class="sa-login-card">
+      <div class="sa-login-logo" aria-hidden="true">
+        <img src="/img/qrush-logo.png?v=3" alt="QRush — Smart QR Ordering for Restaurants" class="sa-brand-logo" />
+      </div>
+      <h1 class="sa-login-title">QRush Platform</h1>
+      <p class="sa-login-sub">Welcome back! Please sign in to continue</p>
+
+      <form id="sa-login-form" novalidate>
+        <div class="sa-login-error hidden" id="sa-login-error" role="alert"></div>
+
+        <div class="sa-role" data-role="super">
+          <span class="sa-role-label">Select role</span>
+          <span class="sa-role-ico" id="sa-role-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <span class="sa-role-text">
+            <b id="sa-role-title">Super Admin</b>
+            <small id="sa-role-sub">Full system access</small>
+          </span>
+          <svg class="sa-role-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          <select id="sa-role" aria-label="Select role">
+            <option value="super">Super Admin — Full system access</option>
+            <option value="owner">Restaurant Owner — Venue admin</option>
+            <option value="kitchen">Kitchen — Live orders</option>
+            <option value="cashier">Cashier — Bills &amp; payments</option>
+          </select>
+        </div>
+
+        <div class="sa-field">
+          <label class="sa-label" for="sa-login-email">Email Address <span class="sa-req">*</span></label>
+          <div class="sa-input">
+            <svg class="sa-input-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l7.1 5.2a2 2 0 0 0 2.4 0L20 7"/></svg>
+            <input id="sa-login-email" type="email" placeholder="admin@restaurant.com" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="sa-field">
+          <label class="sa-label" for="sa-login-password">Password <span class="sa-req">*</span></label>
+          <div class="sa-input">
+            <svg class="sa-input-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="sa-login-password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+            <button type="button" class="sa-eye" id="sa-login-eye" aria-label="Show password">
+              <svg class="sa-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              <svg class="sa-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.1A10.6 10.6 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.2 3.9"/><path d="M6.2 6.9C3.6 8.6 2 12 2 12s3.6 6 10 6a10 10 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="sa-login-row">
+          <a class="sa-forgot" href="mailto:srbrandnews@gmail.com?subject=QRush%20platform%20password%20reset">Forgot Password?</a>
+        </div>
+
+        <button class="sa-login-btn" id="sa-login-submit" type="submit">
+          <span>Sign in to console</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+
+      <div class="sa-login-foot">
+        <span>Secure platform access</span>
+        <span class="sa-foot-links">
+          <a class="hidden" id="sa-back-console" href="/superadmin">Back to console →</a>
+          <a href="/login">Staff login →</a>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <div class="shell hidden" id="sa-app">
+    <aside class="sidebar">
+      <div class="brand"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" /> <span class="brand-name">QRush</span></div>
+      <div class="sa-brand-tag">Platform console</div>
+
+      <div class="side-nav-label">Network</div>
+      <button class="nav-item active" data-tab="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4l3 7 4-16 3 9h4"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-tab="restaurants">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg>
+        Restaurants
+        <span class="nav-count" id="nav-tenant-count">0</span>
+      </button>
+      <button class="nav-item" data-tab="freeqr">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM17 17h4v4h-4zM14 21h3"/></svg>
+        Free QR
+        <span class="nav-count" id="nav-freeqr-count">0</span>
+      </button>
+      <button class="nav-item" data-tab="subscriptions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Subscriptions
+      </button>
+      <button class="nav-item" data-tab="access">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        Access &amp; health
+      </button>
+      <button class="nav-item" data-tab="revenue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        Revenue
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+        Settings
+      </button>
+      <button class="nav-item" data-tab="ads">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Ads
+      </button>
+
+      <div class="grow"></div>
+      <div class="side-foot">
+        <div id="whoami" class="tiny"></div>
+        <a class="nav-item" href="/superadmin?login=1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M17 9.5h5"/><path d="M19.5 7l2.5 2.5-2.5 2.5"/></svg>
+          Role sign-ins
+        </a>
+        <a class="nav-item" href="/admin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
+          Venue admin
+        </a>
+        <button class="nav-item" data-theme-toggle title="Toggle dark mode">
+          <span data-theme-icon style="width:18px;text-align:center;font-size:16px">☾</span>
+          <span>Dark mode</span>
+        </button>
+        <button class="nav-item" id="logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="sa-crumb">
+          <span class="sa-crumb-dot"></span>
+          <span>Platform</span>
+          <span class="sa-crumb-sep">/</span>
+          <b id="sa-crumb-page">Overview</b>
+        </div>
+        <div class="topbar-right">
+          <span class="sa-sync" id="sa-sync"><i></i> Live</span>
+          <a class="btn btn-sm" href="/superadmin?login=1" title="Owner, kitchen ya cashier sign-in">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M17 9.5h5"/><path d="M19.5 7l2.5 2.5-2.5 2.5"/></svg>
+            Role sign-ins
+          </a>
+          <button class="btn btn-sm" id="refresh">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- ============================ OVERVIEW ============================ -->
+        <section class="tab-panel" id="panel-overview">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Platform overview</div>
+              <h1>All restaurants</h1>
+              <div class="sub">Poora QRush network ek nazar mein — aaj ka rush, revenue aur setup gaps.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="new-tenant-top">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                New restaurant
+              </button>
+            </div>
+          </div>
+
+          <div class="stat-grid mb24">
+            <div class="stat">
+              <div class="stat-top"><div class="label">Restaurants</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg></div></div>
+              <div class="value" id="p-tenants">—</div>
+              <div class="sub" id="p-tenants-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Owners &amp; staff</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18.5 20a6.5 6.5 0 0 0-2.5-5"/></svg></div></div>
+              <div class="value" id="p-owners">—</div>
+              <div class="sub" id="p-owners-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Orders today</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 14h-15z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div></div>
+              <div class="value" id="p-orders">—</div>
+              <div class="sub" id="p-orders-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Revenue today</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div></div>
+              <div class="value" id="p-revenue">—</div>
+              <div class="sub" id="p-revenue-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Tables &amp; menu</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M3 10h18M9 18v3M15 18v3"/></svg></div></div>
+              <div class="value" id="p-setup">—</div>
+              <div class="sub" id="p-setup-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Guest rating</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg></div></div>
+              <div class="value" id="p-rating">—</div>
+              <div class="sub" id="p-rating-sub">loading…</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="label">Plans (prep)</div><div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg></div></div>
+              <div class="value" id="p-plans">—</div>
+              <div class="sub" id="p-plans-sub">loading…</div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2 mb24">
+            <div class="card">
+              <div class="card-head"><h3>Top venues today</h3><span class="tiny muted">by revenue</span></div>
+              <div class="card-pad" id="ov-top"><div class="sa-skeleton"></div><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Newest restaurants</h3><span class="tiny muted">latest 5</span></div>
+              <div class="card-pad" id="ov-new"><div class="sa-skeleton"></div><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Needs attention</h3>
+              <span class="badge muted no-dot" id="ov-attn-count">0</span>
+            </div>
+            <div class="card-pad" id="ov-attn"><div class="sa-skeleton"></div><div class="sa-skeleton"></div></div>
+          </div>
+        </section>
+
+        <!-- =========================== RESTAURANTS ========================== -->
+        <section class="tab-panel hidden" id="panel-restaurants">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Network</div>
+              <h1>Restaurants</h1>
+              <div class="sub"><span id="tenant-count">0</span> venues · search, suspend or reset any owner account.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="new-tenant">+ New restaurant</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sa-toolbar">
+              <div class="sa-search">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input class="input" id="tenant-search" type="search" placeholder="Search restaurant, owner or email…" autocomplete="off" />
+              </div>
+              <select class="input sa-select" id="tenant-status" aria-label="Filter by status">
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+              <select class="input sa-select" id="tenant-sort" aria-label="Sort restaurants">
+                <option value="newest">Newest first</option>
+                <option value="revenue">Top revenue today</option>
+                <option value="orders">Most orders today</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Restaurant</th>
+                    <th>Owner</th>
+                    <th>Plan</th>
+                    <th>Today</th>
+                    <th>All time</th>
+                    <th>Status</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tenant-rows">
+                  <tr><td colspan="7"><div class="sa-loading">Loading restaurants…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="sa-table-foot" id="tenant-foot"></div>
+          </div>
+        </section>
+
+        <!-- ============================ FREE QR ============================== -->
+        <section class="tab-panel hidden" id="panel-freeqr">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Free QR menus</div>
+              <h1>Free QR Restaurants</h1>
+              <div class="sub"><span id="freeqr-count">0</span> free menus created by owners. Review or remove any.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Restaurant</th>
+                    <th>Owner / Phone</th>
+                    <th>Plan</th>
+                    <th>Scans</th>
+                    <th>Clicks</th>
+                    <th>Items</th>
+                    <th>Orders / Sales</th>
+                    <th>Created</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="freeqr-rows">
+                  <tr><td colspan="8"><div class="sa-loading">Loading free QR menus…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ SUBSCRIPTIONS ============================ -->
+        <section class="tab-panel hidden" id="panel-subscriptions">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Subscriptions</div>
+              <h1>Subscription Management</h1>
+              <div class="sub">Manually activate, renew, or cancel subscription payments.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="sub-check-expiry">Check Expiry</button>
+            </div>
+          </div>
+          <div class="sa-toolbar mb16">
+            <select class="input sa-select" id="sub-status-filter">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="rejected">Rejected</option>
+              <option value="refunded">Refunded</option>
+            </select>
+            <select class="input sa-select" id="sub-plan-filter">
+              <option value="">All plans</option>
+              <option value="starter">Starter</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Restaurant</th>
+                    <th>Plan</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sub-rows">
+                  <tr><td colspan="7"><div class="sa-loading">Loading subscriptions…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ ACCESS ============================== -->
+        <section class="tab-panel hidden" id="panel-access">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Platform</div>
+              <h1>Access &amp; health</h1>
+              <div class="sub">Kaun platform admin hai, service kahan chal rahi hai, aur security reminders.</div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2 mb16">
+            <div class="card">
+              <div class="card-head"><h3>Your session</h3><span class="badge ready">Super admin</span></div>
+              <div class="card-pad" id="acc-session"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Platform admins</h3><span class="tiny muted">email allowlist</span></div>
+              <div class="card-pad" id="acc-admins"></div>
+            </div>
+          </div>
+
+          <div class="sa-grid-2">
+            <div class="card">
+              <div class="card-head"><h3>Service</h3><span class="sa-health" id="acc-health"><i></i> checking</span></div>
+              <div class="card-pad" id="acc-service"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Security checklist</h3><span class="tiny muted">before sharing the URL</span></div>
+              <div class="card-pad" id="acc-checklist">
+                <div class="sa-check"><span class="sa-check-ico">1</span><div><b>Platform owner ka password strong rakhein</b><div class="tiny muted">owner@demo.com platform console bhi kholta hai. Password sirf owner ke paas rakhein; public hua ho to Admin → Staff se turant badlein.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">2</span><div><b>Har venue ke UPI / WiFi bharein</b><div class="tiny muted">Warna customer ko payment link aur WiFi details nahi milengi.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">3</span><div><b>Test venues delete karein</b><div class="tiny muted">Restaurants tab → Manage → Delete. Demo venue delete nahi hota.</div></div></div>
+                <div class="sa-check"><span class="sa-check-ico">4</span><div><b>Neon / JWT secrets rotate karein</b><div class="tiny muted">Render → Environment. Rotate karke deploy karein.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ REVENUE ============================ -->
+        <section class="tab-panel hidden" id="panel-revenue">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Revenue</div>
+              <h1>Subscription Revenue</h1>
+              <div class="sub">Manually recorded subscription collections and advertisement performance.</div>
+            </div>
+          </div>
+          <div class="stat-grid mb24" id="rev-stats">
+            <div class="stat"><div class="stat-top"><div class="label">Total Restaurants</div></div><div class="value" id="rev-total-rest">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Free Plan</div></div><div class="value" id="rev-free">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Starter Active</div></div><div class="value" id="rev-starter">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Business Active</div></div><div class="value" id="rev-business">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Pending Payments</div></div><div class="value" id="rev-pending-pay">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Expired</div></div><div class="value" id="rev-expired">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">Total Collected</div></div><div class="value" id="rev-total-collected">—</div></div>
+            <div class="stat"><div class="stat-top"><div class="label">This Month</div></div><div class="value" id="rev-monthly">—</div></div>
+          </div>
+          <div class="card mb24">
+            <div class="card-head"><h3>Advertisement Performance</h3></div>
+            <div class="card-pad" id="rev-ads">
+              <div class="empty">Loading...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ SETTINGS ============================ -->
+        <section class="tab-panel hidden" id="panel-settings">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Configuration</div>
+              <h1>Platform Settings</h1>
+              <div class="sub">WhatsApp number, plan prices, features, and subscription rules.</div>
+            </div>
+          </div>
+          <div class="card" style="max-width:640px">
+            <div class="card-pad">
+              <div class="field"><label>WhatsApp Business Number</label><input class="input" id="sa-whatsapp" placeholder="919876543210" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Include country code (e.g., 91 for India). Leave empty to disable WhatsApp button.</p>
+              <div class="field"><label>WhatsApp Support Message</label><textarea class="input" id="sa-whatsapp-msg" rows="3"></textarea></div>
+              <div class="row">
+                <div class="field"><label>Default Duration (days)</label><input class="input" id="sa-duration" type="number" min="1" /></div>
+                <div class="field"><label>Grace Period (days)</label><input class="input" id="sa-grace" type="number" min="0" /></div>
+              </div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Plan Prices (₹)</h3>
+              <div class="row">
+                <div class="field"><label>Free</label><input class="input" id="sa-price-free" type="number" min="0" /></div>
+                <div class="field"><label>Starter</label><input class="input" id="sa-price-starter" type="number" min="0" /></div>
+                <div class="field"><label>Business</label><input class="input" id="sa-price-business" type="number" min="0" /></div>
+              </div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Plan Features</h3>
+              <div class="field"><label>Free Features</label><textarea class="input" id="sa-features-free" rows="2"></textarea></div>
+              <div class="field"><label>Starter Features</label><textarea class="input" id="sa-features-starter" rows="2"></textarea></div>
+              <div class="field"><label>Business Features</label><textarea class="input" id="sa-features-business" rows="2"></textarea></div>
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:8px">Advertisement Settings</h3>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="sa-ad-enabled"><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45"><b>Ads Enabled</b><br><span class="muted">Show advertisements on free plan public menu pages.</span></span>
+              </label>
+              <button class="btn btn-primary" id="sa-save-settings">Save Settings</button>
+              <p class="tiny muted" id="sa-settings-status" style="margin-top:8px"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ ADS ============================ -->
+        <section class="tab-panel hidden" id="panel-ads">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Monetization</div>
+              <h1>Advertisements</h1>
+              <div class="sub">Free plan menu pages par dikhne wale ads. Paid plans (Starter/Business) ad-free rehte hain.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="ad-new">+ New Advertisement</button>
+            </div>
+          </div>
+
+          <div class="card mb24 hidden" id="ad-form-card">
+            <div class="card-head">
+              <h3 id="ad-form-title">New Advertisement</h3>
+              <button class="btn btn-ghost btn-sm" id="ad-form-cancel" type="button">Cancel</button>
+            </div>
+            <div class="card-pad">
+              <div class="field"><label>Title</label><input class="input" id="ad-title" placeholder="e.g. 20% off at Cafe Mocha" maxlength="120" /></div>
+              <div class="field"><label>Image URL</label><input class="input" id="ad-image" placeholder="https://example.com/banner.jpg" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Direct image link (jpg, png, webp, gif). Must start with https://</p>
+              <div class="field"><label>Destination URL</label><input class="input" id="ad-dest" placeholder="https://example.com" /></div>
+              <p class="tiny muted" style="margin:-8px 0 12px">Where the customer goes on click. Must start with https://</p>
+              <div class="row">
+                <div class="field"><label>Placement</label>
+                  <select class="input" id="ad-placement">
+                    <option value="public_menu">Public menu</option>
+                  </select>
+                </div>
+                <div class="field"><label>Start date (optional)</label><input class="input" id="ad-start" type="date" /></div>
+                <div class="field"><label>End date (optional)</label><input class="input" id="ad-end" type="date" /></div>
+              </div>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="ad-active" checked><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45"><b>Active</b><br><span class="muted">Inactive ads turant hide ho jate hain.</span></span>
+              </label>
+              <button class="btn btn-primary" id="ad-save" type="button">Save Advertisement</button>
+              <p class="tiny muted" id="ad-status" style="margin-top:8px"></p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data sa-table">
+                <thead>
+                  <tr>
+                    <th>Ad</th>
+                    <th>Placement</th>
+                    <th>Schedule</th>
+                    <th>Impressions</th>
+                    <th>Clicks</th>
+                    <th>Status</th>
+                    <th class="right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ad-rows">
+                  <tr><td colspan="7"><div class="sa-loading">Loading ads…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <div class="sa-denied hidden" id="access-denied">
+          <div class="card card-pad sa-denied-card">
+            <div class="sa-denied-ico">🔒</div>
+            <h2>Super-admin access required</h2>
+            <p class="muted">Yeh console sirf platform owner ke liye hai. Aapke account ke paas permission nahi hai.</p>
+            <div class="flex gap8 center wrap" style="justify-content:center">
+              <a class="btn" href="/admin">Back to venue admin</a>
+              <button class="btn btn-primary" id="denied-logout">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="/js/common.js"></script>
+  <script src="/superadmin/superadmin.js"></script>
+</body>
+</html>

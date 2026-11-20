@@ -1,0 +1,7 @@
+keepalive:
+  stage: .pre
+  image: alpine:latest
+  script:
+    - wget -q -O /dev/null https://tablenest.onrender.com/api/health
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"

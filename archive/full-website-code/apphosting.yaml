@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────
+# Firebase App Hosting configuration
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+#
+# Secrets (DATABASE_URL, JWT_SECRET, VAPID_*) are NOT stored here — set them
+# in the App Hosting console under "Environment variables" so they stay secret.
+# ─────────────────────────────────────────────────────────────
+
+runConfig:
+  # Scale to zero when nobody is using the app. A trial with 1-2 restaurants
+  # should not pay for an idle server; the first request of the day may take a
+  # couple of seconds longer (cold start).
+  #
+  # If you ever want an always-warm server, set minInstances: 1 — but note that
+  # a single always-on instance costs roughly $50/month on Cloud Run.
+  minInstances: 0
+
+  # ⚠️ Keep this at 1 unless you add a shared adapter for Socket.IO
+  # (e.g. @socket.io/redis-adapter). With 2+ instances, a customer's order can
+  # land on instance A while the kitchen screen is connected to instance B, and
+  # the live update would be lost. One instance is plenty for a small trial.
+  maxInstances: 1
+
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+  env:
+    - variable: NODE_ENV
+      value: production
+
+    # PostgreSQL (Neon / Cloud SQL / Supabase) — SQLite does NOT work here
+    # because the filesystem is temporary.
+    - variable: DB_CLIENT
+      value: postgres
+    - variable: PGPOOL_MAX
+      value: 10
+
+    # Support address used by web-push. Change it to your own email.
+    - variable: VAPID_SUBJECT
+      value: mailto:support@yourdomain.com
+
+    # NOTE: BASE_URL is intentionally not set.
+    # QR codes automatically use the hostname the request arrived on, so they
+    # stay correct on the default *.hosted.app URL and on any custom domain.
+    # Only set BASE_URL if you want to force one specific domain.
+
+# Optional: mount a Cloud Storage volume if you want a persistent filesystem.
+# (Not needed for QRush — all persistent data lives in PostgreSQL.)
+# volumes:
+#   - name: data
+#     cloudStorage:
+#       bucket: YOUR-BUCKET

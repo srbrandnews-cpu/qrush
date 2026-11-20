@@ -1,0 +1,33 @@
+node_modules/
+data/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.vscode/
+.idea/
+*.bak
+
+# Firebase / platform local state
+.firebase/
+.firebaserc.local
+apphosting.local.yaml
+
+# Source media (production copy lives in public/video/)
+q rush video.mp4
+
+# Database backups (may contain customer data)
+backups/
+
+TableNest_Source_Code_Audit.zip
+*.zip
+
+
+# One-off scripts that may contain credentials
+reset_render.js
+

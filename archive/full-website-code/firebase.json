@@ -1,0 +1,8 @@
+{
+  "apphosting": {
+    "backend": {
+      "region": "asia-south1",
+      "rootDir": "."
+    }
+  }
+}

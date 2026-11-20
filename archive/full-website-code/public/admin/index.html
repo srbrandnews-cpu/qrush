@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Admin — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" /> <span class="brand-name">QRush</span></div>
+      <div class="side-nav-label">Workspace</div>
+      <button class="nav-item active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-tab="menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.6" cy="6" r="1"/><circle cx="3.6" cy="12" r="1"/><circle cx="3.6" cy="18" r="1"/></svg>
+        Menu
+      </button>
+      <button class="nav-item" data-tab="tables">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M3 10h18M9 18v3M15 18v3"/></svg>
+        Tables &amp; QR
+      </button>
+      <button class="nav-item" data-tab="staff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18.5 20a6.5 6.5 0 0 0-2.5-5"/></svg>
+        Staff
+      </button>
+      <button class="nav-item" data-tab="notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></svg>
+        Notifications
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+        Settings
+      </button>
+      <div class="side-nav-label hidden" id="platform-nav-label">Platform</div>
+      <a class="nav-item hidden" id="platform-link" href="/superadmin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+        Platform console
+      </a>
+      <a class="nav-item hidden" id="roles-link" href="/superadmin?login=1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M17 9.5h5"/><path d="M19.5 7l2.5 2.5-2.5 2.5"/></svg>
+        Role logins
+      </a>
+      <div class="grow"></div>
+      <div class="side-foot">
+        <div id="whoami" class="tiny"></div>
+        <button class="nav-item" data-theme-toggle title="Toggle dark mode">
+          <span data-theme-icon style="width:18px;text-align:center;font-size:16px">☾</span>
+          <span>Dark mode</span>
+        </button>
+        <button class="nav-item" id="logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="content">
+
+        <!-- ============================ DASHBOARD ============================ -->
+        <section class="tab-panel" id="panel-dashboard">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Overview</div>
+              <h1>Dashboard</h1>
+              <div class="sub">Aaj ka restaurant overview.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn" id="refresh-dash">↻ Refresh</button>
+            </div>
+          </div>
+
+          <div class="stat-grid mb24">
+            <div class="stat">
+              <div class="stat-top">
+                <div class="label">Open orders</div>
+                <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v5h5M8 13h7M8 17h5"/></svg></div>
+              </div>
+              <div class="value" id="d-open">0</div>
+              <div class="sub">abhi kitchen/counter par</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top">
+                <div class="label">Orders today</div>
+                <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 14h-15z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div>
+              </div>
+              <div class="value" id="d-orders">0</div>
+              <div class="sub" id="d-items">0 items</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top">
+                <div class="label">Revenue today</div>
+                <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+              </div>
+              <div class="value" id="d-revenue">₹0</div>
+              <div class="sub">cancelled excluded</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top">
+                <div class="label">Tables</div>
+                <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M3 10h18M9 18v3M15 18v3"/></svg></div>
+              </div>
+              <div class="value" id="d-tables">0</div>
+              <div class="sub" id="d-menu">0 menu items</div>
+            </div>
+          </div>
+
+          <div class="grid-2 mb24">
+            <div class="card">
+              <div class="card-head">
+                <h3>⚡ QRush score</h3>
+                <span class="badge ready" id="d-score-badge">—</span>
+              </div>
+              <div class="card-pad" style="display:flex;gap:18px;align-items:center">
+                <div class="score-ring" id="d-score-ring" style="--score:0">
+                  <div><b id="d-score">—</b><span>speed</span></div>
+                </div>
+                <div class="grow">
+                  <div class="small muted">Orders ready within your target time</div>
+                  <div class="small mt8"><b id="d-prep">—</b> avg prep · target <b id="d-target">15</b> min</div>
+                  <div class="tiny muted mt8" id="d-rush-line">This hour: 0 orders</div>
+                  <div class="tiny mt8" id="d-requests-line" style="color:var(--muted)">0 open table requests</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Guest feedback</h3>
+                <span class="badge muted" id="d-ratings">0 ratings</span>
+              </div>
+              <div id="d-feedback"><div class="empty">No feedback yet.</div></div>
+            </div>
+          </div>
+
+          <div class="card mb24">
+            <div class="card-head">
+              <h3>Rush heatmap — today</h3>
+              <span class="badge muted">Orders per hour</span>
+            </div>
+            <div class="card-pad"><div class="heat" id="d-heat"></div></div>
+          </div>
+
+          <!-- Getting started checklist -->
+          <div class="card mb24" id="setup-card">
+            <div class="card-head">
+              <h3>Setup checklist</h3>
+              <div class="flex center gap12">
+                <span class="badge muted" id="setup-progress">0 / 7</span>
+                <label class="setup-toggle" title="Checklist dikhayein ya chupayein">
+                  <span class="tiny muted">Dikhayein</span>
+                  <span class="switch"><input type="checkbox" id="setup-toggle" checked><span class="slider"></span></span>
+                </label>
+              </div>
+            </div>
+            <div class="card-pad" id="setup-list"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h3>Top items today</h3></div>
+              <div class="card-pad" id="top-items"><div class="empty">No data yet.</div></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Live orders</h3><span class="badge muted" id="live-count">0</span></div>
+              <div id="live-orders" class="live-orders"><div class="empty">No orders right now.</div></div>
+            </div>
+          </div>
+
+          <div class="grid-2 mt24">
+            <div class="card">
+              <div class="card-head"><h3>Menu analytics (real)</h3><span class="badge muted">Views/Scans</span></div>
+              <div class="card-pad" id="d-analytics">
+                <div class="empty">No analytics yet.</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Restaurant profile & plan</h3></div>
+              <div class="card-pad" id="d-profile">
+                <div class="empty">Loading profile…</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================== MENU ============================== -->
+        <section class="tab-panel hidden" id="panel-menu">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Catalogue</div>
+              <h1>Menu</h1>
+              <div class="sub">Categories aur dishes manage karein.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn" id="add-cat">＋ Category</button>
+              <button class="btn" id="import-csv">📥 Import CSV</button>
+              <button class="btn btn-primary" id="add-item">＋ Add item</button>
+            </div>
+          </div>
+          <div id="menu-editor"></div>
+        </section>
+
+        <!-- ============================= TABLES ============================= -->
+        <section class="tab-panel hidden" id="panel-tables">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Service floor</div>
+              <h1>Tables &amp; QR codes</h1>
+              <div class="sub">Har table ka QR print karke table par lagayein.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn" id="bulk-tables">＋ Bulk add</button>
+              <button class="btn btn-primary" id="add-table">＋ Add table</button>
+            </div>
+          </div>
+          <div class="card mb24">
+            <div class="card-head">
+              <h3>Floor status</h3>
+              <span class="badge muted" id="floor-summary">—</span>
+            </div>
+            <div class="card-pad">
+              <div id="floor-map" class="floor-map"></div>
+            </div>
+          </div>
+
+          <div class="card mb24">
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr><th>Table</th><th>Seats</th><th>Status</th><th>Menu link</th><th style="text-align:right">Actions</th></tr></thead>
+                <tbody id="tables-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex between center mb16">
+            <h2 style="font-size:18px">Branded table tents</h2>
+            <button class="btn" id="print-qr">🖨️ Print all</button>
+          </div>
+          <div id="qr-grid" class="qr-grid"></div>
+        </section>
+
+        <!-- ============================== STAFF ============================== -->
+        <section class="tab-panel hidden" id="panel-staff">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Team</div>
+              <h1>Staff</h1>
+              <div class="sub">Kitchen aur cashier ke liye alag accounts banayein.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-primary" id="add-staff">＋ Add staff</button>
+            </div>
+          </div>
+
+          <!-- Links / QR for the staff screens -->
+          <div class="card mb24">
+            <div class="card-head">
+              <h3>Staff screens</h3>
+              <span class="badge muted">QR print karke tablet par laga sakte hain</span>
+            </div>
+            <div class="card-pad">
+              <p class="small muted" style="margin:0 0 14px">
+                Har staff member ko apna login milega (naam + email + password). Neeche wala link
+                ya QR unke tablet/phone par scan karao — woh seedha us screen par khul jayega.
+              </p>
+              <div class="staff-screens" id="staff-screens"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+                <tbody id="staff-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================== NOTIFICATIONS ========================== -->
+        <section class="tab-panel hidden" id="panel-notifications">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Alerts</div>
+              <h1>Notifications</h1>
+              <div class="sub">Order ready / served hone par customer ko alert bhejein.</div>
+            </div>
+            <div class="page-head-actions">
+              <button class="btn btn-sm" id="clear-notif">🗑 Clear log</button>
+              <button class="btn" id="refresh-notif">↻ Refresh</button>
+            </div>
+          </div>
+
+          <div class="card mb24">
+            <div class="card-head">
+              <h3>Notification channel</h3>
+              <span class="badge ready" id="provider-badge">Browser push</span>
+            </div>
+            <div class="card-pad">
+              <div class="row mb16">
+                <div class="field" style="margin:0">
+                  <label>Country code (agar future mein call karna ho)</label>
+                  <input class="input" id="n-country" placeholder="+91" />
+                </div>
+              </div>
+
+              <div class="chan-grid" id="chan-grid">
+                <label class="chan" style="cursor:default">
+                  <input type="checkbox" value="push" checked disabled />
+                  <span class="chan-ico">🔔</span>
+                  <span class="chan-body">
+                    <b>Browser push</b>
+                    <small>Order ready / served hote hi customer ke phone par alert. Customer ko
+                    ek baar "Allow" karna hota hai — koi app install nahi karni.</small>
+                  </span>
+                </label>
+              </div>
+
+              <button class="btn btn-primary mt16" id="save-notif">Save</button>
+              <p class="tiny muted mt8" id="provider-hint"></p>
+            </div>
+          </div>
+
+          <h2 style="font-size:18px;margin-bottom:12px">Delivery log</h2>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr><th>Time</th><th>Order</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Message</th></tr></thead>
+                <tbody id="notif-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= SETTINGS ============================ -->
+        <section class="tab-panel hidden" id="panel-settings">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Configure</div>
+              <h1>Settings</h1>
+              <div class="sub">Restaurant ki basic details aur billing.</div>
+            </div>
+          </div>
+          <div class="card" style="max-width:560px">
+            <div class="card-pad">
+              <div class="field"><label>Restaurant name</label><input class="input" id="s-name" /></div>
+              <div class="row">
+                <div class="field"><label>Phone</label><input class="input" id="s-phone" /></div>
+                <div class="field"><label>Currency symbol</label><input class="input" id="s-currency" placeholder="₹" /></div>
+              </div>
+              <div class="field">
+                <label>Restaurant Logo</label>
+                <div class="logo-field-wrap" style="display:flex;gap:10px;align-items:center">
+                  <div id="s-logo-preview" style="width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);display:grid;place-items:center;overflow:hidden;flex:none">
+                    <span style="font-size:20px">🏪</span>
+                  </div>
+                  <input class="input" id="s-logo" placeholder="Photo URL ya local file path" style="flex:1" />
+                  <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+                    📁 Upload <input type="file" id="s-logo-file" accept="image/*" style="display:none" />
+                  </label>
+                </div>
+                <p class="tiny muted" style="margin:4px 0 0">QR welcome screen aur menu header par ye logo dikhega.</p>
+              </div>
+              <div class="field"><label>Address</label><textarea class="input" id="s-address"></textarea></div>
+              <div class="field"><label>Restaurant description</label><textarea class="input" id="s-description" placeholder="Short description about your restaurant"></textarea></div>
+              <div class="row">
+                <div class="field"><label>Opening time</label><input class="input" id="s-open" placeholder="e.g. 10:00 AM" /></div>
+                <div class="field"><label>Closing time</label><input class="input" id="s-close" placeholder="e.g. 11:00 PM" /></div>
+              </div>
+              <div class="field"><label>GST / tax percent</label><input class="input" id="s-gst" type="number" min="0" max="100" step="0.5" /></div>
+
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:4px">Contact & social</h3>
+              <p class="tiny muted" style="margin:0 0 14px">Shown on your public/menu profile where supported.</p>
+              <div class="row">
+                <div class="field"><label>WhatsApp</label><input class="input" id="s-whatsapp" placeholder="WhatsApp number" /></div>
+                <div class="field"><label>Instagram</label><input class="input" id="s-instagram" placeholder="@handle or URL" /></div>
+              </div>
+              <div class="row">
+                <div class="field"><label>Facebook</label><input class="input" id="s-facebook" placeholder="Page URL" /></div>
+                <div class="field"><label>Website</label><input class="input" id="s-website" placeholder="https://..." /></div>
+              </div>
+
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:4px">Plan (read-only)</h3>
+              <p class="tiny muted" id="s-plan-info" style="margin:0 0 14px">Current plan: Free ₹0 · Status: active (plan changes managed by platform admin; no payments in this phase).</p>
+
+              <div class="divider"></div>
+              <h3 style="font-size:15px;margin-bottom:4px">Guest experience</h3>
+              <p class="tiny muted" style="margin:0 0 14px">
+                WiFi aur UPI customer ke info sheet aur printed table tents par dikhte hain.
+              </p>
+              <div class="row">
+                <div class="field"><label>WiFi name</label><input class="input" id="s-wifi-name" placeholder="Cafe_Guest" /></div>
+                <div class="field"><label>WiFi password</label><input class="input" id="s-wifi-pass" placeholder="••••••" /></div>
+              </div>
+              <div class="row">
+                <div class="field"><label>UPI ID</label><input class="input" id="s-upi" placeholder="restaurant@okhdfcbank" /></div>
+                <div class="field"><label>Typical prep time (min)</label><input class="input" id="s-prep" type="number" min="1" max="120" step="1" placeholder="15" /></div>
+              </div>
+              <label class="setup-toggle mb16" style="align-items:flex-start">
+                <span class="switch" style="margin-top:2px"><input type="checkbox" id="s-rush"><span class="slider"></span></span>
+                <span class="small" style="line-height:1.45">
+                  <b>Rush mode</b><br>
+                  <span class="muted">Peak hours mein menu sirf quick items dikhaye (customer full menu bhi khol sakta hai).</span>
+                </span>
+              </label>
+
+              <button class="btn btn-primary" id="save-settings">Save settings</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic modal used by all tabs -->
+  <div class="modal-backdrop hidden" id="modal">
+    <div class="modal">
+      <div class="modal-head flex between center">
+        <h3 id="modal-title">Title</h3>
+        <button class="btn btn-ghost btn-sm" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

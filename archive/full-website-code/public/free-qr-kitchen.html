@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Kitchen — QRush</title>
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; background: #0b1220; color: #e2e8f0;
+      font-family: var(--font, 'Inter', system-ui, sans-serif);
+    }
+    .hidden { display: none !important; }
+
+    .kbar {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 12px 18px; background: #0f172a; border-bottom: 1px solid #1e293b;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .kbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; color: #fff; }
+    .kbar .brand img { width: 30px; height: 30px; border-radius: 8px; background: #fff; padding: 2px; }
+    .kbar .sub { font-size: 12px; color: #94a3b8; font-weight: 500; }
+    .kbar .spacer { flex: 1; }
+    .kbar .kstat { font-size: 12px; color: #94a3b8; background: #111c2e; border: 1px solid #1e293b; padding: 6px 10px; border-radius: 10px; }
+    .kbar .kstat b { color: #f8fafc; font-size: 13px; }
+    .kbtn {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 10px;
+      padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .kbtn:hover { background: #26344a; }
+    .kbtn.on { background: #ea580c; border-color: #ea580c; color: #fff; }
+
+    .conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; }
+    .conn .dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+    .conn.live .dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .18); }
+
+    .board {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+      padding: 16px 18px 40px; align-items: start;
+    }
+    .col { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; min-height: 200px; }
+    .col h2 { display: flex; align-items: center; gap: 8px; margin: 2px 4px 12px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: #cbd5e1; }
+    .col .cnt { margin-left: auto; background: #1e293b; color: #e2e8f0; font-size: 12px; padding: 2px 9px; border-radius: 999px; }
+    .col[data-status="new"] h2 { color: #fdba74; }
+    .col[data-status="preparing"] h2 { color: #93c5fd; }
+    .col[data-status="ready"] h2 { color: #86efac; }
+    .cards { display: flex; flex-direction: column; gap: 10px; }
+
+    .ord {
+      background: #111c2e; border: 1px solid #1e293b; border-radius: 14px; padding: 12px 13px;
+      box-shadow: 0 12px 30px -22px #000;
+    }
+    .ord.fresh { border-color: #f97316; box-shadow: 0 0 0 1px #f97316, 0 18px 40px -24px #f97316; }
+    .ord-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .ord-no { font-size: 17px; font-weight: 800; color: #fff; }
+    .tbl { font-size: 11.5px; font-weight: 800; background: #ea580c; color: #fff; padding: 3px 9px; border-radius: 999px; }
+    .ago { margin-left: auto; font-size: 11px; color: #64748b; }
+    .ord-items { margin: 8px 0 6px; display: flex; flex-direction: column; gap: 3px; }
+    .ord-item { display: flex; gap: 8px; font-size: 13.5px; color: #e2e8f0; }
+    .ord-item .q { color: #fdba74; font-weight: 800; min-width: 22px; }
+    .ord-note {
+      font-size: 12px; color: #fde68a; background: rgba(234, 88, 12, .12);
+      border: 1px dashed rgba(234, 88, 12, .4); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px;
+    }
+    .ord-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid #1e293b; padding-top: 9px; margin-top: 4px; }
+    .ord-total { font-size: 13.5px; font-weight: 800; color: #fff; }
+    .ord-actions { margin-left: auto; display: flex; gap: 6px; }
+    .act {
+      border: 0; border-radius: 9px; padding: 8px 12px; font-size: 12.5px; font-weight: 800;
+      cursor: pointer; font-family: inherit; background: #ea580c; color: #fff;
+    }
+    .act:hover { filter: brightness(1.07); }
+    .act.ghost { background: #1e293b; color: #94a3b8; font-weight: 600; }
+    .act:disabled { opacity: .5; cursor: wait; }
+
+    .kempty { text-align: center; color: #475569; font-size: 12.5px; padding: 22px 8px; }
+
+    /* login gate */
+    .gate { position: fixed; inset: 0; z-index: 50; background: #0b1220; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .gate-box { width: 100%; max-width: 380px; background: #0f172a; border: 1px solid #1e293b; border-radius: 18px; padding: 26px; }
+    .gate-box h1 { margin: 0 0 4px; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .gate-box p { margin: 0 0 18px; color: #94a3b8; font-size: 13px; }
+    .gate-box label { display: block; font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; }
+    .gate-box .input { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #fff; font: inherit; margin-bottom: 12px; }
+    .gate-box .input:focus { outline: none; border-color: #ea580c; }
+    .gate-err { color: #f87171; font-size: 12.5px; min-height: 16px; margin: 0 0 8px; }
+    .gate-box .go { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #ea580c; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 16px);
+      background: #1e293b; color: #fff; padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: .2s; z-index: 60;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 900px) {
+      .board { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="gate" id="gate">
+    <div class="gate-box">
+      <h1><img src="/img/qrush-icon.png?v=3" alt="QRush" style="width:30px;height:30px;border-radius:8px;background:#fff;padding:2px" /> Kitchen screen</h1>
+      <p>Apna contact number aur password daal kar kitchen board kholein.</p>
+      <form id="gate-form">
+        <label for="g-phone">Contact number</label>
+        <input class="input" id="g-phone" type="tel" placeholder="9172941524" required />
+        <label for="g-pass">Password</label>
+        <input class="input" id="g-pass" type="password" placeholder="••••••••" required />
+        <p class="gate-err" id="gate-err"></p>
+        <button class="go" id="gate-go" type="submit">Open kitchen</button>
+      </form>
+    </div>
+  </div>
+
+  <header class="kbar hidden" id="kbar">
+    <div class="brand">
+      <img src="/img/qrush-icon.png?v=3" alt="QRush" />
+      <div>
+        <div>Kitchen</div>
+        <div class="sub" id="r-name">—</div>
+      </div>
+    </div>
+    <span class="kstat">Aaj: <b id="s-orders">0</b> orders · <b id="s-sales">₹0</b></span>
+    <span class="conn" id="conn"><span class="dot"></span> Connecting…</span>
+    <div class="spacer"></div>
+    <button class="kbtn" id="sound" type="button">🔔 Sound off</button>
+    <button class="kbtn" id="logout" type="button">Logout</button>
+  </header>
+
+  <main class="board hidden" id="board">
+    <section class="col" data-status="new">
+      <h2>🆕 New <span class="cnt" id="c-new">0</span></h2>
+      <div class="cards" id="l-new"></div>
+    </section>
+    <section class="col" data-status="preparing">
+      <h2>👨‍🍳 Preparing <span class="cnt" id="c-preparing">0</span></h2>
+      <div class="cards" id="l-preparing"></div>
+    </section>
+    <section class="col" data-status="ready">
+      <h2>✅ Ready <span class="cnt" id="c-ready">0</span></h2>
+      <div class="cards" id="l-ready"></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var TOKEN_KEY = 'fq_kitchen_token';
+      var token = '';
+      var socket = null;
+      var soundOn = false;
+      var actx = null;
+      var pollTimer = null;
+      var seen = {};          // order id -> status (for the "new order" chime)
+      var booted = false;
+
+      /* ------------------------------- token ------------------------------- */
+      function tokenFromHash() {
+        var raw = (location.hash || '').replace(/^#/, '');
+        if (!raw) return '';
+        try {
+          var p = new URLSearchParams(raw);
+          var t = p.get('t');
+          if (t) history.replaceState(null, '', location.pathname);
+          return t || '';
+        } catch (e) { return ''; }
+      }
+
+      function saveToken(t) {
+        token = t || '';
+        try {
+          if (t) localStorage.setItem(TOKEN_KEY, t);
+          else localStorage.removeItem(TOKEN_KEY);
+        } catch (e) {}
+      }
+
+      function storedToken() {
+        try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+      }
+
+      /* -------------------------------- api -------------------------------- */
+      async function api(path, opts) {
+        opts = opts || {};
+        var headers = opts.headers || {};
+        headers.Authorization = 'Bearer ' + token;
+        if (opts.body) headers['Content-Type'] = 'application/json';
+        var res = await fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.status === 401) { signOut('Session expire ho gaya — dobara login karein.'); throw new Error('login'); }
+        if (!res.ok) throw new Error(data.error || 'Kuch galat ho gaya');
+        return data;
+      }
+
+      /* ------------------------------ sound -------------------------------- */
+      function ensureAudio() {
+        if (!actx) {
+          try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; }
+        }
+        if (actx && actx.state === 'suspended') actx.resume().catch(function () {});
+      }
+
+      function beep(times) {
+        if (!soundOn) return;
+        ensureAudio();
+        if (!actx) return;
+        for (var i = 0; i < (times || 1); i++) {
+          (function (n) {
+            setTimeout(function () {
+              try {
+                var o = actx.createOscillator();
+                var g = actx.createGain();
+                o.type = 'sine';
+                o.frequency.value = 880;
+                g.gain.setValueAtTime(0.0001, actx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.25, actx.currentTime + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.42);
+                o.connect(g); g.connect(actx.destination);
+                o.start(); o.stop(actx.currentTime + 0.45);
+              } catch (e) {}
+            }, n * 260);
+          })(i);
+        }
+      }
+
+      $('sound').addEventListener('click', function () {
+        soundOn = !soundOn;
+        $('sound').classList.toggle('on', soundOn);
+        $('sound').textContent = soundOn ? '🔔 Sound on' : '🔔 Sound off';
+        if (soundOn) { ensureAudio(); beep(1); }
+      });
+
+      /* ------------------------------ render ------------------------------- */
+      function rupees(n) {
+        var v = Number(n) || 0;
+        return '₹' + (v % 1 === 0 ? v : v.toFixed(2));
+      }
+
+      function timeAgo(value) {
+        if (!value) return '';
+        var d = new Date(String(value).replace(' ', 'T') + 'Z');
+        if (isNaN(d.getTime())) return '';
+        var mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+        if (mins < 1) return 'abhi';
+        if (mins < 60) return mins + ' min';
+        var hrs = Math.floor(mins / 60);
+        return hrs + ' hr ' + (mins % 60) + ' min';
+      }
+
+      function el(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined && text !== null) n.textContent = text;
+        return n;
+      }
+
+      function makeCard(order) {
+        var card = el('article', 'ord');
+        if (order.status === 'new') card.className = 'ord fresh';
+
+        var head = el('div', 'ord-head');
+        head.appendChild(el('span', 'ord-no', '#' + order.order_no));
+        head.appendChild(el('span', 'tbl', order.table_label || '—'));
+        head.appendChild(el('span', 'ago', timeAgo(order.created_at)));
+        card.appendChild(head);
+
+        var list = el('div', 'ord-items');
+        (order.items || []).forEach(function (it) {
+          var row = el('div', 'ord-item');
+          row.appendChild(el('span', 'q', it.qty + '×'));
+          row.appendChild(el('span', null, it.name));
+          list.appendChild(row);
+        });
+        card.appendChild(list);
+
+        if (order.note) card.appendChild(el('div', 'ord-note', '📝 ' + order.note));
+
+        var foot = el('div', 'ord-foot');
+        foot.appendChild(el('span', 'ord-total', rupees(order.total)));
+
+        var actions = el('div', 'ord-actions');
+        var next = order.status === 'new' ? 'preparing' : (order.status === 'preparing' ? 'ready' : 'done');
+        var label = order.status === 'new' ? '👨‍🍳 Start' : (order.status === 'preparing' ? '✅ Ready' : '✔️ Done');
+        var go = el('button', 'act', label);
+        go.type = 'button';
+        go.setAttribute('data-next', next);
+        go.setAttribute('data-id', order.id);
+        actions.appendChild(go);
+
+        if (order.status !== 'ready') {
+          var cancel = el('button', 'act ghost', '✕');
+          cancel.type = 'button';
+          cancel.title = 'Cancel order';
+          cancel.setAttribute('data-next', 'cancelled');
+          cancel.setAttribute('data-id', order.id);
+          actions.appendChild(cancel);
+        }
+
+        foot.appendChild(actions);
+        card.appendChild(foot);
+        return card;
+      }
+
+      function render(data) {
+        var orders = data.orders || [];
+        var groups = { new: [], preparing: [], ready: [] };
+        orders.forEach(function (o) { if (groups[o.status]) groups[o.status].push(o); });
+
+        // Beep when a brand-new order appears (socket already beeps too; this
+        // covers the polling fallback and the first load after a sleep).
+        var incoming = 0;
+        orders.forEach(function (o) {
+          if (!seen[o.id]) {
+            if (o.status === 'new' && booted) incoming++;
+            seen[o.id] = o.status;
+          } else if (seen[o.id] !== o.status) {
+            seen[o.id] = o.status;
+          }
+        });
+        if (incoming > 0) beep(Math.min(3, incoming));
+
+        ['new', 'preparing', 'ready'].forEach(function (status) {
+          var listEl = $('l-' + status);
+          listEl.innerHTML = '';
+          $('c-' + status).textContent = groups[status].length;
+          if (!groups[status].length) {
+            listEl.appendChild(el('div', 'kempty', status === 'new' ? 'Koi naya order nahi' : 'Khali'));
+          } else {
+            groups[status].forEach(function (o) { listEl.appendChild(makeCard(o)); });
+          }
+        });
+
+        $('s-orders').textContent = (data.summary && data.summary.orders) || 0;
+        $('s-sales').textContent = rupees(data.summary && data.summary.sales);
+
+        var newCount = groups.new.length;
+        document.title = (newCount ? '(' + newCount + ') ' : '') + 'Kitchen — QRush';
+      }
+
+      async function refresh() {
+        try {
+          var data = await api('/api/public/free-qr/kitchen/orders');
+          if (data.restaurant) $('r-name').textContent = data.restaurant.name || 'My Restaurant';
+          render(data);
+          $('conn').classList.add('live');
+          $('conn').lastChild.textContent = ' Live';
+        } catch (e) {
+          if (String(e.message) !== 'login') $('conn').classList.remove('live');
+        }
+      }
+
+      /* ------------------------------ actions ------------------------------ */
+      $('board').addEventListener('click', async function (e) {
+        var btn = e.target.closest ? e.target.closest('[data-next]') : null;
+        if (!btn) return;
+        var id = btn.getAttribute('data-id');
+        var next = btn.getAttribute('data-next');
+        if (next === 'cancelled' && !window.confirm('Yeh order cancel karein?')) return;
+        btn.disabled = true;
+        try {
+          await api('/api/public/free-qr/kitchen/orders/' + id, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: next })
+          });
+          if (next === 'done') {
+            toast('Order complete ✅');
+            ensureAudio(); beep(1);
+          }
+          await refresh();
+        } catch (err) {
+          btn.disabled = false;
+          toast(err.message);
+        }
+      });
+
+      /* ------------------------------- boot -------------------------------- */
+      function toast(msg) {
+        var t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+      }
+
+      function showBoard() {
+        $('gate').classList.add('hidden');
+        $('kbar').classList.remove('hidden');
+        $('board').classList.remove('hidden');
+      }
+
+      function signOut(msg) {
+        saveToken('');
+        if (socket) { socket.disconnect(); socket = null; }
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        document.title = 'Kitchen — QRush';
+        $('gate').classList.remove('hidden');
+        $('kbar').classList.add('hidden');
+        $('board').classList.add('hidden');
+        if (msg) $('gate-err').textContent = msg;
+      }
+
+      function startSocket() {
+        if (socket || typeof io !== 'function') return;
+        socket = io({ auth: { freeqrToken: token } });
+        socket.on('connect', function () {
+          $('conn').classList.add('live');
+          $('conn').lastChild.textContent = ' Live';
+        });
+        socket.on('disconnect', function () {
+          $('conn').classList.remove('live');
+          $('conn').lastChild.textContent = ' Reconnecting…';
+        });
+        socket.on('freeqr:order', function (payload) {
+          if (payload && payload.reason === 'new') {
+            beep(2);
+            toast('🔔 Naya order aaya!');
+          }
+          refresh();
+        });
+      }
+
+      async function boot() {
+        if (!token) { signOut(); return; }
+        try {
+          await api('/api/public/free-qr/me');
+        } catch (e) {
+          if (String(e.message) !== 'login') signOut('Server se connect nahi hua.');
+          return;
+        }
+        booted = true;
+        showBoard();
+        await refresh();
+        startSocket();
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(refresh, 15000);
+      }
+
+      $('gate-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var phone = $('g-phone').value.trim();
+        var pass = $('g-pass').value;
+        if (!phone || !pass) return;
+        $('gate-err').textContent = '';
+        $('gate-go').disabled = true;
+        $('gate-go').textContent = 'Opening...';
+        try {
+          var res = await fetch('/api/public/free-qr/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone, password: pass })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Login failed');
+          saveToken(data.token);
+          $('g-pass').value = '';
+          boot();
+        } catch (err) {
+          $('gate-err').textContent = err.message;
+        } finally {
+          $('gate-go').disabled = false;
+          $('gate-go').textContent = 'Open kitchen';
+        }
+      });
+
+      $('logout').addEventListener('click', function () { signOut(); });
+
+      // Token in the URL (from the dashboard's "Open kitchen screen" button)
+      // wins, so the tablet signs itself in on first open.
+      var fromHash = tokenFromHash();
+      token = fromHash || storedToken();
+      if (fromHash) saveToken(fromHash);
+      if (token) boot(); else signOut();
+    })();
+  </script>
+</body>
+</html>

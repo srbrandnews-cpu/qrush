@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: tablenest
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+
+  - type: cron
+    name: tablenest-keepalive
+    env: node
+    plan: free
+    schedule: "*/10 * * * *"
+    buildCommand: npm install
+    startCommand: node -e "fetch('https://tablenest.onrender.com/api/health').then(r=>{console.log('ping',r.status);process.exit(0);}).catch(e=>{console.error(e);process.exit(1);})"

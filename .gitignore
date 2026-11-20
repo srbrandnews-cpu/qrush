@@ -34,4 +34,5 @@ reset_render.js
 # Archived main-website demo video (20 MB) — kept locally in the archive only,
 # not in git. Everything else in archive/main-website/ is versioned.
 archive/main-website/public/video/*.mp4
+archive/full-website-code/public/video/*.mp4
 

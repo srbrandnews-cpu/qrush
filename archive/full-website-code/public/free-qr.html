@@ -1,0 +1,2440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ea580c" />
+  <title>Free QR Menu Generator — QRush</title>
+  <script>try { if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed'); } catch (e) {}</script>
+  <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body { background: linear-gradient(180deg, #fff7ed 0%, var(--bg) 420px); }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    /* ------------------------- embedded inside main site ------------------- */
+    html.embed body { background: var(--bg); }
+    html.embed .site-head,
+    html.embed #marketing,
+    html.embed #site-foot { display: none !important; }
+    html.embed #generator { padding: 20px 0 44px; }
+    html.embed #generator .lp-wrap { display: none; }
+    html.embed #generator-panel > h2,
+    html.embed #generator-panel > p { display: none; }
+    html.embed #generator .gen-layout { margin-top: 0; }
+    html.embed body.owner-mode #generator { padding-top: 20px; }
+
+    /* ------------------------------- site header ----------------------------- */
+    .site-head {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255, 255, 255, .92); backdrop-filter: saturate(150%) blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .site-head .inner {
+      max-width: 1120px; margin: 0 auto; padding: 0 20px; height: 64px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .site-head .brand { font-size: 19px; text-decoration: none; color: var(--ink); }
+    .site-nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+    .site-nav a {
+      padding: 8px 12px; border-radius: 9px; font-size: 14px; font-weight: 600;
+      color: var(--ink-2); text-decoration: none; white-space: nowrap;
+    }
+    .site-nav a:hover { background: var(--primary-50); color: var(--primary-700); }
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    .nav-toggle {
+      display: none; width: 42px; height: 42px; align-items: center; justify-content: center;
+      border: 1px solid var(--line-strong); background: #fff; border-radius: 11px;
+      font-size: 18px; line-height: 1; color: var(--ink); cursor: pointer;
+    }
+    .nav-toggle:focus-visible { outline: none; box-shadow: var(--ring); }
+    .mobile-nav {
+      display: none; border-top: 1px solid var(--line); background: #fff;
+      padding: 6px 20px 18px;
+    }
+    .mobile-nav.open { display: block; }
+    .mobile-nav a {
+      display: block; padding: 13px 2px; font-size: 15px; font-weight: 600;
+      color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--line);
+    }
+    .mobile-nav a:hover { color: var(--primary-700); }
+    .mobile-nav .btn { margin-top: 14px; }
+
+    @media (max-width: 900px) {
+      .site-nav { display: none; }
+      .nav-toggle { display: inline-flex; }
+      #jump-login { display: none; }
+    }
+    @media (max-width: 420px) {
+      .site-head .inner { padding: 0 14px; gap: 10px; }
+      .site-head .brand { font-size: 17px; }
+      .site-head .brand .brand-name { font-size: 17px; }
+    }
+
+    .gen-layout {
+      max-width: 1080px; margin: 26px auto 0; padding: 0 20px 64px;
+      display: grid; grid-template-columns: minmax(0, 1fr) 344px; gap: 20px; align-items: start;
+    }
+    .panel { background: #fff; padding: 28px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
+    .field { margin-bottom: 18px; }
+    .input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; font: inherit; }
+    textarea.input { resize: vertical; min-height: 80px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 24px; padding: 24px; background: var(--primary-50); border-radius: 16px; border: 1px solid var(--primary-100); text-align: center; }
+    #qr-code { background: #fff; padding: 16px; border-radius: 12px; box-shadow: var(--shadow-xs); margin: 16px 0; }
+
+    .side { position: sticky; top: 82px; display: flex; flex-direction: column; gap: 16px; }
+    .side .panel { padding: 22px; }
+    .side h3 { font-size: 16px; margin: 0 0 4px; }
+    .side .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.55; }
+    .login-error { color: var(--red); font-size: 12.5px; margin: 0 0 10px; min-height: 16px; }
+    .divider-or { display: flex; align-items: center; gap: 10px; color: var(--muted-2); font-size: 11.5px; margin: 18px 0 14px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    /* ------------------------------- dashboard ------------------------------ */
+    .dash { grid-column: 1 / -1; padding: 26px; }
+    .dash-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .dash-id { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .dash-logo, .dash-logo-fallback {
+      width: 68px; height: 68px; border-radius: 18px; flex: none;
+    }
+    .dash-logo { object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 5px; }
+    .dash-logo-fallback {
+      display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff;
+      background: linear-gradient(135deg, #ea580c, #f97316);
+    }
+    .dash-id h2 { margin: 0; font-size: 22px; letter-spacing: -.025em; line-height: 1.15; }
+    .dash-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 24px 0 8px; }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: 0 4px 14px -8px rgba(15,23,42,.08); transition: transform .15s ease, box-shadow .15s ease; }
+    .stat-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); margin: 6px 0 0; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .stat-foot { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+    .dash-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 6px 20px -12px rgba(15,23,42,.1); }
+    .dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .dash-card-head h3 { margin: 0; font-size: 15px; }
+    .menu-preview {
+      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fbfcfe;
+      padding: 12px; min-height: 150px; max-height: 560px; overflow: auto;
+      display: flex; align-items: flex-start; justify-content: center;
+    }
+    .menu-preview img { max-width: 100%; margin: 0 auto; border-radius: 10px; display: block; }
+    .menu-preview iframe { width: 100%; height: 560px; border: 0; border-radius: 10px; background: #fff; }
+    .menu-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
+    .menu-gallery-item { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fbfcfe; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; }
+    .menu-gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .menu-gallery-item .mg-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(15,23,42,.75); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+    .menu-gallery-item .mg-remove:hover { background: #dc2626; }
+    .menu-gallery-empty { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 12.5px; padding: 24px 8px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+    .menu-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .ocr-status { font-size: 12px; color: var(--muted); margin: 8px 0 0; min-height: 16px; }
+    .menu-text-preview {
+      border: 1px dashed var(--line-strong); border-radius: 14px; background: #fff;
+      padding: 14px 16px; margin-top: 8px; max-height: 340px; overflow: auto;
+    }
+    .menu-text-preview:empty { display: none; }
+    .pv-group + .pv-group { margin-top: 12px; }
+    .pv-cat { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 4px; }
+    .pv-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; }
+    .pv-name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+    .pv-dots { flex: 1; min-width: 10px; border-bottom: 1px dotted #cbd5e1; transform: translateY(-3px); }
+    .pv-price { font-size: 13px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    #d-qr { display: flex; justify-content: center; margin-bottom: 14px; }
+    #d-qr img, #d-qr canvas { display: block; border-radius: 10px; background: #fff; }
+    .owner-actions { display: flex; flex-direction: column; gap: 8px; }
+
+    .click-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+    .click-row { display: flex; align-items: center; gap: 10px; }
+    .click-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .click-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .click-count { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px; }
+    .click-today { font-size: 11px; color: var(--muted); min-width: 46px; text-align: right; }
+    .click-row.off { opacity: .45; }
+
+    /* --------------------------------- modal -------------------------------- */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 110; background: rgba(15, 23, 42, .45);
+      backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center;
+      padding: 26px 14px; overflow: auto;
+    }
+    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 620px; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .6); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .modal-head h3 { margin: 0; font-size: 18px; }
+    .icon-btn { border: 0; background: transparent; font-size: 20px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 8px; }
+    .icon-btn:hover { background: #f1f5f9; color: var(--ink); }
+    .modal-body { padding: 20px 22px; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); position: sticky; bottom: 0; background: #fff; border-radius: 0 0 20px 20px; }
+    .edit-asset { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
+    .edit-logo { width: 64px; height: 64px; border-radius: 14px; object-fit: contain; background: #fff; border: 1px solid var(--line); padding: 4px; flex: none; }
+    .edit-menu-thumb { width: 64px; height: 64px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; }
+    .edit-menu-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+      background: #0f172a; color: #fff; padding: 11px 18px; border-radius: 12px;
+      font-size: 13.5px; font-weight: 600; box-shadow: 0 16px 40px -16px rgba(15, 23, 42, .7);
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #toast.err { background: #b91c1c; }
+
+    @media (max-width: 980px) {
+      .gen-layout { grid-template-columns: 1fr; }
+      .side { position: static; }
+      .row { grid-template-columns: 1fr; }
+      .dash-cols { grid-template-columns: 1fr; }
+    }
+
+    /* ========================== PHASE 1 · LANDING PAGE ======================= */
+    .lp-wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+    .lp-section { padding: 62px 0; scroll-margin-top: 78px; }
+    .lp-section.alt { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .lp-head { text-align: center; max-width: 660px; margin: 0 auto 34px; }
+    .lp-head h2 { font-size: clamp(24px, 3.1vw, 34px); letter-spacing: -.03em; line-height: 1.15; }
+    .lp-head p { color: var(--muted); margin: 10px 0 0; font-size: 15px; line-height: 1.6; }
+
+    /* hero */
+    .lp-hero {
+      position: relative; overflow: hidden; padding: 54px 0 34px;
+      background:
+        radial-gradient(820px 380px at 82% -8%, rgba(249, 115, 22, .17), transparent 62%),
+        radial-gradient(680px 340px at 4% 8%, rgba(234, 88, 12, .10), transparent 60%);
+    }
+    .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr); gap: 44px; align-items: center; }
+    .lp-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--primary-100); color: var(--primary-700);
+      font-size: 12px; font-weight: 800; letter-spacing: .01em; box-shadow: var(--shadow-xs);
+    }
+    .lp-eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22, 163, 74, .15); }
+    .lp-hero h1 { font-size: clamp(30px, 4.3vw, 51px); line-height: 1.07; letter-spacing: -.035em; margin: 16px 0 0; }
+    .lp-hero h1 .hl { color: var(--primary); }
+    .lp-lede { font-size: clamp(15px, 1.5vw, 17px); line-height: 1.62; color: var(--muted); margin: 15px 0 0; max-width: 32em; }
+    .lp-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+    .lp-cta .btn { min-height: 48px; }
+    .lp-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 20px; font-size: 12.5px; color: var(--muted); }
+    .lp-trust b { color: var(--ink-2); }
+
+    /* phone mock-up */
+    .lp-visual { display: flex; justify-content: center; }
+    .lp-phone {
+      position: relative; width: 272px; max-width: 82vw; border-radius: 38px; padding: 10px;
+      background: linear-gradient(165deg, #243043, #0f172a 60%);
+      box-shadow: 0 44px 90px -44px rgba(15, 23, 42, .65), 0 0 0 1px rgba(15, 23, 42, .08);
+    }
+    .lp-phone-screen { background: #fff; border-radius: 29px; overflow: hidden; padding: 14px 12px 16px; }
+    .lp-mini-top { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+    .lp-mini-logo {
+      width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center;
+      font-size: 17px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ea580c, #f97316);
+    }
+    .lp-mini-name { font-size: 13.5px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+    .lp-mini-sub { font-size: 10.5px; color: var(--muted-2); margin-top: 2px; }
+    .lp-mini-list { display: grid; gap: 8px; padding: 12px 0; }
+    .lp-mini-row { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--ink-2); font-weight: 600; }
+    .lp-mini-row img { width: 32px; height: 32px; border-radius: 9px; object-fit: cover; flex: none; background: #f1f5f9; }
+    .lp-mini-row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lp-mini-row b { font-variant-numeric: tabular-nums; color: var(--ink); }
+    .lp-mini-qr {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px; border-radius: 14px; background: var(--primary-50); border: 1px solid var(--primary-100);
+    }
+    .lp-mini-qr span { font-size: 10.5px; font-weight: 700; color: var(--primary-700); }
+    #lp-qr { background: #fff; padding: 7px; border-radius: 10px; line-height: 0; }
+    #lp-qr img, #lp-qr canvas { display: block; width: 104px; height: 104px; border-radius: 6px; }
+
+    /* how it works */
+    .lp-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .lp-step {
+      position: relative; background: #fff; border: 1px solid var(--line); border-radius: 18px;
+      padding: 24px 22px; box-shadow: 0 16px 38px -30px rgba(15, 23, 42, .45);
+    }
+    .lp-step .num {
+      width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
+      font-weight: 800; font-size: 15px; color: #fff; background: var(--brand-grad);
+      box-shadow: 0 10px 22px -12px rgba(234, 88, 12, .8);
+    }
+    .lp-step h3 { font-size: 16.5px; margin: 14px 0 6px; }
+    .lp-step p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+
+    /* features */
+    .lp-feats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .lp-feat {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 20px;
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .lp-feat:hover { border-color: var(--primary-100); box-shadow: 0 18px 40px -30px rgba(15, 23, 42, .5); transform: translateY(-1px); }
+    .lp-feat .ico {
+      width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+      font-size: 20px; background: var(--primary-50); border: 1px solid var(--primary-100);
+    }
+    .lp-feat h3 { font-size: 15.5px; margin: 14px 0 5px; }
+    .lp-feat p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+
+    /* pricing */
+    .lp-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+    .lp-plan {
+      position: relative; display: flex; flex-direction: column; background: #fff;
+      border: 1px solid var(--line); border-radius: 20px; padding: 26px 24px;
+      box-shadow: 0 18px 44px -36px rgba(15, 23, 42, .45);
+    }
+    .lp-plan.featured { border-color: var(--primary); box-shadow: 0 28px 64px -36px rgba(234, 88, 12, .6); }
+    .lp-plan .tag {
+      position: absolute; top: -12px; left: 22px; padding: 5px 11px; border-radius: 999px;
+      background: var(--primary); color: #fff; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .07em; text-transform: uppercase; box-shadow: 0 8px 18px -10px rgba(234, 88, 12, .9);
+    }
+    .lp-plan .tag.soft { background: #334155; box-shadow: none; }
+    .lp-plan-name { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+    .lp-price { display: flex; align-items: baseline; gap: 6px; margin: 8px 0 2px; }
+    .lp-price .amt { font-size: 38px; font-weight: 800; letter-spacing: -.045em; line-height: 1; }
+    .lp-price .per { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .lp-plan-desc { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; min-height: 18px; }
+    .lp-plan ul { list-style: none; margin: 18px 0 22px; padding: 0; display: grid; gap: 9px; }
+    .lp-plan li { display: flex; gap: 8px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+    .lp-plan li::before { content: "✓"; flex: none; color: var(--green); font-weight: 800; }
+    .lp-plan .btn { margin-top: auto; }
+    .lp-note {
+      margin: 18px auto 0; max-width: 640px; text-align: center; font-size: 12.5px;
+      line-height: 1.6; color: var(--muted); background: var(--primary-50);
+      border: 1px solid var(--primary-100); border-radius: 12px; padding: 12px 16px;
+    }
+
+    /* faq */
+    .lp-faq { display: grid; gap: 10px; max-width: 820px; margin: 0 auto; }
+    .lp-faq details { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 0 18px; }
+    .lp-faq details[open] { border-color: var(--primary-100); }
+    .lp-faq summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      cursor: pointer; list-style: none; padding: 16px 0;
+      font-size: 14.5px; font-weight: 700; color: var(--ink);
+    }
+    .lp-faq summary::-webkit-details-marker { display: none; }
+    .lp-faq summary::after { content: "+"; flex: none; font-size: 21px; line-height: 1; font-weight: 400; color: var(--primary); }
+    .lp-faq details[open] summary::after { content: "–"; }
+    .lp-faq summary:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 8px; }
+    .lp-faq .a { margin: 0 0 16px; font-size: 13.5px; line-height: 1.7; color: var(--muted); }
+
+    /* contact */
+    .lp-contact { display: grid; grid-template-columns: 1.05fr .95fr; gap: 20px; align-items: start; }
+    .lp-contact-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 26px;
+      box-shadow: 0 20px 46px -38px rgba(15, 23, 42, .45);
+    }
+    .lp-contact-card h3 { font-size: 18px; margin: 0 0 6px; }
+    .lp-contact-card > p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+    .lp-contact-list { display: grid; gap: 10px; margin-top: 18px; }
+    .lp-contact-item {
+      display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+      border: 1px solid var(--line); border-radius: 13px; text-decoration: none; color: inherit;
+      transition: border-color .15s, background .15s;
+    }
+    .lp-contact-item:hover { border-color: var(--primary); background: var(--primary-50); }
+    .lp-contact-item .ic { font-size: 18px; width: 24px; text-align: center; flex: none; }
+    .lp-contact-item .t { display: block; font-size: 14px; font-weight: 700; color: var(--ink); }
+    .lp-contact-item .s { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .lp-contact-item .go { margin-left: auto; color: var(--muted-2); font-size: 16px; }
+    .lp-wa-card {
+      background: linear-gradient(160deg, #128c7e, #25d366); color: #fff; border: 0;
+      border-radius: 20px; padding: 26px; box-shadow: 0 24px 54px -34px rgba(18, 140, 126, .8);
+    }
+    .lp-wa-card h3 { color: #fff; font-size: 18px; margin: 0 0 6px; }
+    .lp-wa-card p { margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; color: rgba(255, 255, 255, .92); }
+    .lp-wa-card .btn { background: #fff; border-color: #fff; color: #128c7e; font-weight: 800; }
+    .lp-wa-card .btn:hover { background: #f0fdf4; border-color: #f0fdf4; color: #0f766e; }
+    .lp-wa-card .tiny { color: rgba(255, 255, 255, .85); }
+
+    /* footer */
+    .site-foot { background: #fff; border-top: 1px solid var(--line); }
+    .site-foot .inner {
+      max-width: 1120px; margin: 0 auto; padding: 36px 20px 26px;
+      display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 26px;
+    }
+    .site-foot h4 { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+    .site-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+    .site-foot a { color: var(--ink-2); text-decoration: none; font-size: 13.5px; }
+    .site-foot a:hover { color: var(--primary-700); }
+    .site-foot .about { font-size: 13px; color: var(--muted); line-height: 1.65; margin: 10px 0 0; max-width: 34em; }
+    .site-foot .copy {
+      grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;
+      display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      font-size: 12px; color: var(--muted-2);
+    }
+
+    /* form feedback */
+    .form-error { color: var(--red); font-size: 12.5px; line-height: 1.5; margin: 10px 0 0; min-height: 17px; }
+    .form-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+
+    /* owner mode: hide marketing, widen generator */
+    body.owner-mode .site-nav,
+    body.owner-mode #jump-login,
+    body.owner-mode #nav-register,
+    body.owner-mode .nav-toggle { display: none; }
+    body.owner-mode #marketing,
+    body.owner-mode #site-foot { display: none; }
+    body.owner-mode .gen-layout { grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+    body.owner-mode #side-panel { display: none; }
+    body.owner-mode .lp-section { padding-top: 26px; }
+
+    @media (max-width: 900px) {
+      .lp-hero { padding: 34px 0 26px; }
+      .lp-hero-grid { grid-template-columns: 1fr; gap: 34px; }
+      .lp-visual { order: 2; }
+      .lp-steps { grid-template-columns: 1fr; }
+      .lp-feats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lp-plans { grid-template-columns: 1fr; max-width: 520px; margin: 0 auto; }
+      .lp-contact { grid-template-columns: 1fr; }
+      .site-foot .inner { grid-template-columns: 1fr 1fr; }
+      .lp-section { padding: 46px 0; }
+    }
+    @media (max-width: 600px) {
+      .lp-feats { grid-template-columns: 1fr; }
+      .lp-plan.featured { order: -1; }
+      .lp-cta .btn { flex: 1 1 100%; }
+      .lp-plan .tag { left: 18px; }
+      .site-foot .inner { grid-template-columns: 1fr; gap: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-head">
+    <div class="inner">
+      <a class="brand" id="brand-home" href="#home" aria-label="QRush home">
+        <img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="" />
+        <span class="brand-name">QRush</span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#home">Home</a>
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm" id="jump-login" type="button">Owner Login</button>
+        <a class="btn btn-primary btn-sm" id="nav-register" href="#generator">Register Free</a>
+        <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">☰</button>
+      </div>
+    </div>
+    <div class="mobile-nav" id="mobile-nav">
+      <a href="#home">Home</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
+      <button class="btn btn-outline btn-block" id="mobile-login" type="button">Owner Login</button>
+      <a class="btn btn-primary btn-block" href="#generator">Register Free</a>
+    </div>
+  </header>
+
+  <main>
+    <div id="marketing">
+      <!-- -------------------------------- hero -------------------------------- -->
+      <section class="lp-hero" id="home">
+        <div class="lp-wrap">
+          <div class="lp-hero-grid">
+            <div>
+              <span class="lp-eyebrow"><span class="dot"></span> Free during launch · No card required</span>
+              <h1>Your Restaurant's Digital Menu, <span class="hl">One Scan Away</span></h1>
+              <p class="lp-lede">
+                Apni menu ki photo upload karein — 2 minute me aapka QR menu live.
+                Customer QR scan karega aur seedha aapki menu dekhega. Bina app, bina reprinting, bina monthly fees.
+              </p>
+              <div class="lp-cta">
+                <a class="btn btn-primary btn-lg" href="#generator">Get Started Free</a>
+                <a class="btn btn-outline btn-lg" href="/demo-menu.html" target="_blank" rel="noopener">▶ Live Demo</a>
+              </div>
+              <div class="lp-trust">
+                <span>✅ <b>No setup fee</b></span>
+                <span>✅ Ready in <b>2 minutes</b></span>
+                <span>✅ Works on <b>any phone</b></span>
+              </div>
+            </div>
+
+            <div class="lp-visual">
+              <div class="lp-phone" role="img" aria-label="Example of a QRush digital menu on a phone">
+                <div class="lp-phone-screen">
+                  <div class="lp-mini-top">
+                    <div class="lp-mini-logo">S</div>
+                    <div>
+                      <div class="lp-mini-name">Spice Garden</div>
+                      <div class="lp-mini-sub">Kolhapur · Menu</div>
+                    </div>
+                  </div>
+                  <div class="lp-mini-list">
+                    <div class="lp-mini-row"><img src="/img/demo/paneer-tikka.jpg" alt="" loading="lazy" decoding="async" /><span>Paneer Tikka</span><b>₹260</b></div>
+                    <div class="lp-mini-row"><img src="/img/demo/butter-chicken.jpg" alt="" loading="lazy" decoding="async" /><span>Butter Chicken</span><b>₹340</b></div>
+                    <div class="lp-mini-row"><img src="/img/demo/garlic-naan.jpg" alt="" loading="lazy" decoding="async" /><span>Garlic Naan</span><b>₹80</b></div>
+                  </div>
+                  <div class="lp-mini-qr">
+                    <div id="lp-qr"></div>
+                    <span>Scan to open this menu</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ----------------------------- how it works ---------------------------- -->
+      <section class="lp-section alt" id="how">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <h2>How it works</h2>
+            <p>Teen simple steps — koi technical knowledge ki zaroorat nahi.</p>
+          </div>
+          <div class="lp-steps">
+            <div class="lp-step">
+              <div class="num">1</div>
+              <h3>Apni menu upload karein</h3>
+              <p>Menu card ki photo ya PDF apne phone se upload karein. Ek se zyada page bhi add kar sakte hain.</p>
+            </div>
+            <div class="lp-step">
+              <div class="num">2</div>
+              <h3>QR code turant milega</h3>
+              <p>Restaurant ka naam, logo aur details bhariye. QR code ready — download karein ya seedha print karein.</p>
+            </div>
+            <div class="lp-step">
+              <div class="num">3</div>
+              <h3>Table par laga dein</h3>
+              <p>Customer QR scan karega aur menu browser me khul jayegi. Koi app download nahi, koi login nahi.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------ features ------------------------------- -->
+      <section class="lp-section" id="features">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <h2>Everything a restaurant menu needs</h2>
+            <p>Sirf ek QR menu — lekin usme wo sab kuch jo customer ko chahiye.</p>
+          </div>
+          <div class="lp-feats">
+            <div class="lp-feat">
+              <div class="ico">📷</div>
+              <h3>Menu photo ya PDF</h3>
+              <p>Phone se menu card ki photo ya PDF upload karein. Badi photos automatically compress ho jaati hain.</p>
+            </div>
+            <div class="lp-feat">
+              <div class="ico">📱</div>
+              <h3>Customer ko app nahi chahiye</h3>
+              <p>Camera se QR scan karo aur menu browser me khul jaati hai — iPhone ho ya Android.</p>
+            </div>
+            <div class="lp-feat">
+              <div class="ico">🖼️</div>
+              <h3>Multi-page menu</h3>
+              <p>Starters, main course, desserts — har page alag image me. Purane pages remove bhi kar sakte hain.</p>
+            </div>
+            <div class="lp-feat">
+              <div class="ico">✨</div>
+              <h3>Photo se text menu</h3>
+              <p>Menu card ki photo se items aur prices automatically nikaal kar clean text menu banayein.</p>
+            </div>
+            <div class="lp-feat">
+              <div class="ico">📊</div>
+              <h3>Real scan analytics</h3>
+              <p>Total scans, unique visitors aur kis social link par kitne clicks — sab apne dashboard me.</p>
+            </div>
+            <div class="lp-feat">
+              <div class="ico">🔗</div>
+              <h3>Logo aur social links</h3>
+              <p>Apna logo lagayein aur WhatsApp, Instagram, Facebook aur website ke buttons menu par jodein.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------- pricing ------------------------------- -->
+      <section class="lp-section alt" id="pricing">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <h2>Simple pricing</h2>
+            <p>Shuruaat free — jab aapka restaurant badhe, tab upgrade karein.</p>
+          </div>
+          <div class="lp-plans">
+            <div class="lp-plan featured">
+              <span class="tag">Free now</span>
+              <div class="lp-plan-name">Free</div>
+              <div class="lp-price"><span class="amt">₹0</span><span class="per">/ forever</span></div>
+              <p class="lp-plan-desc">Chhote restaurants aur cafes ke liye.</p>
+              <ul>
+                <li>1 restaurant QR menu page</li>
+                <li>Unlimited menu photo pages</li>
+                <li>QR download aur print</li>
+                <li>Scans aur visitor analytics</li>
+                <li>Logo aur social links</li>
+              </ul>
+              <a class="btn btn-primary btn-block" href="#generator">Start free</a>
+            </div>
+
+            <div class="lp-plan">
+              <span class="tag soft">Planned</span>
+              <div class="lp-plan-name">Starter</div>
+              <div class="lp-price"><span class="amt">₹149</span><span class="per">/ month</span></div>
+              <p class="lp-plan-desc">Growing restaurants ke liye.</p>
+              <ul>
+                <li>Free plan ka sab kuch</li>
+                <li>Custom menu cover aur branding</li>
+                <li>Monthly scan report</li>
+                <li>Priority WhatsApp support</li>
+              </ul>
+              <a class="btn btn-outline btn-block" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mujhe%20Starter%20plan%20ke%20baare%20me%20jaanna%20hai." target="_blank" rel="noopener">Ask on WhatsApp</a>
+            </div>
+
+            <div class="lp-plan">
+              <span class="tag soft">Planned</span>
+              <div class="lp-plan-name">Business</div>
+              <div class="lp-price"><span class="amt">₹299</span><span class="per">/ month</span></div>
+              <p class="lp-plan-desc">Hotels aur multi-outlet owners ke liye.</p>
+              <ul>
+                <li>Starter plan ka sab kuch</li>
+                <li>Multiple outlets</li>
+                <li>Table-wise QR codes</li>
+                <li>Dedicated onboarding</li>
+              </ul>
+              <a class="btn btn-outline btn-block" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mujhe%20Business%20plan%20ke%20baare%20me%20jaanna%20hai." target="_blank" rel="noopener">Ask on WhatsApp</a>
+            </div>
+          </div>
+          <p class="lp-note">
+            <b>Launch period:</b> Starter aur Business plans proposed hain — payment gateway abhi active nahi hai.
+            Aaj ke din Free plan me saare current features bilkul free milte hain.
+          </p>
+        </div>
+      </section>
+
+      <!-- --------------------------------- faq -------------------------------- -->
+      <section class="lp-section" id="faq">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <h2>Frequently asked questions</h2>
+            <p>Jo sabse zyada poocha jaata hai.</p>
+          </div>
+          <div class="lp-faq">
+            <details>
+              <summary>Kya QRush sach me free hai?</summary>
+              <p class="a">Haan. Free plan me apni restaurant ka QR menu page, unlimited menu photo pages, QR download/print, scan analytics aur social links — sab free milte hain. Koi card ya payment detail nahi maangi jaati.</p>
+            </details>
+            <details>
+              <summary>Customer ko koi app download karna padega?</summary>
+              <p class="a">Nahi. Customer sirf phone camera se QR scan karega aur menu seedha browser me khul jayegi. iPhone, Android — sab par kaam karta hai.</p>
+            </details>
+            <details>
+              <summary>Menu kaise upload karun?</summary>
+              <p class="a">Apne phone se menu card ki photo khinchein ya PDF chunein. Photos automatically compress ho jaati hain, isliye badi camera photo bhi upload ho jaati hai. Ek se zyada image add kar sakte hain.</p>
+            </details>
+            <details>
+              <summary>QR code kaise print karun?</summary>
+              <p class="a">Dashboard me "Download QR (PNG)" se image download karein, ya "Print QR" se seedha print nikaalein. Table stand, acrylic frame ya menu card par laga dein.</p>
+            </details>
+            <details>
+              <summary>Menu baad me change kar sakta hoon?</summary>
+              <p class="a">Bilkul. Contact number aur password se login karein, "Edit my page" kholein aur naya menu upload karein — customer ko turant naya menu dikhega. QR code same rehta hai.</p>
+            </details>
+            <details>
+              <summary>Password bhool gaya to?</summary>
+              <p class="a">Login box ke neeche "Forgot password?" par click karein. Apna registered contact number aur naya password daal kar reset kar lein.</p>
+            </details>
+            <details>
+              <summary>Kya mujhe online payment karni hogi?</summary>
+              <p class="a">Abhi nahi. Phase 1 me payment gateway active nahi hai — koi button aapse paise nahi maangega. Paid plans sirf propose kiye gaye hain.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------- contact ------------------------------- -->
+      <section class="lp-section alt" id="contact">
+        <div class="lp-wrap">
+          <div class="lp-head">
+            <h2>Baat karein</h2>
+            <p>Koi sawaal ya setup me madad chahiye? WhatsApp par message karein.</p>
+          </div>
+          <div class="lp-contact">
+            <div class="lp-contact-card">
+              <h3>Contact</h3>
+              <p>Kolhapur aur aas-paas ke restaurants, cafes aur hotels ke saath kaam karte hain.</p>
+              <div class="lp-contact-list">
+                <a class="lp-contact-item" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mujhe%20apne%20restaurant%20ke%20liye%20QR%20menu%20chahiye." target="_blank" rel="noopener">
+                  <span class="ic">💬</span>
+                  <span><span class="t">WhatsApp</span><span class="s">+91 91729 41524</span></span>
+                  <span class="go">→</span>
+                </a>
+                <a class="lp-contact-item" href="tel:+919172941524">
+                  <span class="ic">📞</span>
+                  <span><span class="t">Call</span><span class="s">+91 91729 41524</span></span>
+                  <span class="go">→</span>
+                </a>
+                <div class="lp-contact-item" style="cursor:default">
+                  <span class="ic">📍</span>
+                  <span><span class="t">Kolhapur, Maharashtra</span><span class="s">India · on-site setup available</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="lp-wa-card">
+              <h3>WhatsApp par turant jawab</h3>
+              <p>Apne restaurant ka naam aur menu ki photo bhej dein — hum QR menu setup me madad kar denge.</p>
+              <a class="btn btn-block btn-lg" href="https://wa.me/919172941524?text=Hi%20QRush%2C%20mera%20restaurant%20hai%20____%20aur%20mujhe%20QR%20menu%20banana%20hai." target="_blank" rel="noopener">💬 Chat on WhatsApp</a>
+              <p class="tiny" style="margin:12px 0 0">Usually reply within business hours.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- --------------------------- Owner dashboard --------------------------- -->
+    <section class="panel dash hidden" id="dashboard">
+      <div class="dash-head">
+        <div class="dash-id">
+          <img class="dash-logo hidden" id="d-logo" alt="Restaurant logo" />
+          <div class="dash-logo-fallback" id="d-fallback">R</div>
+          <div style="min-width:0">
+            <h2 id="d-name">My Restaurant</h2>
+            <div class="dash-sub" id="d-sub"></div>
+          </div>
+        </div>
+        <div class="dash-actions">
+          <button class="btn btn-ghost btn-sm" id="d-newqr" type="button">➕ Naya QR</button>
+          <button class="btn btn-primary btn-sm" id="d-edit" type="button">✏️ Edit my page</button>
+          <button class="btn btn-ghost btn-sm" id="d-logout" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-label">👀 Total menu views / scans</div>
+          <div class="stat-value" id="s-view-total">0</div>
+          <div class="stat-foot" id="s-view-today">0 today · 0 last 7 days · 0 last 30 days</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">🧑 Unique visitors</div>
+          <div class="stat-value" id="s-view-unique">0</div>
+          <div class="stat-foot">all time (real recorded)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">📋 Profile &amp; plan</div>
+          <div class="stat-value" id="s-profile" style="font-size:22px">0%</div>
+          <div class="stat-foot" id="s-plan">Plan: Free · Active</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">✅ Menu &amp; QR status</div>
+          <div class="stat-value" id="s-status" style="font-size:20px">—</div>
+          <div class="stat-foot" id="s-live">Menu live since —</div>
+        </div>
+      </div>
+
+      <div class="dash-card" style="margin-bottom:18px">
+        <div class="dash-card-head">
+          <h3>Quick actions</h3>
+        </div>
+        <div class="owner-actions" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-top:0">
+          <a class="btn btn-primary btn-sm" id="qa-open" target="_blank" rel="noopener">Open public menu</a>
+          <button class="btn btn-outline btn-sm" id="qa-copy" type="button">Copy menu link</button>
+          <button class="btn btn-outline btn-sm" id="qa-download" type="button">Download QR (PNG)</button>
+          <button class="btn btn-ghost btn-sm" id="qa-print" type="button">Print QR</button>
+        </div>
+        <p class="tiny muted" id="s-profile-hint" style="margin:10px 0 0"></p>
+      </div>
+
+      <div class="dash-card" style="margin-bottom:18px" id="billing-card">
+        <div class="dash-card-head">
+          <h3>My Plan &amp; Billing</h3>
+        </div>
+        <div id="fq-billing-current"><div class="tiny muted">Loading...</div></div>
+        <div id="fq-billing-plans" style="margin-top:12px"></div>
+        <div id="fq-billing-history" style="margin-top:12px"></div>
+      </div>
+
+      <div class="dash-cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <h3>Your uploaded menu</h3>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer">
+              ➕ Add images
+              <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
+            </label>
+          </div>
+          <div class="menu-gallery" id="d-menu-gallery"></div>
+          <p class="tiny muted" style="margin:10px 0 0">Ek se zyada images upload kar sakte hain (page 1, 2...). Replace karne ke liye nayi images add karein, purani remove karein.</p>
+
+          <div class="menu-tools">
+            <button class="btn btn-primary btn-sm" id="d-ocr" type="button">✨ Convert image to text</button>
+            <span class="tiny muted">Pehli image se items auto-fill ho jayenge</span>
+          </div>
+          <p class="ocr-status" id="d-ocr-status"></p>
+        </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Your QR code</h3>
+              <span class="badge" style="background:var(--primary-50);color:var(--primary-700)">Printable</span>
+            </div>
+            <div id="d-qr"></div>
+            <div class="owner-actions">
+              <a class="btn btn-primary btn-block" id="d-open" target="_blank" rel="noopener">Open my menu →</a>
+              <button class="btn btn-outline btn-block" id="d-copy" type="button">📋 Copy menu link</button>
+              <button class="btn btn-outline btn-block" id="d-download" type="button">⬇️ Download QR (PNG)</button>
+              <button class="btn btn-ghost btn-block" id="d-print" type="button">🖨️ Print QR</button>
+            </div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Social link clicks</h3>
+            </div>
+            <ul class="click-list" id="d-click-list"></ul>
+            <p class="tiny muted" style="margin:12px 0 0">Har button par kitne logon ne click kiya (real recorded).</p>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Recent activity</h3>
+            </div>
+            <ul class="click-list" id="d-recent"></ul>
+            <p class="tiny muted" style="margin:12px 0 0">Recent scan/view events (no personal visitor data shown).</p>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-head">
+              <h3>Menu views — last 7 days</h3>
+            </div>
+            <div id="d-daily" style="display:flex;flex-direction:column;gap:8px"></div>
+            <p class="tiny muted" style="margin:12px 0 0">Real recorded views/scans per day.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------- Free QR generator --------------------------- -->
+    <section class="lp-section" id="generator">
+      <div class="lp-wrap">
+        <div class="lp-head" style="margin-bottom:24px">
+          <h2>Create your free QR menu</h2>
+          <p>Details bhariye, menu upload karein — QR code turant ready. OTP verify hoga, koi payment nahi.</p>
+        </div>
+      </div>
+      <div class="gen-layout">
+
+      <!-- ------------------------------ Generator ------------------------------ -->
+      <div class="panel" id="generator-panel">
+      <h2 style="margin:0">🍽️ Free Digital QR Menu Generator</h2>
+      <p class="muted" style="margin-top:6px;margin-bottom:24px">Apni restaurant details bhariye aur instant free QR code banayein.</p>
+
+      <div class="field">
+        <label>Restaurant Name <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-rest" placeholder="e.g. Spice Garden" />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Owner Name <span style="color:var(--red)">*</span></label>
+          <input class="input" id="g-owner" placeholder="e.g. Rahul Sharma" />
+        </div>
+        <div class="field">
+          <label>Contact Number <span style="color:var(--red)">*</span></label>
+          <input class="input" id="g-phone" type="tel" placeholder="e.g. 9172941524" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password (for future access) <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-pass" type="password" placeholder="••••••••" />
+      </div>
+
+      <div class="field" id="g-otp-wrap" style="display:none">
+        <label>OTP <span style="color:var(--red)">*</span></label>
+        <input class="input" id="g-otp" type="text" inputmode="numeric" placeholder="6-digit OTP" maxlength="6" />
+        <p class="tiny muted" id="g-otp-hint" style="margin:4px 0 0"></p>
+      </div>
+
+      <div class="field">
+        <label>Restaurant Logo (Image)</label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+          <input class="input" id="g-logo" placeholder="Image URL ya file upload karein..." style="flex:1;margin-top:0" />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            📁 Upload <input type="file" id="g-logo-file" accept="image/*" style="display:none" />
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Menu Photo / PDF <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+          <input class="input" id="g-menu" placeholder="File upload karein..." style="flex:1;margin-top:0" readonly />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            📁 Upload <input type="file" id="g-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
+          </label>
+        </div>
+        <p class="tiny muted" style="margin:4px 0 0">Phone se photo ya PDF chunein — ek se zyada images (page 1, 2...) bhi select kar sakte hain. Badi photos automatically compress ho jaati hain.</p>
+      </div>
+
+      <div class="field">
+        <label>Social Media Links (optional)</label>
+        <div class="row">
+          <input class="input" id="g-whatsapp" placeholder="WhatsApp number (e.g. 919172941524)" />
+          <input class="input" id="g-instagram" placeholder="Instagram URL" />
+        </div>
+        <div class="row" style="margin-top:10px">
+          <input class="input" id="g-facebook" placeholder="Facebook URL" />
+          <input class="input" id="g-website" placeholder="Website URL" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" id="g-gen" type="button" style="margin-top:10px">Generate Free QR Code 🚀</button>
+      <p class="form-error" id="g-error" role="alert" aria-live="polite"></p>
+      <p class="form-note">🔒 OTP se verify hota hai · koi payment nahi · aapka data safe</p>
+
+      <div id="qr-container" class="hidden">
+        <h3 style="color:var(--primary-700)">🎉 Aapka QR Code Tayar Hai!</h3>
+        <p class="tiny muted" id="qr-subtitle" style="margin:4px 0 12px"></p>
+        <div id="qr-code"></div>
+        <p class="tiny muted">Is QR code ko save karke apne restaurant ke tables par print karwa lein.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" id="g-print" type="button">🖨️ Print QR Code</button>
+          <a class="btn btn-ghost btn-sm hidden" id="g-open-menu" target="_blank" rel="noopener">👀 Open my menu</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- --------------------------- Owner side panel --------------------------- -->
+    <aside class="side" id="side-panel">
+      <div class="panel" id="login-card">
+        <h3>Restaurant Owner Login</h3>
+        <p class="hint">Pehle QR banaya tha? Apna contact number aur password daal kar apni restaurant dekhein.</p>
+        <form id="login-form" autocomplete="on">
+          <div class="field" style="margin-bottom:12px">
+            <label for="l-phone">Contact Number</label>
+            <input class="input" id="l-phone" type="tel" placeholder="9172941524" required />
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label for="l-pass">Password</label>
+            <input class="input" id="l-pass" type="password" placeholder="••••••••" required />
+          </div>
+          <p class="login-error" id="login-error"></p>
+          <button class="btn btn-primary btn-block" id="login-submit" type="submit">Login</button>
+        </form>
+        <p style="text-align:right;margin:8px 0 0"><a href="#" id="forgot-link" style="font-size:12.5px;color:var(--primary-700);font-weight:700;text-decoration:none">Forgot password?</a></p>
+        <div class="divider-or">or</div>
+        <p class="tiny muted" style="margin:0">Naya restaurant? Upar diye gaye form se free QR banayein.</p>
+        <p class="tiny muted" style="margin:10px 0 0">Restaurant staff? <a href="/login" style="color:var(--primary-700);font-weight:700">Staff login →</a></p>
+      </div>
+    </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot" id="site-foot">
+    <div class="inner">
+      <div>
+        <a class="brand" href="#home">
+          <img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="" />
+          <span class="brand-name">QRush</span>
+        </a>
+        <p class="about">Restaurants, cafes aur hotels ke liye free digital QR menu. Menu photo upload karein, QR print karein, aur customers ko instant menu dikhayein.</p>
+        <p class="about" style="margin-top:8px">Made in Kolhapur, Maharashtra 🇮🇳</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="/demo-menu.html" target="_blank" rel="noopener">Live demo</a></li>
+          <li><a href="#generator">Create free QR</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <ul>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="https://wa.me/919172941524" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="#login-card" id="foot-login">Owner login</a></li>
+        </ul>
+      </div>
+      <div class="copy">
+        <span>© 2026 QRush. All rights reserved.</span>
+        <span>Free digital menu · No app required</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ------------------------------ Reset password modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="reset-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>🔑 Reset password</h3>
+        <button class="icon-btn" id="reset-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="tiny muted" style="margin:0 0 12px">Apna registered phone number daal kar naya password set karein.</p>
+        <div class="field">
+          <label>Contact Number</label>
+          <input class="input" id="r-phone" type="tel" placeholder="9172941524" />
+        </div>
+        <div class="field">
+          <label>New Password</label>
+          <input class="input" id="r-pass" type="password" placeholder="Kam se kam 4 characters" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Confirm Password</label>
+          <input class="input" id="r-pass2" type="password" placeholder="Dobara likhein" />
+        </div>
+        <p class="login-error" id="reset-error" style="margin-top:10px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="reset-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="reset-submit" type="button">Reset password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ------------------------------ Edit modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="edit-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <div class="modal-head">
+        <h3 id="edit-title">✏️ Edit your page</h3>
+        <button class="icon-btn" id="m-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Restaurant name</label>
+          <input class="input" id="m-rest" placeholder="Restaurant name" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Owner name</label>
+            <input class="input" id="m-owner" placeholder="Owner name" />
+          </div>
+          <div class="field">
+            <label>Contact number</label>
+            <input class="input" id="m-phone" type="tel" placeholder="9172941524" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Restaurant address</label>
+          <input class="input" id="m-address" placeholder="Shop no., street, area, city" />
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Opening time</label>
+            <input class="input" id="m-open" placeholder="e.g. 10:00 AM" />
+          </div>
+          <div class="field">
+            <label>Closing time</label>
+            <input class="input" id="m-close-time" placeholder="e.g. 11:00 PM" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Restaurant description <span class="tiny muted">(optional)</span></label>
+          <textarea class="input" id="m-desc" rows="3" placeholder="Short description about your restaurant" style="resize:vertical"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Restaurant logo</label>
+          <div class="edit-asset">
+            <img class="edit-logo" id="m-logo" alt="Logo preview" />
+            <div>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                🔄 Change logo
+                <input type="file" id="m-logo-file" accept="image/*" style="display:none" />
+              </label>
+              <p class="tiny muted" style="margin:6px 0 0">PNG / JPG, max 5MB.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Menu photo / PDF</label>
+          <div class="edit-asset">
+            <div class="edit-menu-thumb" id="m-menu-thumb"></div>
+            <div>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                🔄 Change menu
+                <input type="file" id="m-menu-file" accept="image/*,application/pdf" style="display:none" />
+              </label>
+              <p class="tiny muted" style="margin:6px 0 0">Naya menu upload karte hi customer ko dikhega.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Social media links</label>
+          <div class="row">
+            <input class="input" id="m-whatsapp" placeholder="WhatsApp number" />
+            <input class="input" id="m-instagram" placeholder="Instagram URL" />
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input class="input" id="m-facebook" placeholder="Facebook URL" />
+            <input class="input" id="m-website" placeholder="Website URL" />
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label>New password <span class="tiny muted">(optional)</span></label>
+          <input class="input" id="m-pass" type="password" placeholder="Khali chhodein to purana hi rahega" autocomplete="new-password" />
+        </div>
+
+        <p class="login-error" id="m-error" style="margin-top:12px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="m-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="m-save" type="button">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const TOKEN_KEY = 'fq_token';
+    let ownerToken = '';
+    let current = null;        // publicFreeQr() payload
+    let currentStats = null;   // stats payload
+    let revision = 0;          // cache-buster for logo/menu previews
+    let pendingLogo = null;    // data-URI chosen in the modal
+    let pendingMenu = null;    // { data, type } chosen in the modal
+    let currentItems = [];     // orderable items (free_qr_items)
+    let itemsDirty = false;    // true while the owner is typing in the items box
+
+    function setToken(t) {
+      ownerToken = t || '';
+      try {
+        if (t) localStorage.setItem(TOKEN_KEY, t);
+        else localStorage.removeItem(TOKEN_KEY);
+      } catch (_) { /* private mode */ }
+    }
+
+    function getStoredToken() {
+      try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
+    }
+
+    function toast(msg, isError) {
+      const el = $('toast');
+      el.textContent = msg;
+      el.className = 'show' + (isError ? ' err' : '');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => { el.className = ''; }, 2600);
+    }
+
+    /* Inline feedback for the generator form (no browser alert pop-ups). */
+    function genError(msg) {
+      const el = $('g-error');
+      if (!el) return;
+      el.textContent = msg || '';
+      if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function genClearError() {
+      const el = $('g-error');
+      if (el) el.textContent = '';
+    }
+
+    /* ---------------------------- small helpers ---------------------------- */
+    function absoluteMenuUrl(restaurant) {
+      const rel = (restaurant && (restaurant.url || ('/m/' + restaurant.slug))) || '/';
+      return rel.startsWith('http') ? rel : location.origin + rel;
+    }
+
+    function prettyPhone(value) {
+      const d = String(value || '').replace(/\D/g, '');
+      if (d.length === 12 && d.startsWith('91')) return '+91 ' + d.slice(2, 7) + ' ' + d.slice(7);
+      if (d.length === 10) return '+91 ' + d.slice(0, 5) + ' ' + d.slice(5);
+      return String(value || '');
+    }
+
+    function withRev(url) {
+      if (!url || !String(url).startsWith('/')) return url || '';
+      return url + (String(url).includes('?') ? '&' : '?') + 'v=' + revision;
+    }
+
+    function isPdf() {
+      return !!(current && (current.menu_type === 'pdf' || /\.pdf$/i.test(current.menu_url || '')));
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    // Phone cameras produce 3–8MB photos; base64 makes them ~35% bigger, which
+    // used to hit the API body limit. Re-encode big images down to a
+    // web-friendly size before uploading. Small files are sent untouched.
+    function prepareImageFile(file, opts) {
+      const o = opts || {};
+      const maxDim = o.maxDim || 1600;
+      const quality = o.quality || 0.84;
+      const keepUnder = o.keepUnder || 700 * 1024;
+
+      if (!/^image\//i.test(file.type || '')) return readFileAsDataUrl(file);
+      if (file.size <= keepUnder) return readFileAsDataUrl(file);
+
+      return new Promise((resolve) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        const fallback = () => {
+          try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+          readFileAsDataUrl(file).then(resolve);
+        };
+
+        img.onload = () => {
+          try {
+            let w = img.naturalWidth || img.width;
+            let h = img.naturalHeight || img.height;
+            const scale = Math.min(1, maxDim / Math.max(w, h));
+            w = Math.max(1, Math.round(w * scale));
+            h = Math.max(1, Math.round(h * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            const isPng = /png/i.test(file.type || '');
+            if (!isPng) {
+              // JPEG has no alpha — paint white so transparent areas don't go black.
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, w, h);
+            }
+            ctx.drawImage(img, 0, 0, w, h);
+            try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+
+            const out = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
+            // Keep original if compression did not actually help.
+            if (out && out.length < file.size * 1.37) resolve(out);
+            else readFileAsDataUrl(file).then(resolve);
+          } catch (_) {
+            fallback();
+          }
+        };
+        img.onerror = fallback;
+        img.src = objectUrl;
+      });
+    }
+
+    // Menu pages: big pixel size is fine, just keep the file small.
+    async function prepareMenuImage(file) {
+      const dataUrl = await prepareImageFile(file, { maxDim: 1600, quality: 0.84 });
+      if (dataUrl && dataUrl.length > 6 * 1024 * 1024) {
+        throw new Error('Image bahut badi hai — chhoti photo try karein');
+      }
+      return dataUrl;
+    }
+
+    // Logos: small and crisp, keep PNG transparency.
+    async function prepareLogoImage(file) {
+      const dataUrl = await prepareImageFile(file, { maxDim: 600, quality: 0.9, keepUnder: 400 * 1024 });
+      if (dataUrl && dataUrl.length > 2 * 1024 * 1024) {
+        throw new Error('Logo bahut bada hai — chhoti image try karein');
+      }
+      return dataUrl;
+    }
+
+    function fmtDate(value) {
+      if (!value) return '—';
+      const d = new Date(String(value).replace(' ', 'T') + 'Z');
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    /* --------------------------- orderable items --------------------------- */
+    function rupees(n) {
+      const v = Number(n) || 0;
+      return '₹' + (v % 1 === 0 ? String(v) : v.toFixed(2));
+    }
+
+    // "Chicken Tikka, 299, Starters" -> { name, price, category }
+    // Also accepts tabs / pipes and "Chicken Tikka 299" without a delimiter.
+    function parseItemsText(text) {
+      const out = [];
+      String(text || '').split(/\r?\n/).forEach((line) => {
+        const raw = line.trim();
+        if (!raw) return;
+        const parts = raw.split(/\s*[,\t|]\s*/).filter((p) => p !== '');
+        if (!parts.length) return;
+
+        let priceIdx = -1;
+        for (let i = 1; i < parts.length; i += 1) {
+          if (/^(?:₹|rs\.?|inr)?\s*\d+(?:\.\d+)?$/i.test(parts[i])) { priceIdx = i; break; }
+        }
+
+        let name;
+        let price;
+        let category;
+        if (priceIdx >= 0) {
+          name = parts.slice(0, priceIdx).join(', ');
+          price = Number(String(parts[priceIdx]).replace(/[^\d.]/g, '')) || 0;
+          category = parts.slice(priceIdx + 1).join(', ');
+        } else {
+          const tail = /^(.*?)\s+[₹]?\s*(\d+(?:\.\d+)?)$/.exec(raw);
+          if (tail) {
+            name = tail[1];
+            price = Number(tail[2]) || 0;
+          } else {
+            name = raw;
+            price = 0;
+          }
+          category = '';
+        }
+
+        name = String(name || '').trim();
+        if (!name) return;
+        out.push({
+          name: name.slice(0, 120),
+          price: Math.max(0, Math.min(1000000, price)),
+          category: String(category || '').trim().slice(0, 60),
+          available: true,
+        });
+      });
+      return out;
+    }
+
+    function itemsToText(items) {
+      return (items || []).map((it) => {
+        const bits = [it.name, it.price];
+        if (it.category) bits.push(it.category);
+        return bits.join(', ');
+      }).join('\n');
+    }
+
+    function updateKitchenLink() {
+      if (!current) return;
+      const base = absoluteMenuUrl(current).replace(/\/+$/, '');
+      $('d-kitchen').href = base + '/kitchen#t=' + encodeURIComponent(ownerToken || '');
+    }
+
+    /* ------------------------------ QR code -------------------------------- */
+    function makeQr(container, text, size) {
+      container.innerHTML = '';
+      new QRCode(container, {
+        text,
+        width: size,
+        height: size,
+        colorDark: '#0b1220',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+      return container.querySelector('canvas');
+    }
+
+    function loadQrushLogo() {
+      return new Promise((resolve) => {
+        try {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = '/img/qrush-logo.png?v=3';
+        } catch (_) {
+          resolve(null);
+        }
+      });
+    }
+
+    async function qrDataUrl(size) {
+      const tmp = document.createElement('div');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '-9999px';
+      tmp.style.top = '0';
+      document.body.appendChild(tmp);
+      let url = '';
+      try {
+        const canvas = makeQr(tmp, absoluteMenuUrl(current), size);
+        if (canvas) {
+          const pad = Math.round(size * 0.07);
+          const footH = Math.round(size * 0.26);
+          const out = document.createElement('canvas');
+          out.width = size + pad * 2;
+          out.height = size + pad * 2 + footH;
+          const ctx = out.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, out.width, out.height);
+          ctx.drawImage(canvas, pad, pad);
+
+          // ---- Premium branding footer: restaurant name + tagline + QRush logo ----
+          const footTop = size + pad * 2;
+          const cx = out.width / 2;
+          const name = (current.restaurant || 'My Restaurant').trim();
+
+          ctx.fillStyle = '#0b1220';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          const nameSize = Math.max(14, Math.round(size * 0.055));
+          ctx.font = '800 ' + nameSize + 'px "Segoe UI", Arial, sans-serif';
+          ctx.fillText(name, cx, footTop + Math.round(size * 0.02), out.width - pad * 2);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '500 ' + Math.max(11, Math.round(size * 0.032)) + 'px "Segoe UI", Arial, sans-serif';
+          ctx.fillText('Scan to view our menu', cx, footTop + Math.round(size * 0.02) + nameSize + Math.round(size * 0.012));
+
+          const logo = await loadQrushLogo();
+          if (logo && logo.naturalWidth && logo.naturalHeight) {
+            const logoH = Math.round(size * 0.07);
+            const logoW = Math.min(
+              Math.round((logo.naturalWidth / logo.naturalHeight) * logoH),
+              out.width - pad * 2
+            );
+            const logoY = out.height - logoH - Math.round(size * 0.02);
+            ctx.drawImage(logo, cx - logoW / 2, logoY, logoW, logoH);
+          } else {
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '600 ' + Math.max(10, Math.round(size * 0.028)) + 'px "Segoe UI", Arial, sans-serif';
+            ctx.fillText('Powered by QRush', cx, out.height - Math.round(size * 0.05));
+          }
+
+          url = out.toDataURL('image/png');
+        } else {
+          const img = tmp.querySelector('img');
+          url = img ? img.src : '';
+        }
+      } finally {
+        document.body.removeChild(tmp);
+      }
+      return url;
+    }
+
+    /* ---------------------------- dashboard render -------------------------- */
+    function renderDashboard() {
+      if (!current) return;
+
+      $('d-name').textContent = current.restaurant || 'My Restaurant';
+      const bits = [];
+      if (current.owner_name) bits.push('By ' + current.owner_name);
+      if (current.phone) bits.push('📞 ' + prettyPhone(current.phone));
+      $('d-sub').textContent = bits.join(' · ');
+
+      const logo = $('d-logo');
+      const fallback = $('d-fallback');
+      if (current.logo_url) {
+        logo.src = withRev(current.logo_url);
+        logo.classList.remove('hidden');
+        fallback.classList.add('hidden');
+      } else {
+        logo.classList.add('hidden');
+        fallback.classList.remove('hidden');
+        fallback.textContent = (current.restaurant || 'R').charAt(0).toUpperCase();
+      }
+
+      // Stats (real recorded data)
+      const s = currentStats || {};
+      const views = s.views || { total: 0, today: 0, unique: 0, week: 0, month: 0 };
+      const clicks = s.clicks || {};
+      const clickTotal = s.click_total || { total: 0, today: 0 };
+      $('s-view-total').textContent = views.total || 0;
+      $('s-view-today').textContent = (views.today || 0) + ' today · ' + (views.week || 0) + ' last 7 days · ' + (views.month || 0) + ' last 30 days';
+      $('s-view-unique').textContent = views.unique || 0;
+      const pc = (current.profile_completion || { percent: 0, done: 0, total: 0 });
+      $('s-profile').textContent = (pc.percent || 0) + '%';
+      const planName = String(current.plan || 'free').charAt(0).toUpperCase() + String(current.plan || 'free').slice(1);
+      $('s-plan').textContent = 'Plan: ' + planName + ' · ' + (current.plan_status || 'active');
+      const menuOk = (current.menu_status === 'active');
+      $('s-status').textContent = (menuOk ? 'Menu ready' : 'Menu missing') + ' · QR ' + (current.qr_status || 'active');
+      $('s-live').textContent = 'Menu live since ' + fmtDate(current.created_at);
+      const missing = (pc.checks || []).filter(c => !c.ok).map(c => c.key);
+      $('s-profile-hint').textContent = missing.length
+        ? 'Profile incomplete: ' + missing.join(', ') + '. “Edit my page” se poori karein.'
+        : 'Profile complete. Aap apni details aur menu kabhi bhi update kar sakte hain.';
+
+      const publicUrl = absoluteMenuUrl(current);
+      if ($('qa-open')) $('qa-open').href = publicUrl;
+      if ($('d-open')) $('d-open').href = publicUrl;
+
+      // Recent activity
+      const recentEl = $('d-recent');
+      if (recentEl) {
+        const recent = Array.isArray(s.recent) ? s.recent : [];
+        if (!recent.length) {
+          recentEl.innerHTML = '<li class="click-row"><span class="click-name">No activity recorded yet</span><span class="click-count">—</span></li>';
+        } else {
+          const label = (k) => ({ view: 'Menu view/scan', whatsapp: 'WhatsApp click', instagram: 'Instagram click', facebook: 'Facebook click', website: 'Website click', order: 'Order placed' }[k] || k);
+          recentEl.innerHTML = recent.slice(0, 10).map(r => (
+            '<li class="click-row">' +
+            '<span class="click-dot" style="background:#94a3b8"></span>' +
+            '<span class="click-name">' + label(r.kind) + '</span>' +
+            '<span class="click-today">' + fmtDate(r.created_at) + '</span>' +
+            '</li>'
+          )).join('');
+        }
+      }
+
+      // 7-day daily views (real)
+      const dailyEl = $('d-daily');
+      if (dailyEl) {
+        const daily = Array.isArray(s.daily) ? s.daily : [];
+        const map = new Map(daily.map((d) => [d.day, Number(d.views) || 0]));
+        const days = [];
+        const now = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+          const key = d.toISOString().slice(0, 10);
+          days.push({ key, views: map.get(key) || 0 });
+        }
+        const max = Math.max(1, ...days.map((d) => d.views));
+        dailyEl.innerHTML = days.map((d) => {
+          const label = new Date(d.key + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          return '<div style="display:flex;align-items:center;gap:10px">' +
+            '<span class="tiny muted" style="width:64px;flex:none">' + label + '</span>' +
+            '<span style="flex:1;background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden"><span style="display:block;height:100%;width:' + Math.round((d.views / max) * 100) + '%;background:var(--primary,#ea580c)"></span></span>' +
+            '<span class="small" style="width:34px;text-align:right;flex:none">' + d.views + '</span>' +
+            '</div>';
+        }).join('');
+      }
+
+      // Per-network click breakdown
+      const nets = [
+        { key: 'whatsapp', label: 'WhatsApp', color: '#25d366', on: !!current.whatsapp },
+        { key: 'instagram', label: 'Instagram', color: '#dc2743', on: !!current.instagram },
+        { key: 'facebook', label: 'Facebook', color: '#1877f2', on: !!current.facebook },
+        { key: 'website', label: 'Website', color: '#ea580c', on: !!current.website },
+      ];
+      $('d-click-list').innerHTML = nets.map((n) => {
+        const c = clicks[n.key] || { total: 0, today: 0 };
+        return '<li class="click-row' + (n.on ? '' : ' off') + '">' +
+          '<span class="click-dot" style="background:' + n.color + '"></span>' +
+          '<span class="click-name">' + n.label + (n.on ? '' : ' <span class="tiny">(not set)</span>') + '</span>' +
+          '<span class="click-count">' + (c.total || 0) + '</span>' +
+          '<span class="click-today">' + (c.today || 0) + ' today</span>' +
+          '</li>';
+      }).join('');
+
+      // Menu gallery (supports multiple uploaded images)
+      const gallery = $('d-menu-gallery');
+      if (gallery) {
+        const urls = Array.isArray(current.menu_urls) ? current.menu_urls : (current.menu_url ? [current.menu_url] : []);
+        if (!urls.length) {
+          gallery.innerHTML = '<div class="menu-gallery-empty">Koi menu upload nahi hua. Upar se images add karein.</div>';
+        } else {
+          gallery.innerHTML = urls.map((u, i) =>
+            '<div class="menu-gallery-item" data-idx="' + i + '">' +
+            '<img src="' + withRev(u) + '" alt="Menu ' + (i + 1) + '" />' +
+            '<button class="mg-remove" type="button" data-act="remove-image" data-idx="' + i + '" title="Remove">✕</button>' +
+            '</div>'
+          ).join('');
+        }
+      }
+
+      // OCR button — only for image menus.
+      const ocrBtn = $('d-ocr');
+      if (ocrBtn) {
+        const hasImage = !!(current.menu_urls && current.menu_urls.length) || (current.menu_url && !isPdf());
+        ocrBtn.style.display = hasImage ? '' : 'none';
+      }
+      makeQr($('d-qr'), absoluteMenuUrl(current), 200);
+      $('g-open-menu').href = absoluteMenuUrl(current);
+
+      // Load billing info
+      loadFqBilling();
+    }
+
+    async function loadFqBilling() {
+      if (!current) return;
+      const token = ownerToken || getStoredToken();
+      try {
+        const res = await fetch('/api/public/free-qr/billing', { headers: { Authorization: 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load billing');
+        const r = data.restaurant || {};
+        const plan = String(r.plan || 'free').toLowerCase();
+        const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+        const price = plan === 'starter' ? '₹149/month' : plan === 'business' ? '₹299/month' : '₹0';
+        const remaining = data.remaining_days;
+        const expiry = r.plan_expires_at ? (TN.fmtDate ? TN.fmtDate(r.plan_expires_at) : r.plan_expires_at) : 'N/A';
+        const whatsappNumber = data.whatsapp_number || '';
+
+        const el = $('fq-billing-current');
+        if (el) {
+          el.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+              <div class="mini-stat"><div class="label">Current Plan</div><div class="value" style="font-size:20px">${esc(planLabel)}</div><div class="sub">${price}</div></div>
+              <div class="mini-stat"><div class="label">Status</div><div class="value" style="font-size:20px">${esc(r.plan_status || 'active')}</div></div>
+              <div class="mini-stat"><div class="label">Expires</div><div class="value" style="font-size:16px">${esc(expiry)}</div><div class="sub">${remaining !== null ? remaining + ' days left' : 'No expiry'}</div></div>
+            </div>
+            ${plan === 'free' ? `
+            <div class="tiny muted" style="margin-bottom:10px">Upgrade to Starter (₹149/month) or Business (₹299/month) for enhanced features. Contact us on WhatsApp to subscribe.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" id="fq-upgrade-starter">Upgrade to Starter ₹149</button>
+              <button class="btn btn-outline btn-sm" id="fq-upgrade-business">Upgrade to Business ₹299</button>
+            </div>
+            ` : `
+            <div class="tiny muted">Your plan is active. To renew or change plan, contact us on WhatsApp.</div>
+            <div style="margin-top:10px">
+              <button class="btn btn-outline btn-sm" id="fq-renew">Renew / Change Plan via WhatsApp</button>
+            </div>
+            `}
+          `;
+        }
+
+        // Wire upgrade buttons
+        const bindUpgrade = (btnId, p) => {
+          const btn = $(btnId);
+          if (btn) btn.addEventListener('click', () => fqRequestUpgrade(p));
+        };
+        bindUpgrade('fq-upgrade-starter', 'starter');
+        bindUpgrade('fq-upgrade-business', 'business');
+        if ($('fq-renew')) {
+          $('fq-renew').addEventListener('click', () => fqRequestUpgrade(plan === 'starter' ? 'business' : 'starter'));
+        }
+
+        // Plan comparison
+        const prices = data.plan_prices || {};
+        const features = data.plan_features || {};
+        const plans = ['free', 'starter', 'business'];
+        const planNames = { free: 'Free', starter: 'Starter', business: 'Business' };
+        const planPrices = { free: '₹0', starter: '₹' + (prices.starter || '149') + '/month', business: '₹' + (prices.business || '299') + '/month' };
+        const plansEl = $('fq-billing-plans');
+        if (plansEl) {
+          plansEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+              ${plans.map((p) => `
+                <div class="dash-card" style="border:2px solid ${p === plan ? 'var(--primary)' : 'var(--line)'};padding:12px">
+                  <div style="font-weight:800;font-size:16px;margin-bottom:2px">${planNames[p]}</div>
+                  <div style="font-size:20px;font-weight:900;margin-bottom:6px">${planPrices[p]}</div>
+                  <div class="tiny muted" style="margin-bottom:8px">${features[p] || ''}</div>
+                  ${p === plan ? '<span class="badge ready">Current</span>' : (p === 'free' ? '' : `<button class="btn btn-sm btn-primary" data-fq-upgrade="${p}">Upgrade</button>`)}
+                </div>
+              `).join('')}
+            </div>
+          `;
+          plansEl.querySelectorAll('[data-fq-upgrade]').forEach((btn) => {
+            btn.addEventListener('click', () => fqRequestUpgrade(btn.dataset.fqUpgrade));
+          });
+        }
+
+        // Payment history
+        const payments = data.payments || [];
+        const histEl = $('fq-billing-history');
+        if (histEl) {
+          histEl.innerHTML = payments.length ? `
+            <div class="tiny muted" style="margin-bottom:6px"><b>Payment History</b></div>
+            ${payments.map((p) => `
+              <div class="click-row" style="padding:6px 0">
+                <span class="click-name">${esc(p.plan)} · ₹${p.amount}</span>
+                <span class="badge ${p.status === 'confirmed' ? 'ready' : p.status === 'pending' ? 'preparing' : 'muted'}" style="margin-left:auto">${esc(p.status)}</span>
+              </div>
+            `).join('')}
+          ` : '';
+        }
+      } catch (err) {
+        console.error('FQ billing load error:', err);
+        const el = $('fq-billing-current');
+        if (el) el.innerHTML = '<div class="tiny muted">Could not load billing info.</div>';
+      }
+    }
+
+    async function fqRequestUpgrade(plan) {
+      try {
+        const token = ownerToken || getStoredToken();
+        const reqRes = await fetch('/api/public/free-qr/billing/request-upgrade', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan }),
+        });
+        const reqData = await reqRes.json();
+        if (!reqRes.ok) throw new Error(reqData.error || 'Request failed');
+        const wlRes = await fetch('/api/public/free-qr/billing/whatsapp-link?plan=' + plan, { headers: { Authorization: 'Bearer ' + token } });
+        const wlData = await wlRes.json();
+        if (wlData.link) {
+          window.open(wlData.link, '_blank');
+          toast('WhatsApp opened. Please complete payment and wait for admin confirmation.', false);
+        } else {
+          toast(wlData.message || 'WhatsApp not configured. Please contact support.', true);
+        }
+        loadFqBilling();
+      } catch (err) {
+        toast(err.message || 'Upgrade request failed', true);
+      }
+    }
+
+
+    function showOwner(restaurant, stats, items) {
+      current = restaurant;
+      currentStats = stats || null;
+      currentItems = Array.isArray(items) ? items : [];
+      itemsDirty = false;
+      revision = Date.now();
+
+      document.body.classList.add('owner-mode');
+      $('login-card').classList.add('hidden');
+      $('side-panel').classList.add('hidden');
+      $('generator-panel').classList.add('hidden');
+      $('generator').classList.add('hidden');
+      $('dashboard').classList.remove('hidden');
+      $('jump-login').classList.add('hidden');
+
+      renderDashboard();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showLogin() {
+      current = null;
+      currentStats = null;
+      currentItems = [];
+      itemsDirty = false;
+      document.body.classList.remove('owner-mode');
+      $('dashboard').classList.add('hidden');
+      $('generator').classList.remove('hidden');
+      $('generator-panel').classList.remove('hidden');
+      $('side-panel').classList.remove('hidden');
+      $('login-card').classList.remove('hidden');
+      $('jump-login').classList.remove('hidden');
+      $('g-error').textContent = '';
+    }
+
+    /* ------------------------------- edit modal ----------------------------- */
+    function openEdit() {
+      if (!current) return;
+      pendingLogo = null;
+      pendingMenu = null;
+      $('m-error').textContent = '';
+      $('m-pass').value = '';
+
+      $('m-rest').value = current.restaurant || '';
+      $('m-owner').value = current.owner_name || '';
+      $('m-phone').value = current.phone || '';
+      $('m-address').value = current.address || '';
+      $('m-open').value = current.opening_hours || '';
+      $('m-close-time').value = current.closing_hours || '';
+      $('m-desc').value = current.description || '';
+      $('m-whatsapp').value = current.whatsapp || '';
+      $('m-instagram').value = current.instagram || '';
+      $('m-facebook').value = current.facebook || '';
+      $('m-website').value = current.website || '';
+
+      $('m-logo').src = current.logo_url ? withRev(current.logo_url) : '';
+      $('m-logo').style.visibility = current.logo_url ? 'visible' : 'hidden';
+
+      const thumb = $('m-menu-thumb');
+      if (!current.menu_url) thumb.innerHTML = '<span class="tiny muted">No file</span>';
+      else if (isPdf()) thumb.innerHTML = '<span style="font-size:22px">📄</span>';
+      else thumb.innerHTML = '<img src="' + withRev(current.menu_url) + '" alt="Menu" />';
+
+      $('edit-modal').classList.remove('hidden');
+      setTimeout(() => $('m-rest').focus(), 60);
+    }
+
+    function closeEdit() {
+      $('edit-modal').classList.add('hidden');
+    }
+
+    $('d-edit').addEventListener('click', openEdit);
+    $('m-close').addEventListener('click', closeEdit);
+    $('m-cancel').addEventListener('click', closeEdit);
+    $('edit-modal').addEventListener('click', (e) => {
+      if (e.target === $('edit-modal')) closeEdit();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('edit-modal').classList.contains('hidden')) closeEdit();
+    });
+
+    $('m-logo-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!/^image\//i.test(file.type || '')) { toast('Logo ke liye image chunein', true); e.target.value = ''; return; }
+      try {
+        pendingLogo = await prepareLogoImage(file);
+        $('m-logo').src = pendingLogo;
+        $('m-logo').style.visibility = 'visible';
+      } catch (err) {
+        toast(err.message || 'Logo upload nahi hua', true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    $('m-menu-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
+        toast('Sirf image ya PDF upload kar sakte hain', true);
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
+      try {
+        const isPdfFile = /pdf/i.test(file.type || '');
+        const isHeicFile = /hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '');
+        const data = isPdfFile ? await readFileAsDataUrl(file) : await prepareMenuImage(file);
+        pendingMenu = { data, type: isPdfFile ? 'pdf' : 'image' };
+        // HEIC previews do not render in most browsers; the server turns the
+        // photo into JPEG on save, so show a friendly placeholder here.
+        $('m-menu-thumb').innerHTML = pendingMenu.type === 'pdf'
+          ? '<span style="font-size:22px">📄</span>'
+          : (isHeicFile
+            ? '<span style="font-size:22px" title="iPhone photo — save karte hi dikhegi">📷</span>'
+            : '<img src="' + data + '" alt="Menu" />');
+      } catch (err) {
+        toast(err.message || 'Image upload nahi hui', true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    async function patchOwner(body) {
+      let res;
+      try {
+        res = await fetch('/api/public/free-qr/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + ownerToken,
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (_) {
+        throw new Error('Internet connection check karein');
+      }
+      if (res.status === 413) throw new Error('File bahut badi hai — chhoti image upload karein');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Save nahi hua (' + res.status + ')');
+      return data;
+    }
+
+    // The owner endpoints all return { restaurant, stats, items }.
+    function applyOwnerPayload(data) {
+      if (!data) return;
+      if (data.restaurant) current = data.restaurant;
+      if (data.stats) currentStats = data.stats;
+      if (Array.isArray(data.items)) currentItems = data.items;
+    }
+
+    async function saveItems(payload) {
+      const res = await fetch('/api/public/free-qr/items', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ownerToken,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Items save nahi hue');
+      return data;
+    }
+
+    $('m-save').addEventListener('click', async () => {
+      const rest = $('m-rest').value.trim();
+      if (!rest) { $('m-error').textContent = 'Restaurant ka naam zaroori hai.'; return; }
+
+      const body = {
+        restaurant: rest,
+        owner_name: $('m-owner').value.trim(),
+        phone: $('m-phone').value.trim(),
+        address: $('m-address').value.trim(),
+        opening_hours: $('m-open').value.trim(),
+        closing_hours: $('m-close-time').value.trim(),
+        description: $('m-desc').value.trim(),
+        whatsapp: $('m-whatsapp').value.trim(),
+        instagram: $('m-instagram').value.trim(),
+        facebook: $('m-facebook').value.trim(),
+        website: $('m-website').value.trim(),
+      };
+      if (pendingLogo) body.logo_url = pendingLogo;
+      if (pendingMenu) { body.menu_data = pendingMenu.data; body.menu_type = pendingMenu.type; }
+      const pw = $('m-pass').value;
+      if (pw) body.password = pw;
+
+      $('m-error').textContent = '';
+      $('m-save').disabled = true;
+      $('m-save').textContent = 'Saving...';
+      try {
+        const data = await patchOwner(body);
+        applyOwnerPayload(data);
+        revision = Date.now();
+        renderDashboard();
+        closeEdit();
+        toast('✅ Page update ho gaya!');
+      } catch (err) {
+        $('m-error').textContent = err.message;
+      } finally {
+        $('m-save').disabled = false;
+        $('m-save').textContent = 'Save changes';
+      }
+    });
+
+    // Add one or more menu images (appended to the existing ones).
+    $('d-menu-file').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      for (const f of files) {
+        if (!/^image\//i.test(f.type || '') && !/pdf/i.test(f.type || '')) {
+          toast('Sirf image ya PDF upload kar sakte hain', true);
+          e.target.value = '';
+          return;
+        }
+        if (f.size > 20 * 1024 * 1024) {
+          toast('File bahut badi hai (max 20MB)', true);
+          e.target.value = '';
+          return;
+        }
+      }
+      toast('Images upload ho rahi hain...');
+      try {
+        const newUrls = await Promise.all(
+          files.map((f) => (/pdf/i.test(f.type || '') ? readFileAsDataUrl(f) : prepareMenuImage(f)))
+        );
+        const type = files[0] && /pdf/i.test(files[0].type) ? 'pdf' : 'image';
+
+        const exRes = await fetch('/api/public/free-qr/menu-data', { headers: { Authorization: 'Bearer ' + ownerToken } });
+        const exData = await exRes.json();
+        const existing = Array.isArray(exData.images) ? exData.images : [];
+        const combined = existing.concat(newUrls);
+
+        const out = await patchOwner({ menu_data: JSON.stringify(combined), menu_type: type });
+        applyOwnerPayload(out);
+        revision = Date.now();
+        renderDashboard();
+        toast('✅ ' + newUrls.length + ' image(s) add ho gayi!');
+      } catch (err) {
+        toast(err.message, true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    // Remove a single image from the gallery.
+    $('d-menu-gallery').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-act="remove-image"]');
+      if (!btn) return;
+      const idx = Number(btn.getAttribute('data-idx'));
+      if (!Number.isFinite(idx)) return;
+      toast('Removing image...');
+      try {
+        const exRes = await fetch('/api/public/free-qr/menu-data', { headers: { Authorization: 'Bearer ' + ownerToken } });
+        const exData = await exRes.json();
+        const existing = Array.isArray(exData.images) ? exData.images : [];
+        existing.splice(idx, 1);
+        const type = existing.length ? 'image' : (current.menu_type || 'image');
+        const out = await patchOwner({ menu_data: existing.length ? JSON.stringify(existing) : '', menu_type: type });
+        applyOwnerPayload(out);
+        revision = Date.now();
+        renderDashboard();
+        toast(existing.length ? '✅ Image remove ho gayi' : '✅ All images removed');
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+
+    /* ----------------------------- OCR Converter ----------------------------- */
+    function parseOcrText(text) {
+      const lines = String(text || '').split(/\r?\n/);
+      let currentCategory = 'Menu';
+      const items = [];
+      const noiseRe = /^(menu|welcome|tax|gst|service charge|phone|mobile|tel|address|contact|order|timing|pure veg|non veg|page \d+)$/i;
+
+      for (const rawLine of lines) {
+        let line = rawLine.trim().replace(/\s+/g, ' ');
+        if (!line || line.length < 2) continue;
+        if (noiseRe.test(line)) continue;
+
+        const priceMatch = /(?:(?:rs\.?|inr|₹)\s*)?(\d{2,5})(?:\s*[\/\-]{1,2})?\s*$/i.exec(line);
+
+        if (priceMatch) {
+          const price = Number(priceMatch[1]);
+          let namePart = line.slice(0, priceMatch.index).trim();
+          namePart = namePart.replace(/[\.\s\:\-\_\|]+$/, '').trim();
+          namePart = namePart.replace(/^(?:\d+[\.\)\-]|[\u2022\u2023\u25E6\u2043\u2219\*\-])\s*/, '').trim();
+
+          if (namePart && namePart.length >= 2 && !noiseRe.test(namePart) && price > 0 && price <= 50000) {
+            items.push({
+              name: namePart,
+              price: price,
+              category: currentCategory,
+              available: true,
+            });
+            continue;
+          }
+        }
+
+        if (!/\d/.test(line) && line.length <= 40) {
+          const cleanCat = line.replace(/^[\*\-\#\s]+|[\*\-\#\s]+$/g, '').trim();
+          if (cleanCat && cleanCat.length >= 3 && !noiseRe.test(cleanCat)) {
+            currentCategory = cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1);
+          }
+        }
+      }
+      return items;
+    }
+
+    async function runMenuOcr(imageUrl) {
+      const statusEl = $('d-ocr-status');
+      const btn = $('d-ocr');
+      if (!imageUrl || isPdf()) {
+        if (statusEl) statusEl.textContent = 'Image file zaroori hai OCR ke liye.';
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      if (statusEl) statusEl.textContent = '⏳ Image se menu text padh rahe hain (OCR)...';
+
+      try {
+        if (typeof Tesseract === 'undefined') {
+          throw new Error('Tesseract OCR library load nahi hui.');
+        }
+
+        const worker = await Tesseract.createWorker('eng');
+        const ret = await worker.recognize(imageUrl);
+        await worker.terminate();
+
+        const rawText = ret && ret.data && ret.data.text ? ret.data.text : '';
+        const parsed = parseOcrText(rawText);
+
+        if (parsed.length) {
+          const out = await saveItems({ items: parsed });
+          applyOwnerPayload(out);
+          renderDashboard();
+
+          if (statusEl) statusEl.textContent = '✅ Success! ' + parsed.length + ' items photo se text menu me convert ho gaye!';
+          toast('✨ Menu photo se ' + parsed.length + ' items text me convert ho gaye!');
+        } else if (rawText.trim()) {
+          if (statusEl) statusEl.textContent = 'ℹ️ Text nikala gaya hai lekin items nahi pehchane. Image clear upload karein.';
+        } else {
+          if (statusEl) statusEl.textContent = '⚠️ Image me text nahi mila. Clear image upload karein.';
+        }
+      } catch (err) {
+        if (statusEl) statusEl.textContent = '⚠️ OCR: ' + (err.message || 'Text nahi nikal paya.');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    $('d-ocr').addEventListener('click', () => {
+      if (current && current.menu_url) {
+        runMenuOcr(withRev(current.menu_url));
+      } else {
+        toast('Pehle menu image upload karein', true);
+      }
+    });
+
+    /* ------------------------------- actions -------------------------------- */
+    async function copyMenuLink(btn) {
+      if (!btn) return;
+      const link = absoluteMenuUrl(current);
+      const original = btn.textContent;
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(link);
+        copied = true;
+      } catch (_) {
+        // Fallback for browsers/contexts without the async clipboard API.
+        const ta = document.createElement('textarea');
+        ta.value = link;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        ta.remove();
+      }
+      if (copied) {
+        btn.textContent = '✅ Link copied!';
+        setTimeout(() => { btn.textContent = original; }, 1800);
+      } else {
+        // Last resort: show the link so the owner can copy it manually.
+        try { window.prompt('Copy this link:', link); }
+        catch (_) { toast('Link: ' + link); }
+      }
+    }
+
+    $('d-copy').addEventListener('click', () => copyMenuLink($('d-copy')));
+
+    $('d-download').addEventListener('click', async () => {
+      const url = await qrDataUrl(1024);
+      if (!url) { toast('QR banane mein problem hui', true); return; }
+      const a = document.createElement('a');
+      const name = (current.restaurant || 'menu').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      a.download = name + '-qr.png';
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast('⬇️ QR download ho gaya');
+    });
+
+    $('d-print').addEventListener('click', async () => {
+      const url = await qrDataUrl(1024);
+      if (!url) { toast('QR banane mein problem hui', true); return; }
+      const name = current.restaurant || 'My Restaurant';
+      const w = window.open('', '_blank', 'width=520,height=720');
+      if (!w) { toast('Popup blocked — download QR use karein', true); return; }
+      w.document.write(
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR — ' + name.replace(/[<>&]/g, '') + '</title>' +
+        '<style>body{font-family:Arial,sans-serif;text-align:center;padding:34px;margin:0}</style></head>' +
+        '<body onload="window.focus();window.print()">' +
+        '<h2 style="margin:0 0 4px">' + name.replace(/[<>&]/g, '') + '</h2>' +
+        '<p style="color:#64748b;margin:0 0 18px">Scan to view the menu</p>' +
+        '<img src="' + url + '" style="width:360px;height:360px" />' +
+        '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Powered by QRush · Free Digital Menu</p>' +
+        '</body></html>'
+      );
+      w.document.close();
+    });
+
+    // Quick action mirrors
+    if ($('qa-copy')) $('qa-copy').addEventListener('click', () => copyMenuLink($('qa-copy')));
+    if ($('qa-download')) $('qa-download').addEventListener('click', () => $('d-download').click());
+    if ($('qa-print')) $('qa-print').addEventListener('click', () => $('d-print').click());
+
+    $('d-logout').addEventListener('click', () => {
+      setToken('');
+      showLogin();
+      $('l-pass').value = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    /* ---------------------------- nav / anchor links ------------------------ */
+    const navToggle = $('nav-toggle');
+    const mobileNav = $('mobile-nav');
+
+    function closeMobileNav() {
+      if (!mobileNav) return;
+      mobileNav.classList.remove('open');
+      if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (navToggle && mobileNav) {
+      navToggle.addEventListener('click', () => {
+        const open = mobileNav.classList.toggle('open');
+        navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      mobileNav.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobileNav));
+    }
+
+    function goToLogin() {
+      closeMobileNav();
+      if (current) return; // already signed in
+      $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { const el = $('l-phone'); if (el) el.focus(); }, 380);
+    }
+
+    ['jump-login', 'mobile-login', 'foot-login'].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('click', (e) => { e.preventDefault(); goToLogin(); });
+    });
+
+    $('brand-home').addEventListener('click', () => {
+      closeMobileNav();
+      if (document.body.classList.contains('owner-mode')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+
+    $('d-newqr').addEventListener('click', () => {
+      // Reveal the generator so another QR can be created without logging out.
+      $('generator').classList.remove('hidden');
+      $('generator-panel').classList.remove('hidden');
+      $('generator').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => { const el = $('g-rest'); if (el) el.focus(); }, 400);
+    });
+
+    /* ---------------------------- generator files --------------------------- */
+    $('g-logo-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!/^image\//i.test(file.type || '')) { toast('Logo ke liye image chunein', true); e.target.value = ''; return; }
+      try {
+        $('g-logo').value = await prepareLogoImage(file);
+      } catch (err) {
+        toast(err.message || 'Logo upload nahi hua', true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    let generatorMenuType = 'image';
+    $('g-menu-file').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      
+      for (const file of files) {
+        if (!/^image\//i.test(file.type || '') && !/pdf/i.test(file.type || '')) {
+          toast('Sirf image ya PDF upload kar sakte hain', true);
+          e.target.value = '';
+          return;
+        }
+        if (file.size > 20 * 1024 * 1024) { toast('File bahut badi hai (max 20MB)', true); e.target.value = ''; return; }
+      }
+
+      toast('Images upload ho rahi hain...');
+      try {
+        const isPdf = files.some(f => /pdf/i.test(f.type || ''));
+        if (isPdf && files.length > 1) { throw new Error('PDF sirf ek hi file upload kar sakte hain'); }
+
+        generatorMenuType = isPdf ? 'pdf' : 'image';
+        const data = await Promise.all(
+          files.map(f => (generatorMenuType === 'pdf' ? readFileAsDataUrl(f) : prepareMenuImage(f)))
+        );
+        $('g-menu').value = generatorMenuType === 'pdf' ? data[0] : JSON.stringify(data);
+        toast('✅ ' + data.length + ' page(s) ready!');
+      } catch (err) {
+        toast(err.message || 'Image upload nahi hui', true);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    /* -------------------------------- login --------------------------------- */
+    $('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phone = $('l-phone').value.trim();
+      const password = $('l-pass').value;
+      if (!phone || !password) return;
+
+      $('login-error').textContent = '';
+      $('login-submit').disabled = true;
+      $('login-submit').textContent = 'Logging in...';
+
+      try {
+        const res = await fetch('/api/public/free-qr/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        setToken(data.token);
+        showOwner(data.restaurant, data.stats, data.items);
+        $('l-pass').value = '';
+      } catch (err) {
+        $('login-error').textContent = err.message;
+      } finally {
+        $('login-submit').disabled = false;
+        $('login-submit').textContent = 'Login';
+      }
+    });
+
+    /* ----------------------------- reset password ---------------------------- */
+    function openReset() {
+      $('reset-error').textContent = '';
+      $('r-phone').value = $('l-phone').value.trim();
+      $('r-pass').value = '';
+      $('r-pass2').value = '';
+      $('reset-modal').classList.remove('hidden');
+      setTimeout(() => $('r-phone').focus(), 60);
+    }
+    function closeReset() { $('reset-modal').classList.add('hidden'); }
+
+    $('forgot-link').addEventListener('click', (e) => { e.preventDefault(); openReset(); });
+    $('reset-close').addEventListener('click', closeReset);
+    $('reset-cancel').addEventListener('click', closeReset);
+    $('reset-modal').addEventListener('click', (e) => { if (e.target === $('reset-modal')) closeReset(); });
+
+    $('reset-submit').addEventListener('click', async () => {
+      const phone = $('r-phone').value.trim();
+      const pass = $('r-pass').value;
+      const pass2 = $('r-pass2').value;
+      if (!phone) { $('reset-error').textContent = 'Phone number zaroori hai.'; return; }
+      if (pass.length < 4) { $('reset-error').textContent = 'Password kam se kam 4 characters ka ho.'; return; }
+      if (pass !== pass2) { $('reset-error').textContent = 'Passwords match nahi kar rahe.'; return; }
+
+      $('reset-error').textContent = '';
+      $('reset-submit').disabled = true;
+      $('reset-submit').textContent = 'Resetting...';
+      try {
+        const res = await fetch('/api/public/free-qr/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password: pass }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Reset nahi hua');
+        closeReset();
+        $('l-phone').value = phone;
+        $('l-pass').value = '';
+        toast('✅ Password reset ho gaya! Ab login karein.');
+        $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => $('l-pass').focus(), 400);
+      } catch (err) {
+        $('reset-error').textContent = err.message;
+      } finally {
+        $('reset-submit').disabled = false;
+        $('reset-submit').textContent = 'Reset password';
+      }
+    });
+
+        /* -------------------------------- generate -------------------------------- */
+    let otpSent = false;
+    $('g-gen').addEventListener('click', async () => {
+      const rest = $('g-rest').value.trim();
+      const owner = $('g-owner').value.trim();
+      const phone = $('g-phone').value.trim();
+      const pass = $('g-pass').value.trim();
+      const menu = $('g-menu').value.trim();
+      const logo = $('g-logo').value.trim();
+
+      if (!rest || !owner || !phone || !pass || !menu) {
+        genError('Kripya sabhi zaroori fields (* waale) bhariye.');
+        return;
+      }
+
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        genError('Contact number kam se kam 10 digit ka hona chahiye.');
+        $('g-phone').focus();
+        return;
+      }
+      if (digits.length > 15) {
+        genError('Contact number 15 digit se zyada nahi hona chahiye.');
+        $('g-phone').focus();
+        return;
+      }
+      if (pass.length < 4) {
+        genError('Password kam se kam 4 character ka rakhein.');
+        $('g-pass').focus();
+        return;
+      }
+
+      genClearError();
+
+      if (!otpSent) {
+        $('g-gen').disabled = true;
+        $('g-gen').textContent = 'Sending OTP...';
+        try {
+          const res = await fetch('/api/public/free-qr/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: digits }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'OTP send nahi hua');
+          otpSent = true;
+          $('g-otp-wrap').style.display = '';
+          const hint = $('g-otp-hint');
+          if (data.otp) {
+            hint.textContent = 'Demo OTP: ' + data.otp + ' (SMS provider configure hone par yeh screen par nahi dikhega)';
+            hint.style.color = 'var(--primary-700)';
+          } else {
+            hint.textContent = 'OTP aapke phone par bhej diya gaya hai.';
+          }
+          $('g-gen').textContent = 'Verify & Generate';
+          toast('OTP bhej diya gaya!');
+          setTimeout(() => $('g-otp').focus(), 100);
+        } catch (err) {
+          genError(err.message);
+        } finally {
+          $('g-gen').disabled = false;
+        }
+        return;
+      }
+
+      const otp = $('g-otp').value.trim();
+      if (!otp || otp.length < 4) {
+        genError('Kripya phone par aaya OTP enter karein.');
+        $('g-otp').focus();
+        return;
+      }
+
+      genClearError();
+      $('g-gen').disabled = true;
+      $('g-gen').textContent = 'Verifying...';
+
+      try {
+        const res = await fetch('/api/public/free-qr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurant: rest,
+            owner_name: owner,
+            phone: digits,
+            password: pass,
+            otp: otp,
+            logo_url: logo || null,
+            menu_data: menu,
+            menu_type: generatorMenuType,
+            whatsapp: $('g-whatsapp').value.trim() || null,
+            instagram: $('g-instagram').value.trim() || null,
+            facebook: $('g-facebook').value.trim() || null,
+            website: $('g-website').value.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        $('qr-code').innerHTML = '';
+        $('qr-subtitle').textContent = rest + ' • Owner: ' + owner;
+        makeQr($('qr-code'), data.url, 220);
+        $('g-open-menu').classList.remove('hidden');
+        $('qr-container').classList.remove('hidden');
+
+        if (data.token && data.restaurant) {
+          setToken(data.token);
+          showOwner(data.restaurant, data.stats, data.items);
+          toast('QR ready! Yeh raha aapka dashboard.');
+        } else {
+          $('qr-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        otpSent = false;
+        genClearError();
+        $('g-otp-wrap').style.display = 'none';
+        $('g-otp').value = '';
+        $('g-gen').textContent = 'Generate Free QR Code';
+      } catch (err) {
+        genError(err.message);
+        if (!/OTP/i.test(err.message)) {
+          otpSent = false;
+          $('g-otp-wrap').style.display = 'none';
+          $('g-gen').textContent = 'Generate Free QR Code';
+        }
+      } finally {
+        $('g-gen').disabled = false;
+        if (otpSent) $('g-gen').textContent = 'Verify & Generate';
+      }
+    });
+
+    $('g-print').addEventListener('click', () => window.print());
+
+    /* ------------------------- hero demo QR (marketing) --------------------- */
+    (function initHeroQr() {
+      const box = $('lp-qr');
+      if (!box || typeof QRCode === 'undefined') return;
+      try {
+        const base = (location.protocol === 'file:' || !location.origin || location.origin === 'null')
+          ? 'https://tablenest.onrender.com'
+          : location.origin;
+        makeQr(box, base + '/demo-menu.html', 104);
+      } catch (_) {
+        box.innerHTML = '';
+      }
+    })();
+
+    /* --------------------- restore a saved owner session -------------------- */
+    (async function restore() {
+      const token = getStoredToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/public/free-qr/me', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) throw new Error('expired');
+        const data = await res.json();
+        setToken(token);
+        showOwner(data.restaurant, data.stats, data.items);
+      } catch (_) {
+        setToken('');
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>
