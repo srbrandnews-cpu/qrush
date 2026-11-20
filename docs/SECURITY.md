@@ -80,16 +80,15 @@ Iske bina `/superadmin` 403 dega — ye jaan-boojh kar kiya gaya hai taaki koi
 default account se platform control na le sake.
 
 ### C. Passwords
-Main website (Admin → Staff) archive ho chuki hai, isliye password change ka
-purana page live nahi hai. Ab:
+Do alag logins hain:
 
-- **Free QR restaurant owner** — `free-qr.html → Owner Login → Forgot password`
-  (registered phone par OTP aata hai).
-- **Platform / Super Admin account** — iska password abhi UI se change nahi hota.
-  Zaroorat pade to developer se DB-level reset karwayein (jab main website
-  restore ho, Admin → Staff se bhi ho sakta hai).
-- Purana `pass1234` password ab bhi kisi bhi account par active ho to boot logs
-  mein `[SECURITY WARNING]` list dikhegi — us account ko turant secure karein.
+- **Free QR restaurant owner (qrush.in)** — `free-qr.html → Owner Login →
+  Forgot password` (registered phone par OTP aata hai).
+- **Purani website ke staff (tablenest.onrender.com)** — `/admin → Staff` tab se
+  password badlein (owner / kitchen / cashier).
+
+Purana `pass1234` password ab bhi kisi account par active ho to boot logs mein
+`[SECURITY WARNING]` list dikhegi — us account ko turant secure karein.
 
 ### D. GitHub token revoke karein
 https://github.com/settings/tokens → purana token → **Revoke**.

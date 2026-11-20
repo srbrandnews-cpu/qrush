@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0d9488" />
+  <title>Cash Counter — QRush</title>
+  <script>
+    try {
+      var m = localStorage.getItem('tn_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = m;
+      document.documentElement.style.colorScheme = m;
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/cashier/cashier.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" />
+      <div>
+        <div>Cash Counter</div>
+        <div class="tiny muted" id="r-name" style="font-weight:500"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="today">
+        <div class="tiny muted">Today's collection</div>
+        <div class="bold" id="today-total">₹0</div>
+      </div>
+      <span class="conn" id="conn"><span class="dot"></span> Live</span>
+      <button class="theme-toggle" data-theme-toggle title="Dark mode"><span data-theme-icon>☾</span></button>
+      <span class="avatar" id="me">C</span>
+      <button class="btn btn-sm" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="req-strip hidden" id="req-strip"></div>
+
+    <nav class="tabs-bar" id="tabs">
+      <button class="tab active" data-tab="active">To serve &amp; collect</button>
+      <button class="tab" data-tab="paid">Paid</button>
+      <button class="tab" data-tab="all">All orders</button>
+    </nav>
+
+    <div class="stat-grid mb16" id="stats">
+      <div class="stat"><div class="label">Open orders</div><div class="value" id="st-open">0</div></div>
+      <div class="stat"><div class="label">To collect</div><div class="value" id="st-tocollect">₹0</div></div>
+      <div class="stat"><div class="label">Collected today</div><div class="value" id="st-collected">₹0</div></div>
+      <div class="stat"><div class="label">Orders today</div><div class="value" id="st-orders">0</div><div class="sub" id="st-items">0 items</div></div>
+    </div>
+
+    <div id="list" class="order-list"></div>
+    <div class="empty hidden" id="empty"><div class="icon">🧾</div><p>Yahan koi order nahi hai.</p></div>
+  </div>
+
+  <!-- Payment modal -->
+  <div class="modal-backdrop hidden" id="pay-modal">
+    <div class="modal">
+      <div class="modal-head flex between center">
+        <h3>Collect payment <span class="muted" id="pm-order"></span></h3>
+        <button class="btn btn-ghost btn-sm" id="pm-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="pm-bill" class="bill"></div>
+        <div class="field">
+          <label>Payment method</label>
+          <div class="pay-methods" id="pm-methods">
+            <button class="pm active" data-m="cash">💵 Cash</button>
+            <button class="pm" data-m="upi">📱 UPI</button>
+            <button class="pm" data-m="card">💳 Card</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="pm-cancel">Cancel</button>
+        <button class="btn btn-success" id="pm-confirm">Confirm payment</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/cashier/cashier.js"></script>
+</body>
+</html>

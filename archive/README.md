@@ -1,7 +1,11 @@
 # Archive — purani website ka code
 
-Yeh folder **sirf backup / baad mein use karne ke liye** hai. Server ise load
-nahi karta; `public/` ke bahar hai, isliye web par accessible nahi hai.
+Yeh folder **backup / baad mein use karne ke liye** hai.
+
+> **Live setup:** purani website `tablenest.onrender.com` par chalti hai aur
+> Free QR product `qrush.in` / `www.qrush.in` par. Dono ek hi Render service
+> hain; farq sirf host ka hai (`server.js` → `LEGACY_HOSTS`).
+> `archive/full-website-code/` isi live code ka complete snapshot hai.
 
 ## Folders
 

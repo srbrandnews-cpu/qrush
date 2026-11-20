@@ -1,0 +1,1030 @@
+﻿/* Owner admin dashboard â€” dashboard, menu, tables/QR, staff, settings. */
+
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = TN.escapeHtml;
+
+  let currency = 'â‚¹';
+  let menuData = { categories: [], uncategorized: [] };
+  let tablesData = [];
+  let qrSheet = null;
+
+  /* ============================== MODAL ================================= */
+
+  function openModal(title, bodyHtml, buttons) {
+    $('modal-title').textContent = title;
+    $('modal-body').innerHTML = bodyHtml;
+    const foot = $('modal-foot');
+    foot.innerHTML = '';
+    (buttons || []).forEach((b) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn ' + (b.class || '');
+      btn.textContent = b.label;
+      btn.addEventListener('click', async () => {
+        if (!b.onClick) { closeModal(); return; }
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.innerHTML = '<span class="spinner"></span>';
+        try {
+          // A handler returns `false` to KEEP the modal open (validation failed).
+          // Any other return (including nothing) means success -> close it.
+          const keepOpen = await b.onClick();
+          if (keepOpen !== false) closeModal();
+        } catch (err) {
+          TN.toast(err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+      foot.appendChild(btn);
+    });
+    $('modal').classList.remove('hidden');
+    setTimeout(() => { const f = $('modal-body').querySelector('input,select,textarea'); if (f) f.focus(); }, 60);
+  }
+
+  function closeModal() { $('modal').classList.add('hidden'); }
+  $('modal-close').addEventListener('click', closeModal);
+  $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  const val = (id) => ($(id) ? $(id).value.trim() : '');
+
+  /* =============================== TABS ================================= */
+
+  const loaders = {
+    dashboard: loadDashboard, menu: loadMenu, tables: loadTables,
+    staff: loadStaff, settings: loadSettings, notifications: loadNotifications,
+  };
+
+  document.querySelectorAll('.nav-item[data-tab]').forEach((btn) =>
+    btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+
+  function showTab(tab) {
+    document.querySelectorAll('.nav-item[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== 'panel-' + tab));
+    (loaders[tab] || loadDashboard)();
+  }
+
+  /* =============================== BOOT ================================= */
+
+  async function boot() {
+    const me = await TN.fetchMe();
+    if (me.user.role !== 'owner') {
+      window.location.href = me.user.role === 'kitchen' ? '/kitchen' : '/cashier';
+      return;
+    }
+    currency = (me.tenant && me.tenant.currency) || 'â‚¹';
+    $('whoami').textContent = `${me.user.name} â€¢ ${me.tenant ? me.tenant.name : ''}`;
+    if (me.user.is_super_admin) {
+      $('platform-nav-label').classList.remove('hidden');
+      $('platform-link').classList.remove('hidden');
+      if ($('roles-link')) $('roles-link').classList.remove('hidden');
+    }
+    connectSocket();
+    showTab('dashboard');
+  }
+
+  /* ============================ DASHBOARD =============================== */
+
+  async function loadDashboard() {
+    const [stats, live] = await Promise.all([
+      TN.api('/api/orders/stats'),
+      TN.api('/api/orders?board=open&limit=50'),
+    ]);
+    $('d-open').textContent = stats.openNow;
+    $('d-orders').textContent = stats.today.orders_today;
+    $('d-items').textContent = `${stats.today.items_today} items`;
+    $('d-revenue').textContent = TN.fmtMoney(stats.today.revenue_today, currency);
+
+    const ov = await TN.api('/api/admin/overview').catch(() => null);
+    if (ov) { $('d-tables').textContent = ov.tables; $('d-menu').textContent = `${ov.menuItems} menu items`; }
+
+    // Analytics (real recorded menu views/scans)
+    if (ov && ov.analytics) {
+      const a = ov.analytics || {};
+      const v = a.views || {};
+      const recent = Array.isArray(a.recent) ? a.recent : [];
+      const daily = Array.isArray(a.daily) ? a.daily : [];
+      const dailyStr = daily.length ? daily.map(d => `${esc(d.day)}: ${d.views}`).join(' \u00B7 ') : 'No data in last 7 days';
+      $('d-analytics').innerHTML = `
+        <div class="stat-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
+          <div class="mini-stat"><div class="label">Today</div><div class="value" style="font-size:22px">${Number(v.today)||0}</div></div>
+          <div class="mini-stat"><div class="label">Last 7 days</div><div class="value" style="font-size:22px">${Number(v.week)||0}</div></div>
+          <div class="mini-stat"><div class="label">Last 30 days</div><div class="value" style="font-size:22px">${Number(v.month)||0}</div></div>
+          <div class="mini-stat"><div class="label">All time</div><div class="value" style="font-size:22px">${Number(v.total)||0}</div></div>
+        </div>
+        <div class="tiny muted" style="margin-bottom:8px"><b>Daily (7 days):</b> ${dailyStr}</div>
+        <div class="small"><b>Recent activity</b></div>
+        ${recent.length ? `<ul class="simple-list" style="margin:6px 0 0;padding-left:18px">${recent.slice(0,8).map(r => `<li>${esc(r.kind || 'view')} ${r.table_name ? '\u00B7 '+esc(r.table_name) : ''} <span class="muted">\u00B7 ${TN.fmtTime ? TN.fmtTime(r.created_at) : esc(r.created_at||'')}</span></li>`).join('')}</ul>` : '<div class="tiny muted">No recent menu activity recorded yet.</div>'}
+      `;
+    } else if ($('d-analytics')) {
+      $('d-analytics').innerHTML = '<div class="empty">Analytics unavailable.</div>';
+    }
+
+    const top = stats.topItems || [];
+    $('top-items').innerHTML = top.length
+      ? top.map((t, i) => {
+          const max = top[0].qty || 1;
+          return `<div class="top-item">
+            <span class="rank">${i + 1}</span>
+            <div class="grow"><div class="bold">${esc(t.name)}</div><div class="bar" style="width:${Math.max(8, (t.qty / max) * 100)}%"></div></div>
+            <span class="qty">${t.qty}Ã—</span>
+          </div>`;
+        }).join('')
+      : '<div class="empty">Aaj abhi tak koi order nahi.</div>';
+
+    const orders = live.orders || [];
+    $('live-count').textContent = orders.length;
+    $('live-orders').innerHTML = orders.length
+      ? orders.map((o) => `<div class="live-row">
+          <span class="no">#${o.order_no}</span>
+          <span class="tbl">${esc(o.bill_label || o.table_name)}</span>
+          ${o.customer_phone ? `<span class="tiny muted">ðŸ“ž ${esc(o.customer_phone)}</span>` : ''}
+          ${o.customer_name ? `<span class="tiny muted">ðŸ‘¤ ${esc(o.customer_name)}</span>` : ''}
+          <span class="badge ${o.status}">${o.status}</span>
+          <span class="amt">${TN.fmtMoney(o.total, currency)}</span>
+        </div>`).join('')
+      : '<div class="empty">Koi active order nahi.</div>';
+
+    // Profile & plan (from settings/restaurant)
+    try {
+      const restData = await TN.api('/api/admin/restaurant');
+      const r = restData.restaurant || {};
+      const fields = [
+        ['Name', r.name], ['Phone', r.phone], ['Address', r.address], ['Description', r.description],
+        ['Hours', (r.opening_hours||r.closing_hours) ? `${r.opening_hours||''}${r.opening_hours&&r.closing_hours?' - ':''}${r.closing_hours||''}` : '']
+      ];
+      const done = fields.filter(([,v]) => v && String(v).trim()).length;
+      const pct = Math.round((done / fields.length) * 100);
+      const plan = String(r.plan || 'free');
+      const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+      $('d-profile').innerHTML = `
+        <div style="margin-bottom:10px"><b>Profile completion:</b> ${pct}%</div>
+        <div style="margin-bottom:10px"><b>Current plan:</b> ${esc(planLabel)} <span class="badge muted">${esc(r.plan_status || 'active')}</span></div>
+        <div class="tiny muted" style="margin-bottom:8px">Plans (prep only, no payments): Free \u20B90 \u00B7 Starter \u20B9149/month \u00B7 Business \u20B9299/month</div>
+        <div class="small"><b>Restaurant:</b> ${esc(r.name || '\u2014')}</div>
+        <div class="small muted">${esc(r.address || 'Address not set')} ${r.phone ? '\u00B7 '+esc(r.phone) : ''}</div>
+        <div class="tiny muted" style="margin-top:8px">Update details in Settings tab.</div>
+      `;
+    } catch (_) {
+      if ($('d-profile')) $('d-profile').innerHTML = '<div class="empty">Could not load profile.</div>';
+    }
+
+    renderRush(stats);
+    renderFeedback(stats);
+    await renderSetup(ov, stats);
+  }
+
+  const RATING_EMOJI = { 5: 'ðŸ¤©', 4: 'ðŸ™‚', 3: 'ðŸ˜', 2: 'ðŸ™', 1: 'ðŸ˜ž' };
+
+  /** Speed score + hourly heatmap + live requests. */
+  function renderRush(stats) {
+    const score = stats.speedScore;
+    $('d-score').textContent = score == null ? 'â€”' : score;
+    $('d-score-ring').style.setProperty('--score', score == null ? 0 : Math.max(0, Math.min(100, score)));
+    $('d-score-badge').textContent = score == null ? 'No data' : score >= 80 ? 'On fire' : score >= 60 ? 'Good' : 'Slow';
+    $('d-score-badge').className = 'badge ' + (score == null ? 'muted' : score >= 60 ? 'ready' : 'preparing');
+    $('d-prep').textContent = stats.avgPrepMinutes == null ? 'â€”' : stats.avgPrepMinutes + ' min';
+    $('d-target').textContent = stats.prepTarget || 15;
+    $('d-rush-line').textContent = `This hour: ${stats.lastHourOrders || 0} orders`;
+    $('d-requests-line').textContent = `${stats.openRequests || 0} open table requests`;
+    $('d-requests-line').style.color = stats.openRequests ? 'var(--amber)' : 'var(--muted)';
+
+    // Server buckets are UTC; show them in the restaurant's local timezone.
+    const buckets = Array.from({ length: 24 }, () => 0);
+    (stats.hourly || []).forEach((row) => {
+      const utc = parseInt(row.hour, 10);
+      if (!Number.isFinite(utc)) return;
+      const local = new Date(Date.UTC(2026, 0, 1, utc)).getHours();
+      buckets[local] += Number(row.count) || 0;
+    });
+    const max = Math.max(1, ...buckets);
+    $('d-heat').innerHTML = buckets.map((count, h) => {
+      const h12 = h % 12 || 12;
+      const label = h % 3 === 0 ? `${h12}${h < 12 ? 'a' : 'p'}` : '';
+      return `<div class="col" title="${h12}${h < 12 ? 'am' : 'pm'} Â· ${count} orders">
+        ${count ? `<span class="n">${count}</span>` : ''}
+        <div class="bar ${count ? '' : 'zero'}" style="height:${Math.max(3, (count / max) * 100)}%"></div>
+        <span class="h">${label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  /** Average rating + latest guest feedback. */
+  function renderFeedback(stats) {
+    const rating = stats.rating || { avg: 0, count: 0 };
+    $('d-ratings').textContent = `${rating.count} rating${rating.count === 1 ? '' : 's'}`;
+    const fb = stats.recentFeedback || [];
+    if (!fb.length) {
+      $('d-feedback').innerHTML = '<div class="empty">Abhi tak koi feedback nahi. Order serve hone par customer 1-tap rating de sakta hai.</div>';
+      return;
+    }
+    const rounded = Math.round(rating.avg || 0);
+    const stars = 'â˜…'.repeat(rounded) + 'â˜†'.repeat(Math.max(0, 5 - rounded));
+    $('d-feedback').innerHTML = `
+      <div class="card-pad" style="padding-bottom:2px">
+        <div class="avg-big">
+          <span class="n">${rating.avg || 'â€”'}</span>
+          <div><div class="stars">${stars}</div><div class="tiny muted">average rating</div></div>
+        </div>
+      </div>
+      ${fb.map((row) => `
+        <div class="fb-row">
+          <span class="fb-emoji">${RATING_EMOJI[row.rating] || 'â­'}</span>
+          <div class="fb-body">
+            <div class="who">${esc(row.table_name)}${row.customer_name ? ' Â· ' + esc(row.customer_name) : ''}</div>
+            <div class="note">${row.feedback ? 'â€œ' + esc(row.feedback) + 'â€' : 'Rated ' + row.rating + '/5'}</div>
+            <div class="when">${TN.fmtTime(row.updated_at)}</div>
+          </div>
+        </div>`).join('')}`;
+  }
+
+  /**
+   * Getting-started checklist. Lets a restaurant owner set the whole thing up
+   * on their own, without hand-holding.
+   */
+  async function renderSetup(ov, stats) {
+    let staff = [];
+    let rest = null;
+    try {
+      staff = (await TN.api('/api/admin/staff')).staff || [];
+      rest = (await TN.api('/api/admin/restaurant')).restaurant;
+    } catch (_) { /* checklist is best-effort */ }
+
+    const hasKitchen = staff.some((s) => s.role === 'kitchen' && s.is_active);
+    const hasCashier = staff.some((s) => s.role === 'cashier' && s.is_active);
+    const gstSet = rest && Number(rest.gst_percent) > 0;
+    const nameSet = rest && rest.name && !/^demo$/i.test(rest.slug || '');
+
+    const steps = [
+      {
+        done: !!nameSet, label: 'Restaurant ka naam aur GST set karo',
+        hint: 'Settings tab mein naam, address aur GST % bharein', tab: 'settings',
+      },
+      {
+        done: (ov && ov.menuItems > 0), label: 'Menu items add karo',
+        hint: 'CSV import se 1 minute mein poora menu (ðŸ“¥ Import CSV)', tab: 'menu',
+      },
+      {
+        done: (ov && ov.tables > 0), label: 'Tables add karo',
+        hint: 'Bulk add se 10-20 tables ek saath (ðŸª‘ Tables & QR)', tab: 'tables',
+      },
+      {
+        done: (ov && ov.tables > 0), label: 'QR code print karke table par lagao',
+        hint: 'Tables & QR tab â†’ Print all â†’ sticker cut karke chipkao', tab: 'tables',
+      },
+      {
+        done: hasKitchen, label: 'Kitchen staff account banao',
+        hint: 'Staff tab â†’ role "kitchen" â†’ woh /kitchen screen chalayega', tab: 'staff',
+      },
+      {
+        done: hasCashier, label: 'Cashier staff account banao',
+        hint: 'Staff tab â†’ role "cashier" â†’ woh /cashier screen chalayega', tab: 'staff',
+      },
+      {
+        done: (ov && ov.allOrders > 0), label: 'Ek test order karke dekho',
+        hint: 'QR scan karke order place karein, kitchen screen par aayega', tab: 'tables',
+      },
+    ];
+
+    const doneCount = steps.filter((s) => s.done).length;
+    $('setup-progress').textContent = doneCount + ' / ' + steps.length;
+    $('setup-progress').className = 'badge ' + (doneCount === steps.length ? 'ready' : 'muted');
+
+    // The checklist stays on the dashboard until the owner switches it off
+    // (the choice is remembered on this browser).
+    const shown = localStorage.getItem('tn_setup_checklist') !== 'off';
+    $('setup-card').classList.toggle('hidden', !shown);
+    $('setup-toggle').checked = shown;
+
+    const allDone = doneCount === steps.length;
+    $('setup-list').innerHTML =
+      (allDone
+        ? '<div class="setup-done"><span class="big">ðŸŽ‰</span><span>Sab kuch set ho gaya â€” aapka restaurant live hai! Naya order aayega toh kitchen screen par dikhega.</span></div>'
+        : '') +
+      steps.map((s, i) => `
+      <div class="setup-item ${s.done ? 'done' : ''}">
+        <span class="setup-check">${s.done ? 'âœ“' : ''}</span>
+        <div>
+          <div class="setup-label">${i + 1}. ${esc(s.label)}</div>
+          ${s.done ? '' : `<div class="setup-hint">${esc(s.hint)}</div>`}
+        </div>
+        ${s.done ? '' : `<button class="btn btn-sm setup-go" data-goto="${s.tab}">Karein</button>`}
+      </div>`).join('');
+
+    $('setup-list').querySelectorAll('[data-goto]').forEach((b) =>
+      b.addEventListener('click', () => showTab(b.dataset.goto)));
+  }
+
+  // Toggle switch for the checklist card.
+  $('setup-toggle').addEventListener('change', (e) => {
+    const on = e.target.checked;
+    localStorage.setItem('tn_setup_checklist', on ? 'on' : 'off');
+    $('setup-card').classList.toggle('hidden', !on);
+  });
+  $('refresh-dash').addEventListener('click', loadDashboard);
+
+  /* =============================== MENU ================================= */
+
+  async function loadMenu() {
+    menuData = await TN.api('/api/menu');
+    renderMenuEditor();
+  }
+
+  function renderMenuEditor() {
+    const host = $('menu-editor');
+    host.innerHTML = '';
+    if (!menuData.categories.length && !menuData.uncategorized.length) {
+      host.innerHTML = '<div class="card"><div class="empty"><div class="icon">ðŸ›</div><p>Menu khali hai. Pehle category, phir items add karein.</p></div></div>';
+      return;
+    }
+
+    menuData.categories.forEach((cat) => host.appendChild(catBlock(cat)));
+    if (menuData.uncategorized.length) {
+      host.appendChild(catBlock({ id: null, name: 'Uncategorized', items: menuData.uncategorized }));
+    }
+  }
+
+  function catBlock(cat) {
+    const block = document.createElement('div');
+    block.className = 'card cat-block';
+    block.innerHTML = `
+      <div class="cat-head">
+        <h3 class="grow">${esc(cat.name)}</h3>
+        <span class="tiny muted">${cat.items.length} items</span>
+        ${cat.id ? `
+          <button class="btn btn-sm" data-act="edit-cat">Edit</button>
+          <button class="btn btn-sm btn-ghost" data-act="del-cat">ðŸ—‘</button>` : ''}
+      </div>
+      <div class="cat-items"></div>`;
+
+    const itemsHost = block.querySelector('.cat-items');
+    if (!cat.items.length) {
+      itemsHost.innerHTML = '<div class="empty" style="padding:22px">Is category mein koi item nahi.</div>';
+    } else {
+      cat.items.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'mi';
+        row.innerHTML = `
+          <span class="veg-mark ${it.is_veg ? '' : 'nonveg'}"></span>
+          <div class="mi-body">
+            <div class="mi-name">${esc(it.name)} ${it.is_quick ? '<span class="badge preparing" style="font-size:10px">âš¡ quick</span>' : ''} ${it.is_available ? '' : '<span class="badge muted">unavailable</span>'}</div>
+            ${it.description ? `<div class="mi-desc">${esc(it.description)}</div>` : ''}
+          </div>
+          <span class="mi-price">${currency}${Number(it.price).toLocaleString('en-IN')}</span>
+          <button class="btn btn-sm" data-act="edit-item">Edit</button>
+          <button class="btn btn-sm btn-ghost" data-act="del-item">ðŸ—‘</button>`;
+        row.querySelector('[data-act="edit-item"]').addEventListener('click', () => itemModal(cat, it));
+        row.querySelector('[data-act="del-item"]').addEventListener('click', () => confirmDeleteItem(it));
+        itemsHost.appendChild(row);
+      });
+    }
+
+    const editCat = block.querySelector('[data-act="edit-cat"]');
+    if (editCat) editCat.addEventListener('click', () => categoryModal(cat));
+    const delCat = block.querySelector('[data-act="del-cat"]');
+    if (delCat) delCat.addEventListener('click', () => confirmDeleteCategory(cat));
+    return block;
+  }
+
+  $('add-cat').addEventListener('click', () => categoryModal(null));
+  $('add-item').addEventListener('click', () => itemModal(menuData.categories[0] || null, null));
+  $('import-csv').addEventListener('click', importCsvModal);
+
+  /**
+   * Bulk import a menu from a CSV file. This is how a real restaurant
+   * onboards quickly â€” typing 60 items by hand is not realistic.
+   */
+  function importCsvModal() {
+    openModal('Import menu from CSV', `
+      <p class="small muted" style="margin:0 0 14px">
+        Apne menu ki CSV file upload karein. Missing categories automatically ban jayengi,
+        aur same naam ke items update ho jayenge.
+      </p>
+      <div class="field">
+        <a class="btn btn-sm" href="/api/menu/template.csv" download>â¬‡ Download template CSV</a>
+        <span class="tiny muted" style="margin-left:8px">Format samajhne ke liye template download karein</span>
+      </div>
+      <div class="field">
+        <label>CSV file choose karein</label>
+        <input class="input" type="file" id="m-csv-file" accept=".csv,text/csv" />
+      </div>
+      <div class="field">
+        <label>Existing menu kya karein?</label>
+        <select class="input" id="m-csv-mode">
+          <option value="append">Add to existing (recommended)</option>
+          <option value="replace">Replace everything (purana menu mita de)</option>
+        </select>
+      </div>
+      <div id="m-csv-result"></div>
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: 'Import', class: 'btn-primary',
+        onClick: async () => {
+          const file = $('m-csv-file').files[0];
+          if (!file) { TN.toast('Pehle ek CSV file choose karein', 'error'); return false; }
+          const text = await file.text();
+          const res = await TN.api('/api/menu/import', {
+            method: 'POST',
+            body: { csv: text, mode: $('m-csv-mode').value },
+          });
+          const parts = [];
+          if (res.itemsCreated) parts.push(res.itemsCreated + ' items added');
+          if (res.itemsUpdated) parts.push(res.itemsUpdated + ' updated');
+          if (res.categoriesCreated) parts.push(res.categoriesCreated + ' categories created');
+          TN.toast(parts.join(' Â· ') || 'Import complete', 'success');
+          await loadMenu();
+          // Show row-level errors inside the modal.
+          if (res.errors && res.errors.length) {
+            $('m-csv-result').innerHTML = `<div class="ocard-notes" style="background:#fef3c7;color:#92400e">
+              ${res.errors.length} row(s) skip hui:<br>${res.errors.slice(0, 8).map(e => 'Line ' + e.line + ': ' + TN.escapeHtml(e.error)).join('<br>')}
+            </div>`;
+            return false; // keep modal open so they can read the errors
+          }
+        },
+      },
+    ]);
+  }
+
+  function categoryModal(cat) {
+    openModal(cat ? 'Edit category' : 'New category', `
+      <div class="field"><label>Category name</label><input class="input" id="m-cat-name" value="${cat ? esc(cat.name) : ''}" placeholder="e.g. Starters" /></div>
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: cat ? 'Save' : 'Add', class: 'btn-primary',
+        onClick: async () => {
+          const name = val('m-cat-name');
+          if (!name) { TN.toast('Name required', 'error'); return false; }
+          if (cat) await TN.api(`/api/menu/categories/${cat.id}`, { method: 'PUT', body: { name } });
+          else await TN.api('/api/menu/categories', { method: 'POST', body: { name } });
+          TN.toast('Saved', 'success');
+          await loadMenu();
+        },
+      },
+    ]);
+  }
+
+  function itemModal(cat, item) {
+    const cats = menuData.categories;
+    const catOptions = cats.map((c) =>
+      `<option value="${c.id}" ${cat && cat.id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+    openModal(item ? 'Edit item' : 'New item', `
+      <div class="field"><label>Category</label><select class="input" id="m-item-cat">${catOptions}</select></div>
+      <div class="field"><label>Name</label><input class="input" id="m-item-name" value="${item ? esc(item.name) : ''}" placeholder="e.g. Paneer Tikka" /></div>
+      <div class="field"><label>Description (optional)</label><input class="input" id="m-item-desc" value="${item && item.description ? esc(item.description) : ''}" /></div>
+      <div class="field">
+        <label>Photo</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="input" id="m-item-image" value="${item && item.image_url ? esc(item.image_url) : ''}" placeholder="Image URL ya upload..." style="flex:1" />
+          <label class="btn btn-outline" style="margin:0;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px">
+            ðŸ“ Upload <input type="file" id="m-item-file" accept="image/*" style="display:none" />
+          </label>
+        </div>
+        <div class="img-preview ${item && item.image_url ? '' : 'empty'}" id="m-item-preview" style="margin-top:8px">${item && item.image_url ? `<img src="${esc(item.image_url)}" style="width:100%;height:100%;object-fit:cover" />` : ''}</div>
+        <p class="tiny muted" style="margin:6px 0 0">Blank chhodne par menu par emoji tile dikhta hai.</p>
+      </div>
+      <div class="row">
+        <div class="field"><label>Price (${currency})</label><input class="input" id="m-item-price" type="number" min="0" step="1" value="${item ? item.price : ''}" /></div>
+        <div class="field">
+          <label>Type</label>
+          <select class="input" id="m-item-veg">
+            <option value="1" ${item && item.is_veg ? 'selected' : ''}>ðŸŸ¢ Veg</option>
+            <option value="0" ${item && !item.is_veg ? 'selected' : ''}>ðŸ”´ Non-veg</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:10px">
+          <span class="switch"><input type="checkbox" id="m-item-avail" ${!item || item.is_available ? 'checked' : ''}><span class="slider"></span></span>
+          Available (customers can order)
+        </label>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:10px">
+          <span class="switch"><input type="checkbox" id="m-item-quick" ${item && item.is_quick ? 'checked' : ''}><span class="slider"></span></span>
+          Quick item (shown in Rush mode)
+        </label>
+      </div>
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: item ? 'Save' : 'Add item', class: 'btn-primary',
+        onClick: async () => {
+          const name = val('m-item-name');
+          const price = Number(val('m-item-price'));
+          if (!name) { TN.toast('Name required', 'error'); return false; }
+          if (!Number.isFinite(price) || price < 0) { TN.toast('Enter a valid price', 'error'); return false; }
+          const body = {
+            category_id: Number(val('m-item-cat')) || null,
+            name, description: val('m-item-desc'),
+            image_url: val('m-item-image'),
+            price, is_veg: val('m-item-veg') === '1',
+            is_available: $('m-item-avail').checked,
+            is_quick: $('m-item-quick').checked,
+          };
+          if (item) await TN.api(`/api/menu/items/${item.id}`, { method: 'PUT', body });
+          else await TN.api('/api/menu/items', { method: 'POST', body });
+          TN.toast('Saved', 'success');
+          await loadMenu();
+        },
+      },
+    ]);
+
+    // Live thumbnail so the owner sees exactly what the customer menu will show.
+    const imgInput = $('m-item-image');
+    const preview = $('m-item-preview');
+    if (imgInput && preview) {
+      const syncPreview = () => {
+        const url = imgInput.value.trim();
+        preview.classList.toggle('empty', !url);
+        preview.innerHTML = url
+          ? `<img src="${esc(url)}" alt="" />`
+          : '<span>Preview â€” no photo, emoji tile</span>';
+      };
+      imgInput.addEventListener('input', syncPreview);
+      const thumb = preview.querySelector('img');
+      if (thumb) thumb.addEventListener('error', () => { preview.classList.add('empty'); });
+      syncPreview();
+    }
+  }
+
+  function confirmDeleteItem(item) {
+    openModal('Delete item?', `<p>Delete "${esc(item.name)}"? Purane orders par iska asar nahi hoga.</p>`, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      { label: 'Delete', class: 'btn-danger', onClick: async () => { await TN.api(`/api/menu/items/${item.id}`, { method: 'DELETE' }); await loadMenu(); } },
+    ]);
+  }
+
+  function confirmDeleteCategory(cat) {
+    openModal('Delete category?', `<p>"${esc(cat.name)}" delete karein? Iske items menu mein rahenge (uncategorized).</p>`, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      { label: 'Delete', class: 'btn-danger', onClick: async () => { await TN.api(`/api/menu/categories/${cat.id}`, { method: 'DELETE' }); await loadMenu(); } },
+    ]);
+  }
+
+  /* =============================== TABLES =============================== */
+
+  async function loadTables() {
+    const data = await TN.api('/api/tables');
+    tablesData = data.tables;
+    renderTables();
+    qrSheet = null; // refresh lazily when printing / showing grid
+    loadQrGrid();
+  }
+
+  function renderFloorMap() {
+    const map = $('floor-map');
+    if (!map) return;
+    map.innerHTML = tablesData.length
+      ? tablesData.map((t) => {
+          const busy = Number(t.open_orders) > 0;
+          const cls = !t.is_active ? 'off' : busy ? 'busy' : 'free';
+          return `<div class="floor-tile ${cls}">
+            <b>${esc(t.name)}</b>
+            <span>${!t.is_active ? 'inactive' : busy ? `${t.open_orders} open` : 'free'}</span>
+            ${busy ? `<div class="amt">${TN.fmtMoney(t.open_total, currency)}</div>` : ''}
+          </div>`;
+        }).join('')
+      : '<div class="empty" style="grid-column:1/-1">Abhi koi table nahi.</div>';
+    const free = tablesData.filter((t) => t.is_active && !Number(t.open_orders)).length;
+    const busy = tablesData.filter((t) => Number(t.open_orders) > 0).length;
+    $('floor-summary').textContent = `${free} free Â· ${busy} busy`;
+  }
+
+  function renderTables() {
+    renderFloorMap();
+    const body = $('tables-body');
+    if (!tablesData.length) {
+      body.innerHTML = '<tr><td colspan="5"><div class="empty">Koi table nahi. "Add table" se shuru karein.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = '';
+    tablesData.forEach((t) => {
+      const floor = !t.is_active
+        ? '<span class="badge muted">inactive</span>'
+        : (Number(t.open_orders) > 0
+          ? `<span class="floor-pill busy">Occupied Â· ${TN.fmtMoney(t.open_total, currency)}</span>`
+          : '<span class="floor-pill free">Free</span>');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="bold">${esc(t.name)}</td>
+        <td>${t.seats}</td>
+        <td>${floor}</td>
+        <td><a href="${t.menu_url}" target="_blank" class="tiny">${esc(t.menu_url.replace(/^https?:\/\//, ''))}</a></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-sm" data-act="qr">QR</button>
+          <button class="btn btn-sm" data-act="edit">Edit</button>
+          <button class="btn btn-sm btn-ghost" data-act="del">ðŸ—‘</button>
+        </td>`;
+      tr.querySelector('[data-act="qr"]').addEventListener('click', () => showQr(t));
+      tr.querySelector('[data-act="edit"]').addEventListener('click', () => tableModal(t));
+      tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteTable(t));
+      body.appendChild(tr);
+    });
+  }
+
+  /** Branded, printable table tent: venue name, QR, table, WiFi & UPI. */
+  function tentHtml(t, qr, rest) {
+    const wifi = rest && rest.wifi_name
+      ? `ðŸ“¶ ${esc(rest.wifi_name)}${rest.wifi_password ? ' Â· ' + esc(rest.wifi_password) : ''}`
+      : '';
+    const upi = rest && rest.upi_id ? `ðŸ“± UPI: ${esc(rest.upi_id)}` : '';
+    return `
+      <div class="qr-card">
+        <div class="tent-brand"><img src="/img/qrush-logo.png?v=3" alt="QRush" style="width:130px;height:auto;object-fit:contain;background:#fff;padding:4px 8px;border-radius:8px" /> QRush</div>
+        <div class="tent-venue">${esc(rest ? rest.name : '')}</div>
+        <img src="${qr}" alt="QR for ${esc(t.name)}" />
+        <div class="tname">${esc(t.name)}</div>
+        <div class="hint">Scan to open menu &amp; order</div>
+        ${wifi ? `<div class="tent-meta">${wifi}</div>` : ''}
+        ${upi ? `<div class="tent-meta">${upi}</div>` : ''}
+      </div>`;
+  }
+
+  async function loadQrGrid() {
+    try {
+      qrSheet = await TN.api('/api/tables/qr-sheet');
+      const grid = $('qr-grid');
+      grid.innerHTML = qrSheet.tables.length
+        ? qrSheet.tables.map((t) => tentHtml(t, t.qr, qrSheet.restaurant)).join('')
+        : '<div class="empty">QR codes ke liye pehle tables add karein.</div>';
+    } catch (err) { console.error(err); }
+  }
+
+  async function showQr(t) {
+    if (!qrSheet) await loadQrGrid();
+    const data = await TN.api(`/api/tables/${t.id}/qr`);
+    openModal(`Table tent â€” ${t.name}`, `
+      ${tentHtml(t, data.qr, qrSheet && qrSheet.restaurant)}
+      <div class="hint" style="margin-top:8px">Print karke table par rakh dein. Customer scan karke seedha isi table ka menu kholega.</div>`, [
+      { label: 'Close', onClick: () => { closeModal(); } },
+      { label: 'Print', class: 'btn-primary', onClick: () => { window.print(); } },
+    ]);
+  }
+
+  $('add-table').addEventListener('click', () => tableModal(null));
+  function tableModal(t) {
+    openModal(t ? `Edit ${t.name}` : 'New table', `
+      <div class="row">
+        <div class="field"><label>Table name / number</label><input class="input" id="m-t-name" value="${t ? esc(t.name) : ''}" placeholder="e.g. Table 9" /></div>
+        <div class="field"><label>Seats</label><input class="input" id="m-t-seats" type="number" min="1" value="${t ? t.seats : 4}" /></div>
+      </div>
+      ${t ? `<div class="field"><label style="display:flex;align-items:center;gap:10px">
+        <span class="switch"><input type="checkbox" id="m-t-active" ${t.is_active ? 'checked' : ''}><span class="slider"></span></span> Active (QR scan kaam karega)
+      </label></div>` : ''}
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: t ? 'Save' : 'Add', class: 'btn-primary',
+        onClick: async () => {
+          const name = val('m-t-name');
+          if (!name) { TN.toast('Name required', 'error'); return false; }
+          const body = { name, seats: Number(val('m-t-seats')) || 4 };
+          if (t) body.is_active = $('m-t-active').checked;
+          if (t) await TN.api(`/api/tables/${t.id}`, { method: 'PUT', body });
+          else await TN.api('/api/tables', { method: 'POST', body });
+          TN.toast('Saved', 'success');
+          await loadTables();
+        },
+      },
+    ]);
+  }
+
+  $('bulk-tables').addEventListener('click', () => {
+    openModal('Bulk add tables', `
+      <div class="row">
+        <div class="field"><label>How many tables</label><input class="input" id="m-b-count" type="number" min="1" max="200" value="10" /></div>
+        <div class="field"><label>Start numbering from</label><input class="input" id="m-b-start" type="number" min="1" value="1" /></div>
+      </div>
+      <div class="field"><label>Seats per table</label><input class="input" id="m-b-seats" type="number" min="1" value="4" /></div>
+      <p class="tiny muted">Example: 10 tables starting at 1 â†’ "Table 1" â€¦ "Table 10", har ek ka unique QR.</p>
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: 'Create', class: 'btn-primary',
+        onClick: async () => {
+          const res = await TN.api('/api/tables/bulk', { method: 'POST', body: {
+            count: Number(val('m-b-count')), startNumber: Number(val('m-b-start')), seats: Number(val('m-b-seats')),
+          } });
+          TN.toast(`${res.created} tables added`, 'success');
+          await loadTables();
+        },
+      },
+    ]);
+  });
+
+  function deleteTable(t) {
+    openModal('Delete table?', `<p>${esc(t.name)} delete karein? Iska purana QR code kaam karna band ho jayega.</p>`, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      { label: 'Delete', class: 'btn-danger', onClick: async () => { await TN.api(`/api/tables/${t.id}`, { method: 'DELETE' }); await loadTables(); } },
+    ]);
+  }
+
+  $('print-qr').addEventListener('click', () => {
+    if (!qrSheet) loadQrGrid().then(() => window.print());
+    else window.print();
+  });
+
+  /* =============================== STAFF ================================ */
+
+  async function loadStaff() {
+    const data = await TN.api('/api/admin/staff');
+    const body = $('staff-body');
+    if (!data.staff.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty">Koi staff nahi.</div></td></tr>'; }
+    else {
+      body.innerHTML = '';
+      data.staff.forEach((u) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="bold">${esc(u.name)}</td>
+          <td class="muted">${esc(u.email)}</td>
+          <td><span class="role-pill ${u.role}">${u.role}</span></td>
+          <td><span class="badge ${u.is_active ? 'ready' : 'muted'}">${u.is_active ? 'active' : 'disabled'}</span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm" data-act="edit">Edit</button>
+            <button class="btn btn-sm btn-ghost" data-act="del">ðŸ—‘</button>
+          </td>`;
+        tr.querySelector('[data-act="edit"]').addEventListener('click', () => staffModal(u));
+        tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteStaff(u));
+        body.appendChild(tr);
+      });
+    }
+    await loadStaffScreens();
+  }
+
+  /**
+   * The kitchen / cash-counter screen links + QR codes, so the owner can
+   * share them with staff (or print a sticker for the tablet).
+   */
+  async function loadStaffScreens() {
+    const host = $('staff-screens');
+    try {
+      const data = await TN.api('/api/admin/staff-screens');
+      host.innerHTML = (data.screens || []).map((s) => `
+        <div class="staff-screen">
+          <img src="${s.qr}" alt="QR for ${esc(s.title)}" />
+          <div class="grow">
+            <div class="sc-title">${s.icon} ${esc(s.title)}</div>
+            <div class="sc-url">${esc(s.url)}</div>
+            <div class="flex gap8">
+              <a class="btn btn-sm" href="${s.url}" target="_blank">Open â†—</a>
+              <button class="btn btn-sm" data-copy="${esc(s.url)}">ðŸ“‹ Copy link</button>
+            </div>
+            <div class="sc-hint">Staff ko apna email + password do (neeche list mein). QR scan karte hi seedha yeh screen khul jayegi.</div>
+          </div>
+        </div>`).join('');
+
+      host.querySelectorAll('[data-copy]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          const text = b.dataset.copy;
+          try {
+            await navigator.clipboard.writeText(text);
+            TN.toast('Link copy ho gaya', 'success');
+          } catch (_) {
+            TN.toast('Copy nahi hua â€” link manually select karein', 'error');
+          }
+        }));
+    } catch (err) {
+      host.innerHTML = '<div class="empty">Links load nahi ho paye.</div>';
+    }
+  }
+
+  $('add-staff').addEventListener('click', () => staffModal(null));
+  function staffModal(u) {
+    openModal(u ? `Edit ${u.name}` : 'Add staff', `
+      <div class="field"><label>Name</label><input class="input" id="m-s-name" value="${u ? esc(u.name) : ''}" /></div>
+      <div class="field"><label>Email</label><input class="input" id="m-s-email" type="email" value="${u ? esc(u.email) : ''}" ${u ? 'readonly' : ''} /></div>
+      <div class="field"><label>Password ${u ? '(leave blank to keep current)' : ''}</label><input class="input" id="m-s-pass" type="password" placeholder="Min 6 characters" /></div>
+      <div class="field"><label>Role</label>
+        <select class="input" id="m-s-role">
+          <option value="kitchen" ${u && u.role === 'kitchen' ? 'selected' : ''}>ðŸ‘¨â€ðŸ³ Kitchen â€” orders accept/ready karega</option>
+          <option value="cashier" ${u && u.role === 'cashier' ? 'selected' : ''}>ðŸ’° Cashier â€” bill &amp; payment</option>
+          <option value="owner" ${u && u.role === 'owner' ? 'selected' : ''}>ðŸ‘‘ Owner â€” full access</option>
+        </select>
+      </div>
+      ${u ? `<div class="field"><label style="display:flex;align-items:center;gap:10px">
+        <span class="switch"><input type="checkbox" id="m-s-active" ${u.is_active ? 'checked' : ''}><span class="slider"></span></span> Active
+      </label></div>` : ''}
+    `, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: u ? 'Save' : 'Add staff', class: 'btn-primary',
+        onClick: async () => {
+          const name = val('m-s-name');
+          const email = val('m-s-email');
+          const password = val('m-s-pass');
+          if (!name || !email) { TN.toast('Name & email required', 'error'); return false; }
+          if (!u && password.length < 6) { TN.toast('Password min 6 characters', 'error'); return false; }
+          const role = val('m-s-role');
+          if (u) {
+            const body = { name, role, is_active: $('m-s-active').checked };
+            if (password) body.password = password;
+            await TN.api(`/api/admin/staff/${u.id}`, { method: 'PUT', body });
+          } else {
+            await TN.api('/api/admin/staff', { method: 'POST', body: { name, email, password, role } });
+          }
+          TN.toast('Saved', 'success');
+          await loadStaff();
+        },
+      },
+    ]);
+  }
+
+  function deleteStaff(u) {
+    openModal('Delete staff?', `<p>${esc(u.name)} (${esc(u.email)}) delete karein?</p>`, [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      { label: 'Delete', class: 'btn-danger', onClick: async () => { await TN.api(`/api/admin/staff/${u.id}`, { method: 'DELETE' }); await loadStaff(); } },
+    ]);
+  }
+
+  /* ============================== SETTINGS ============================== */
+
+  async function loadSettings() {
+    const data = await TN.api('/api/admin/restaurant');
+    const r = data.restaurant || {};
+    $('s-name').value = r.name || '';
+    $('s-phone').value = r.phone || '';
+    $('s-currency').value = r.currency || '₹';
+    $('s-address').value = r.address || '';
+    if ($('s-description')) $('s-description').value = r.description || '';
+    if ($('s-open')) $('s-open').value = r.opening_hours || '';
+    if ($('s-close')) $('s-close').value = r.closing_hours || '';
+    $('s-logo').value = r.logo_url || '';
+    if (r.logo_url) {
+      $('s-logo-preview').innerHTML = `<img src="${esc(r.logo_url)}" alt="Logo" style="width:100%;height:100%;object-fit:cover" />`;
+    } else {
+      $('s-logo-preview').innerHTML = '<span style="font-size:20px">🏪</span>';
+    }
+    $('s-gst').value = r.gst_percent || 0;
+    if ($('s-whatsapp')) $('s-whatsapp').value = r.whatsapp || '';
+    if ($('s-instagram')) $('s-instagram').value = r.instagram || '';
+    if ($('s-facebook')) $('s-facebook').value = r.facebook || '';
+    if ($('s-website')) $('s-website').value = r.website || '';
+    if ($('s-plan-info')) {
+      const plan = String(r.plan || 'free');
+      const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+      const price = plan === 'starter' ? '₹149/month' : plan === 'business' ? '₹299/month' : '₹0';
+      $('s-plan-info').textContent = `Current plan: ${planLabel} ${price} · Status: ${r.plan_status || 'active'} (managed by platform admin; no payments in this phase).`;
+    }
+    $('s-wifi-name').value = r.wifi_name || '';
+    $('s-wifi-pass').value = r.wifi_password || '';
+    $('s-upi').value = r.upi_id || '';
+    $('s-prep').value = r.prep_minutes || 15;
+    $('s-rush').checked = !!Number(r.rush_mode);
+  }
+
+  $('save-settings').addEventListener('click', async () => {
+    try {
+      const data = await TN.api('/api/admin/restaurant', {
+        method: 'PUT',
+        body: {
+          name: val('s-name'), phone: val('s-phone'), currency: val('s-currency') || '₹',
+          address: val('s-address'), description: val('s-description'),
+          opening_hours: val('s-open'), closing_hours: val('s-close'),
+          whatsapp: val('s-whatsapp'), instagram: val('s-instagram'),
+          facebook: val('s-facebook'), website: val('s-website'),
+          logo_url: val('s-logo'), gst_percent: Number(val('s-gst')) || 0,
+          wifi_name: val('s-wifi-name'), wifi_password: val('s-wifi-pass'),
+          upi_id: val('s-upi'), prep_minutes: Number(val('s-prep')) || 15,
+          rush_mode: $('s-rush').checked,
+        },
+      });
+      currency = data.restaurant.currency || '₹';
+      $('whoami').textContent = `${$('whoami').textContent.split('·')[0].trim()} · ${data.restaurant.name}`;
+      TN.toast('Settings saved', 'success');
+      loadSettings();
+    } catch (err) { TN.toast(err.message, 'error'); }
+  });
+
+  /* =========================== NOTIFICATIONS ============================ */
+
+  async function loadNotifications() {
+    let data;
+    try {
+      data = await TN.api('/api/admin/notifications?limit=150');
+    } catch (err) {
+      TN.toast(err.message, 'error');
+      return;
+    }
+
+    // Restaurant-level channel settings.
+    const rest = (await TN.api('/api/admin/restaurant')).restaurant;
+    $('n-country').value = rest.country_code || '+91';
+
+    // Provider status â€” only browser push is supported.
+    $('provider-badge').textContent = 'Browser push Â· active';
+    $('provider-badge').className = 'badge ready';
+    $('provider-hint').innerHTML =
+      'Order <b>ready</b> ya <b>served</b> hote hi customer ke phone par browser notification jaata hai. ' +
+      'Customer ko ek baar "Allow" karna hota hai â€” koi app install nahi karni. ' +
+      'Push kaam karta hai kyunki site HTTPS par hai (public URL).';
+
+    // Delivery log.
+    const body = $('notif-body');
+    const rows = data.notifications || [];
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6"><div class="empty">Abhi koi notification nahi bheji gayi.</div></td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((n) => {
+      const cls = n.status === 'sent' ? 'ready' : n.status === 'failed' ? 'cancelled' : 'muted';
+      const label = n.status === 'sent' ? 'sent' : n.status === 'failed' ? 'failed' : n.status;
+      return `<tr>
+        <td class="tiny muted">${TN.escapeHtml(TN.fmtTime(n.created_at))}</td>
+        <td class="bold">${n.order_no ? '#' + n.order_no : 'â€”'}${n.table_name ? '<div class="tiny muted">' + TN.escapeHtml(n.table_name) + '</div>' : ''}</td>
+        <td>${TN.escapeHtml(n.channel)}</td>
+        <td class="tiny">${TN.escapeHtml(n.recipient || 'â€”')}</td>
+        <td><span class="badge ${cls}">${label}</span></td>
+        <td class="tiny muted" style="max-width:320px">${TN.escapeHtml(n.body || '')}${n.error ? '<div style="color:var(--red)">' + TN.escapeHtml(n.error) + '</div>' : ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  $('save-notif').addEventListener('click', async () => {
+    try {
+      await TN.api('/api/admin/notifications-settings', {
+        method: 'PUT',
+        body: { country_code: $('n-country').value.trim(), notify_channels: ['push'] },
+      });
+      TN.toast('Saved', 'success');
+      loadNotifications();
+    } catch (err) { TN.toast(err.message, 'error'); }
+  });
+  $('refresh-notif').addEventListener('click', loadNotifications);
+
+  $('clear-notif').addEventListener('click', () => {
+    openModal('Clear delivery log?', '<p>Saari purani notification entries mita di jayengi. Naye orders ke log bante rahenge.</p>', [
+      { label: 'Cancel', onClick: () => { closeModal(); } },
+      {
+        label: 'Clear', class: 'btn-danger',
+        onClick: async () => { await TN.api('/api/admin/notifications', { method: 'DELETE' }); loadNotifications(); },
+      },
+    ]);
+  });
+
+  /* ============================== SOCKET =============================== */
+
+  function connectSocket() {
+    const token = TN.getToken();
+    if (!token) return; // not logged in â€” no point connecting
+    const socket = io({ auth: { token } });
+    socket.on('unauthorized', () => {
+      TN.toast('Session expire ho gaya â€” dobara login karein', 'error');
+      setTimeout(() => { window.location.href = '/login?expired=1'; }, 900);
+    });
+    socket.on('order:update', () => {
+      if (!$('panel-dashboard').classList.contains('hidden')) loadDashboard();
+    });
+  }
+
+  $('logout').addEventListener('click', () => TN.logout());
+
+  /** Upload a file as a base64 DataURL (simple server-less "upload" for now). */
+  async function handleFileUpload(input, targetId, previewId) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { TN.toast('File is too large (max 5MB)', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const b64 = e.target.result;
+      $(targetId).value = b64;
+      if (previewId) {
+        $(previewId).innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover" />`;
+      }
+      $(targetId).dispatchEvent(new Event('input')); // trigger preview logic if any
+    };
+    reader.readAsDataURL(file);
+  }
+
+  $('s-logo-file').addEventListener('change', (e) => handleFileUpload(e.target, 's-logo', 's-logo-preview'));
+
+  $('s-logo').addEventListener('input', (e) => {
+    const v = e.target.value.trim();
+    if (v) $('s-logo-preview').innerHTML = `<img src="${esc(v)}" style="width:100%;height:100%;object-fit:cover" />`;
+    else $('s-logo-preview').innerHTML = '<span style="font-size:20px">ðŸª</span>';
+  });
+
+  // Handle item image upload
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'm-item-file') handleFileUpload(e.target, 'm-item-image', 'm-item-preview');
+  });
+
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'm-item-image') {
+      const v = e.target.value.trim();
+      const prev = $('m-item-preview');
+      if (v) {
+        prev.classList.remove('empty');
+        prev.innerHTML = `<img src="${esc(v)}" style="width:100%;height:100%;object-fit:cover" />`;
+      } else {
+        prev.classList.add('empty');
+        prev.innerHTML = '';
+      }
+    }
+  });
+
+  boot().catch((err) => { if (err.status !== 401) TN.toast(err.message, 'error'); });
+})();

@@ -450,7 +450,7 @@
       </div>
       <div class="flex gap8 wrap mt16">
         <a class="btn btn-sm" href="/api/health" target="_blank" rel="noopener">Health JSON ↗</a>
-        <a class="btn btn-sm" href="/">Free QR site ↗</a>
+        <a class="btn btn-sm" href="/">Website home ↗</a>
       </div>`;
   }
 

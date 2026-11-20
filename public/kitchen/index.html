@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Kitchen — QRush</title>
+  <script>
+    try {
+      document.documentElement.dataset.themeLocked = 'dark';
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.style.colorScheme = 'dark';
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/kitchen/kitchen.css" />
+</head>
+<body>
+  <header class="topbar kds-top">
+    <div class="brand" style="color:#fff"><img class="brand-mark" src="/img/qrush-icon.png?v=3" alt="QRush logo" />
+      <div>
+        <div>Kitchen Display</div>
+        <div class="tiny" id="r-name" style="opacity:.7;font-weight:500"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="conn" id="conn"><span class="dot"></span> Connecting…</span>
+      <select id="sound-pick" class="sound-pick" title="New order alert sound" aria-label="New order alert sound"></select>
+      <select id="voice-pick" class="sound-pick voice-pick" title="Order voice callout" aria-label="Order voice callout">
+        <option value="en">🔊 English (natural)</option>
+        <option value="hi">🔊 हिंदी (natural)</option>
+        <option value="off">🔇 Voice off</option>
+      </select>
+      <button class="btn btn-sm kbtn" id="sound" title="Sound on/off">🔔 Sound</button>
+      <span class="avatar" id="me">K</span>
+      <button class="btn btn-sm kbtn" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <div class="req-strip-kds hidden" id="req-strip">
+    <span class="lead">Table requests</span>
+    <div id="req-list" style="display:flex;gap:8px"></div>
+  </div>
+
+  <div class="board" id="board">
+    <section class="col" data-status="placed">
+      <div class="col-head"><span class="badge placed">New</span><span class="count" id="cnt-placed">0</span></div>
+      <div class="col-body" id="col-placed"></div>
+    </section>
+    <section class="col" data-status="accepted">
+      <div class="col-head"><span class="badge accepted">Accepted</span><span class="count" id="cnt-accepted">0</span></div>
+      <div class="col-body" id="col-accepted"></div>
+    </section>
+    <section class="col" data-status="preparing">
+      <div class="col-head"><span class="badge preparing">Preparing</span><span class="count" id="cnt-preparing">0</span></div>
+      <div class="col-body" id="col-preparing"></div>
+    </section>
+    <section class="col" data-status="ready">
+      <div class="col-head"><span class="badge ready">Ready</span><span class="count" id="cnt-ready">0</span></div>
+      <div class="col-body" id="col-ready"></div>
+    </section>
+  </div>
+
+  <div class="empty hidden" id="empty">
+    <div class="icon">🧑‍🍳</div>
+    <h3>Koi active order nahi</h3>
+    <p>Naya order aate hi yahan popup + sound ke saath dikhega.</p>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/voice.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/kitchen/kitchen.js"></script>
+</body>
+</html>

@@ -1,12 +1,14 @@
 # Archive — Main Website (Table Ordering Product)
 
-> **Status: ARCHIVED on 2026-11-19.** Yeh folder runtime se bahar hai — server
-> ise load nahi karta aur `public/` ke andar nahi hai, isliye web par koi bhi
-> ise open nahi kar sakta.
+> **Status: two-host setup.** Yeh folder backup/restore ke liye rakha gaya hai.
+> Live app mein ye files wapas mount hain **sirf `tablenest.onrender.com`** par.
+> `qrush.in` / `www.qrush.in` par sirf Free Digital QR Menu Generator chalta
+> hai — wahan ye pages/APIs 404 dete hain.
 >
-> Live website ab **sirf Free Digital QR Menu Generator** hai:
-> `/` (free QR landing + owner dashboard), `/m/:slug` (hosted menu),
-> `/m/:slug/kitchen` (free QR kitchen board), `/superadmin` (platform console).
+> Host split `server.js` ke `LEGACY_HOSTS` se control hota hai.
+>
+> Live website on qrush.in: `/` (free QR landing), `/m/:slug` (hosted menu),
+> `/m/:slug/kitchen`, `/superadmin` (platform console).
 
 Yeh folder **baad mein use karne ke liye** rakha gaya hai. Yahan main website
 (table-QR ordering product) ka code, UI aur tests ki **exact copies** hain.

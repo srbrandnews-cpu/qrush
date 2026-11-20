@@ -31,6 +31,27 @@ app.use(blockBadRequests);
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
+// ---------------------------------------------------------------------------
+// Two products share this Render service but live on different hosts:
+//   tablenest.onrender.com   -> complete table-ordering website (legacy)
+//   qrush.in / www.qrush.in  -> Free Digital QR Menu Generator only
+// Add more legacy hosts with LEGACY_HOSTS=a.com,b.com (comma separated).
+// ---------------------------------------------------------------------------
+const LEGACY_HOSTS = String(process.env.LEGACY_HOSTS || 'tablenest.onrender.com')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+
+function isLegacyHost(req) {
+  return LEGACY_HOSTS.includes(String(req.hostname || '').toLowerCase());
+}
+
+// Returns 404 for routes that only exist on the legacy website.
+const legacyOnly = (req, res, next) => {
+  if (isLegacyHost(req)) return next();
+  return res.status(404).json({ error: 'Not found' });
+};
+
 // Broad protection: cap every API IP, then tighter limits on auth-sensitive
 // endpoints. Write requests (orders, menu edits, signup, upgrades) get their
 // own bucket so a single phone cannot flood the database.
@@ -53,12 +74,17 @@ app.use((req, res, next) => {
 });
 
 // --- API routes ---
-// Only the Free QR product is live. Table-ordering routes (menu / tables /
-// orders / requests / voice) were moved to archive/main-website/ and are no
-// longer mounted. `auth` + `admin` stay because the Super Admin console needs
-// them, and `public` serves the free-QR menus, dashboard and ordering APIs.
+// Shared: auth + admin (Super Admin console) + public (free-QR menus/orders).
+// Legacy table-ordering APIs only answer on tablenest.onrender.com; on
+// qrush.in they return 404 so the Free-QR domain stays clean.
 app.use('/api/auth', require('./src/routes/auth.routes'));
 app.use('/api/admin', require('./src/routes/admin.routes'));
+app.use('/api/menu', legacyOnly, require('./src/routes/menu.routes'));
+app.use('/api/tables', legacyOnly, require('./src/routes/table.routes'));
+app.use('/api/orders', legacyOnly, require('./src/routes/order.routes'));
+app.use('/api/requests', legacyOnly, require('./src/routes/request.routes'));
+app.use('/api/push', legacyOnly, require('./src/routes/push.routes'));
+app.use('/api/voice', legacyOnly, require('./src/routes/voice.routes'));
 const publicRouter = require('./src/routes/public.routes');
 app.use('/api/public', publicRouter);
 
@@ -90,11 +116,50 @@ app.get('/api/health', async (req, res) => {
   res.json(health);
 });
 
+// --- HTML screens ---
+// tablenest.onrender.com keeps the complete table-ordering website.
+// qrush.in serves ONLY the Free Digital QR Menu Generator.
+// Shared on both hosts: /superadmin, hosted menus (/m/:slug) and kitchen board.
+const page = (file) => (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', file));
+};
+const legacyPage = (file) => (req, res, next) => {
+  if (!isLegacyHost(req)) return next();
+  return page(file)(req, res);
+};
+
+app.get('/', (req, res) => {
+  return page(isLegacyHost(req) ? 'index.html' : 'free-qr.html')(req, res);
+});
+app.get('/free-qr', page('free-qr.html'));
+app.get('/superadmin', page(path.join('superadmin', 'index.html')));
+app.get(['/login', '/login/'], legacyPage(path.join('login', 'index.html')));
+app.get(['/admin', '/admin/'], legacyPage(path.join('admin', 'index.html')));
+app.get(['/kitchen', '/kitchen/'], legacyPage(path.join('kitchen', 'index.html')));
+app.get(['/cashier', '/cashier/'], legacyPage(path.join('cashier', 'index.html')));
+app.get('/r/:slug', legacyPage(path.join('wait', 'index.html')));
+app.get(['/menu', '/menu/'], legacyPage(path.join('menu', 'index.html')));
+// Kitchen board for a free hosted menu (orders scanned from the free QR card).
+app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
+
 // --- Static assets (CSS/JS/service worker) ---
+// Page routes are registered above so express.static cannot hijack `/`,
+// `/admin`, `/superadmin` ... with a directory redirect or index.html.
+// On the Free-QR domain the legacy bundle stays unreachable.
+const LEGACY_STATIC_RE = /^\/(index\.html|admin|kitchen|cashier|login|menu|wait|video)(\/|$)|^\/(manifest\.json|sw\.js)$|^\/img\/(landing|icon-192|icon-512|apple-touch-icon)/i;
+app.use((req, res, next) => {
+  if (!isLegacyHost(req) && LEGACY_STATIC_RE.test(req.path)) {
+    return res.status(404).type('text/plain').send('Not found');
+  }
+  next();
+});
+
 // Code files are revalidated on every load (ETag -> cheap 304), so a browser
 // can never keep running an old version of admin.js / kitchen.js. Images and
 // icons are cached longer since they rarely change.
 app.use(express.static(path.join(__dirname, 'public'), {
+  index: false,
   etag: true,
   lastModified: true,
   maxAge: 0,
@@ -107,20 +172,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
   },
 }));
-
-// --- HTML screens ---
-// The site now exposes ONLY the Free Digital QR Menu Generator. The old
-// table-ordering screens (admin / kitchen / cashier / login / menu / waiting)
-// live in archive/main-website/public/ and are not served any more.
-const page = (file) => (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public', file));
-};
-app.get('/', page('free-qr.html'));
-app.get('/free-qr', page('free-qr.html'));
-app.get('/superadmin', page(path.join('superadmin', 'index.html')));
-// Kitchen board for a free hosted menu (orders scanned from the free QR card).
-app.get('/m/:slug/kitchen', page('free-qr-kitchen.html'));
 
 // Keep-alive: ping self every 10 min to reduce Render free-tier sleep.
 if (process.env.RENDER || process.env.NODE_ENV === 'production') {
@@ -240,7 +291,8 @@ async function boot() {
     server.listen(PORT, () => {
       const db = dialect() === 'postgres' ? 'PostgreSQL' : 'SQLite';
       console.log(`\n🚀 QRush running  (database: ${db})`);
-      console.log(`   Free QR   http://localhost:${PORT}/`);
+      console.log(`   Free QR   http://localhost:${PORT}/   (qrush.in)`);
+      console.log(`   Legacy    ${LEGACY_HOSTS.join(', ')}`);
       console.log(`   Super     http://localhost:${PORT}/superadmin`);
       console.log(`   Menus     /m/<slug>   ·   Kitchen  /m/<slug>/kitchen\n`);
     });
