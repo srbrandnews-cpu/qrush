@@ -2,10 +2,13 @@
 
 Yeh folder **backup / baad mein use karne ke liye** hai.
 
-> **Live setup:** purani website `tablenest.onrender.com` par chalti hai aur
-> Free QR product `qrush.in` / `www.qrush.in` par. Dono ek hi Render service
-> hain; farq sirf host ka hai (`server.js` → `LEGACY_HOSTS`).
-> `archive/full-website-code/` isi live code ka complete snapshot hai.
+> **Live setup:** purani website abhi **INACTIVE** hai (code safe hai, serve
+> nahi hota). Sirf Free QR product live hai — `qrush.in` / `www.qrush.in`.
+>
+> Baad mein purani website chalu karne ke liye Render → Environment:
+> `LEGACY_HOSTS=tablenest.onrender.com` (code change nahi chahiye).
+>
+> `archive/full-website-code/` isi code ka complete snapshot hai.
 
 ## Folders
 

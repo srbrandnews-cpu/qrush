@@ -1,14 +1,11 @@
 # Archive — Main Website (Table Ordering Product)
 
-> **Status: two-host setup.** Yeh folder backup/restore ke liye rakha gaya hai.
-> Live app mein ye files wapas mount hain **sirf `tablenest.onrender.com`** par.
-> `qrush.in` / `www.qrush.in` par sirf Free Digital QR Menu Generator chalta
-> hai — wahan ye pages/APIs 404 dete hain.
+> **Status: legacy website INACTIVE.** Files `public/` mein maujood hain
+> (restore ke liye ready), lekin `server.js` unhe sirf tab serve karta hai jab
+> `LEGACY_HOSTS` env set ho. Abhi off hai — `qrush.in` par sirf Free QR chalta hai.
 >
-> Host split `server.js` ke `LEGACY_HOSTS` se control hota hai.
->
-> Live website on qrush.in: `/` (free QR landing), `/m/:slug` (hosted menu),
-> `/m/:slug/kitchen`, `/superadmin` (platform console).
+> Chalu karne ke liye Render → Environment:
+> `LEGACY_HOSTS=tablenest.onrender.com` (service restart, code change nahi).
 
 Yeh folder **baad mein use karne ke liye** rakha gaya hai. Yahan main website
 (table-QR ordering product) ka code, UI aur tests ki **exact copies** hain.

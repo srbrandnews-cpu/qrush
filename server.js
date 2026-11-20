@@ -32,12 +32,16 @@ app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
 // ---------------------------------------------------------------------------
-// Two products share this Render service but live on different hosts:
-//   tablenest.onrender.com   -> complete table-ordering website (legacy)
-//   qrush.in / www.qrush.in  -> Free Digital QR Menu Generator only
-// Add more legacy hosts with LEGACY_HOSTS=a.com,b.com (comma separated).
+// Two products share this Render service:
+//   qrush.in / www.qrush.in  -> Free Digital QR Menu Generator (always on)
+//   legacy hosts             -> complete table-ordering website (OFF by default)
+//
+// The old website is currently INACTIVE. To start it later, set this in
+// Render -> Environment (no code change needed):
+//   LEGACY_HOSTS=tablenest.onrender.com
+// Comma-separated for multiple hosts. Leave empty/unset to keep it off.
 // ---------------------------------------------------------------------------
-const LEGACY_HOSTS = String(process.env.LEGACY_HOSTS || 'tablenest.onrender.com')
+const LEGACY_HOSTS = String(process.env.LEGACY_HOSTS || '')
   .split(',')
   .map((h) => h.trim().toLowerCase())
   .filter(Boolean);
@@ -292,7 +296,7 @@ async function boot() {
       const db = dialect() === 'postgres' ? 'PostgreSQL' : 'SQLite';
       console.log(`\n🚀 QRush running  (database: ${db})`);
       console.log(`   Free QR   http://localhost:${PORT}/   (qrush.in)`);
-      console.log(`   Legacy    ${LEGACY_HOSTS.join(', ')}`);
+      console.log(`   Legacy    ${LEGACY_HOSTS.length ? LEGACY_HOSTS.join(', ') : 'OFF (set LEGACY_HOSTS to enable)'}`);
       console.log(`   Super     http://localhost:${PORT}/superadmin`);
       console.log(`   Menus     /m/<slug>   ·   Kitchen  /m/<slug>/kitchen\n`);
     });
