@@ -50,9 +50,13 @@ function isLegacyHost(req) {
   return LEGACY_HOSTS.includes(String(req.hostname || '').toLowerCase());
 }
 
-// Hosts that should show the "website inactive" page instead of any product.
-// tablenest.onrender.com is the old website's URL: while LEGACY_HOSTS is unset
-// it stays dark; setting LEGACY_HOSTS re-enables the full site automatically.
+// The live public domain. Every old URL, printed QR code and bookmark is sent
+// here — nobody is left on the previous website's hostname.
+const PUBLIC_SITE = 'https://www.qrush.in';
+
+// Hostnames of the previous website. While LEGACY_HOSTS is unset they do not
+// serve anything: every request is redirected to PUBLIC_SITE instead. Setting
+// LEGACY_HOSTS re-enables the full legacy site automatically.
 const INACTIVE_HOSTS = String(process.env.INACTIVE_HOSTS || 'tablenest.onrender.com')
   .split(',')
   .map((h) => h.trim().toLowerCase())
@@ -63,26 +67,18 @@ function isInactiveHost(req) {
   return INACTIVE_HOSTS.includes(String(req.hostname || '').toLowerCase());
 }
 
-// Render's health check must keep answering even on inactive hosts, otherwise
-// the deploy would be marked unhealthy.
+// Render's health check must keep answering even on the old hosts, otherwise
+// the deploy would be marked unhealthy (and the redirects would stop).
 app.use((req, res, next) => {
   if (req.path === '/api/health') return next();
   if (!isInactiveHost(req)) return next();
 
-  // Printed QR codes created earlier point at this host (…/m/<slug>). They
-  // must keep working, so send guests to the live Free-QR domain instead of
-  // showing the inactive page. No reprint needed.
-  if (/^\/m\/[^/]+/.test(req.path)) {
-    return res.redirect(302, 'https://www.qrush.in' + req.originalUrl);
-  }
-
-  res.status(503);
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-  if (req.path.startsWith('/api')) {
-    return res.json({ error: 'Website temporarily inactive' });
-  }
-  return res.sendFile(path.join(__dirname, 'public', 'inactive.html'));
+  // 301 tells browsers and search engines that qrush.in is the permanent home.
+  // 308 keeps the method and body for non-GET calls (e.g. an old cached form
+  // posting to /api/...), so nothing is silently turned into a GET.
+  const code = (req.method === 'GET' || req.method === 'HEAD') ? 301 : 308;
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.redirect(code, PUBLIC_SITE + req.originalUrl);
 });
 
 // Returns 404 for routes that only exist on the legacy website.
@@ -332,7 +328,7 @@ async function boot() {
       console.log(`\n🚀 QRush running  (database: ${db})`);
       console.log(`   Free QR   http://localhost:${PORT}/   (qrush.in)`);
       console.log(`   Legacy    ${LEGACY_HOSTS.length ? LEGACY_HOSTS.join(', ') : 'OFF (set LEGACY_HOSTS to enable)'}`);
-      console.log(`   Inactive  ${INACTIVE_HOSTS.length ? INACTIVE_HOSTS.join(', ') : 'none'}`);
+      console.log(`   Old host   ${INACTIVE_HOSTS.length ? INACTIVE_HOSTS.join(', ') + ' -> ' + PUBLIC_SITE : 'none'}`);
       console.log(`   Super     http://localhost:${PORT}/superadmin`);
       console.log(`   Menus     /m/<slug>   ·   Kitchen  /m/<slug>/kitchen\n`);
     });
