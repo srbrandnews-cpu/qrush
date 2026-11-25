@@ -641,6 +641,26 @@
     html.embed #generator-panel > h2, html.embed #generator-panel > p.block-lede { display: none; }
     html.embed #generator .gen-layout { margin-top: 0; }
 
+    /* ---------- dish list (item-wise menu) ---------- */
+    .menu-type-switch { display: flex; gap: 8px; margin: 0 0 14px; }
+    .menu-type-switch button { flex: 1; padding: 9px 10px; border: 1px solid #e6ebf3; background: #f8fafc; color: #33415a; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
+    .menu-type-switch button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .dish-list { display: flex; flex-direction: column; gap: 8px; }
+    .dish-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid #eef1f6; border-radius: 12px; background: #fbfcfe; }
+    .dish-thumb { width: 44px; height: 44px; border-radius: 10px; background: #f1f5f9; border: 1px solid #e6ebf3; overflow: hidden; flex: none; display: grid; place-items: center; font-weight: 800; color: #B84000; font-size: 16px; }
+    .dish-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .dish-meta { flex: 1; min-width: 0; }
+    .dish-meta .nm { font-size: 13.5px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dish-meta .sub { font-size: 11.5px; color: #5b6980; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dish-price { font-size: 13.5px; font-weight: 800; color: var(--orange-text); min-width: 62px; text-align: right; }
+    .dish-row .btn { padding: 5px 9px; font-size: 11.5px; }
+    .dish-empty { text-align: center; padding: 26px 10px; border: 1px dashed #d7dee9; border-radius: 12px; color: #5b6980; font-size: 12.5px; }
+    .dish-empty .title { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+    .dish-count { font-size: 12px; color: #5b6980; font-weight: 600; }
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #33415a; margin-top: 6px; }
+    .auto-photo-note { font-size: 11.5px; color: #5b6980; margin-top: 6px; }
+    .bulk-textarea { width: 100%; min-height: 150px; resize: vertical; }
+
     /* owner mode */
     body.owner-mode .site-nav,
     body.owner-mode #jump-login,
@@ -1175,21 +1195,46 @@
             <div id="d-daily" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
 
-          <div class="dash-card">
+                     <div class="dash-card">
             <div class="dash-card-head">
-              <h3>Your uploaded menu</h3>
-              <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
-                + Add images
-                <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
-              </label>
+              <h3>Your menu</h3>
+              <span class="badge no-dot" style="background:var(--orange-50);color:var(--orange-text)">Menu card or dish list</span>
             </div>
-            <div class="menu-gallery" id="d-menu-gallery"></div>
-            <p class="tiny muted" style="margin:10px 0 0">You can upload more than one image (page 1, 2...). To replace, add the new images and remove the old ones.</p>
-            <div class="menu-tools">
-              <button class="btn btn-primary btn-sm" id="d-ocr" type="button">Convert image to text</button>
-              <span class="tiny muted">Items from the first image are filled automatically</span>
+            <p class="tiny muted" style="margin:0 0 10px">Kabhi bhi switch kar sakte ho — dono ek saath bhi use kar sakte ho.</p>
+            <div class="menu-type-switch" role="tablist">
+              <button type="button" data-mtype="card" class="on" id="d-mt-card">📷 Menu card</button>
+              <button type="button" data-mtype="items" id="d-mt-items">🍽️ Dish list</button>
             </div>
-            <p class="ocr-status" id="d-ocr-status"></p>
+
+            <div id="d-pane-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+                <span class="small" style="font-weight:700;color:var(--navy)">Uploaded menu (photos / PDF)</span>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                  + Add images
+                  <input type="file" id="d-menu-file" accept="image/*,application/pdf" multiple style="display:none" />
+                </label>
+              </div>
+              <div class="menu-gallery" id="d-menu-gallery"></div>
+              <p class="tiny muted" style="margin:10px 0 0">Page 1, 2, 3... upload kar sakte ho. Remove se delete.</p>
+              <div class="menu-tools">
+                <button class="btn btn-primary btn-sm" id="d-ocr" type="button">✨ Auto-generate dish list from card</button>
+                <span class="tiny muted">Menu card se items + prices nikalega</span>
+              </div>
+              <p class="ocr-status" id="d-ocr-status"></p>
+            </div>
+
+            <div id="d-pane-items" hidden>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+                <span class="small" style="font-weight:700;color:var(--navy)">Dishes <span class="dish-count" id="d-item-count"></span></span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary btn-sm" id="d-item-add" type="button">+ Add dish</button>
+                  <button class="btn btn-outline btn-sm" id="d-item-paste" type="button">Paste list</button>
+                  <button class="btn btn-outline btn-sm" id="d-item-auto" type="button">✨ Auto photos</button>
+                </div>
+              </div>
+              <p class="tiny muted" style="margin:0 0 10px">Customer menu par search, categories aur photos isi list se bante hain. Real photo na ho to hum naam ke hisaab se sample photo laga denge.</p>
+              <div class="dish-list" id="d-items"></div>
+            </div>
           </div>
 
           <div class="dash-card">
@@ -1296,9 +1341,14 @@
 
           <div class="form-part">
             <h3>2. Your menu</h3>
-            <p class="sub">Upload a photo of your menu card or a PDF. More than one image is allowed.</p>
+            <p class="sub">Choose how you want to build your menu — you can switch anytime later.</p>
+            <div class="menu-type-switch" style="margin:0 0 12px">
+              <button type="button" data-gtype="card" class="on" id="g-mt-card">Menu card photo / PDF</button>
+              <button type="button" data-gtype="items" id="g-mt-items">Add dishes with prices</button>
+            </div>
 
-            <div class="field">
+            <div id="g-card-pane">
+<div class="field">
               <label for="g-menu">Menu Photo / PDF <span style="color:#dc2626">*</span></label>
               <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
                 <input class="input" id="g-menu" placeholder="Choose a file..." style="flex:1;margin-top:0" readonly />
@@ -1310,7 +1360,18 @@
               <p class="tiny muted" style="margin:6px 0 0">Take a photo or select a PDF. Large photos are compressed automatically.</p>
             </div>
 
-            <div class="field" style="margin-bottom:0">
+            </div>
+            <div id="g-items-pane" hidden style="margin-bottom:14px">
+              <div class="field" style="margin-bottom:0">
+                <label for="g-items">Dishes (one per line: Naam, price, category)</label>
+                <textarea class="input bulk-textarea" id="g-items" placeholder="Paneer Tikka, 240, Starters
+Chicken Tikka, 280, Starters
+Butter Naan, 45, Breads
+Gulab Jamun, 90, Desserts" style="min-height:120px"></textarea>
+                <p class="tiny muted" style="margin:6px 0 0">Photo na ho to hum naam ke hisaab se sample photo laga denge. Category optional hai.</p>
+              </div>
+            </div>
+<div class="field" style="margin-bottom:0">
               <label for="g-logo">Restaurant Logo <span class="tiny muted">(optional)</span></label>
               <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
                 <input class="input" id="g-logo" placeholder="Image URL or upload a file..." style="flex:1;margin-top:0" />
@@ -1437,7 +1498,79 @@
     </div>
   </footer>
 
-  <!-- ------------------------------ Reset password modal ------------------------------ -->
+  <!-- ------------------------------ Dish modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="dish-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dish-title">
+      <div class="modal-head">
+        <h3 id="dish-title">Add dish</h3>
+        <button class="icon-btn" id="dish-close" type="button" aria-label="Close">X</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Dish name *</label>
+          <input class="input" id="dish-name" placeholder="e.g. Paneer Tikka" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Price (Rs.) *</label>
+            <input class="input" id="dish-price" type="number" min="0" step="1" placeholder="240" />
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <input class="input" id="dish-cat" list="dish-cat-list" placeholder="e.g. Starters" />
+            <datalist id="dish-cat-list"></datalist>
+          </div>
+        </div>
+        <div class="field">
+          <label>Dish photo <span class="tiny muted">(optional)</span></label>
+          <div class="edit-asset">
+            <div class="edit-menu-thumb" id="dish-thumb">dish</div>
+            <div>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer">
+                Upload photo
+                <input type="file" id="dish-photo" accept="image/*" style="display:none" />
+              </label>
+              <button class="btn btn-ghost btn-sm" id="dish-photo-auto" type="button">Auto photo</button>
+              <button class="btn btn-ghost btn-sm" id="dish-photo-clear" type="button">Remove</button>
+              <p class="auto-photo-note">Real photo na ho to hum naam ke hisaab se sample photo laga denge.</p>
+            </div>
+          </div>
+        </div>
+        <label class="check-row"><input type="checkbox" id="dish-available" checked /> Available (customer ko dikhe)</label>
+        <p class="login-error" id="dish-error" style="margin-top:12px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="dish-delete" type="button" style="margin-right:auto">Delete</button>
+        <button class="btn btn-ghost" id="dish-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="dish-save" type="button">Save dish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ------------------------------ Bulk paste modal ------------------------------ -->
+  <div class="modal-backdrop hidden" id="bulk-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+      <div class="modal-head">
+        <h3 id="bulk-title">Paste dish list</h3>
+        <button class="icon-btn" id="bulk-close" type="button" aria-label="Close">X</button>
+      </div>
+      <div class="modal-body">
+        <p class="tiny muted" style="margin:0 0 10px">Ek line me ek dish: <b>Naam, price, category</b>. Category optional hai.</p>
+        <textarea class="input bulk-textarea" id="bulk-text" placeholder="Paneer Tikka, 240, Starters
+Chicken Tikka, 280, Starters
+Butter Naan, 45, Breads
+Gulab Jamun, 90, Desserts"></textarea>
+        <p class="tiny muted" style="margin:8px 0 0">Photo na ho to hum naam ke hisaab se sample photo laga denge. Existing dishes ke peeche append hoga.</p>
+        <p class="login-error" id="bulk-error" style="margin-top:10px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="bulk-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="bulk-save" type="button">Add dishes</button>
+      </div>
+    </div>
+  </div>
+
+<!-- ------------------------------ Reset password modal ------------------------------ -->
   <div class="modal-backdrop hidden" id="reset-modal">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
@@ -2033,6 +2166,9 @@
       makeQr($('d-qr'), absoluteMenuUrl(current), 200);
       $('g-open-menu').href = absoluteMenuUrl(current);
 
+      // Dish list (item-wise menu)
+      if (typeof renderDishes === 'function') renderDishes();
+
       // Load billing info
       loadFqBilling();
     }
@@ -2349,11 +2485,18 @@
       $('m-save').textContent = 'Saving...';
       try {
         const data = await patchOwner(body);
+        const wasMenuUpload = !!pendingMenu;
+        const wasPdf = pendingMenu && pendingMenu.type === 'pdf';
+        pendingLogo = null;
+        pendingMenu = null;
         applyOwnerPayload(data);
         revision = Date.now();
         renderDashboard();
         closeEdit();
         toast('✅ Page update ho gaya!');
+        if (wasMenuUpload && !wasPdf && typeof autoGenerateFromCard === 'function') {
+          setTimeout(() => { autoGenerateFromCard(true); }, 400);
+        }
       } catch (err) {
         $('m-error').textContent = err.message;
       } finally {
@@ -2395,6 +2538,10 @@
         revision = Date.now();
         renderDashboard();
         toast('✅ ' + newUrls.length + ' image(s) add ho gayi!');
+        // Auto-detect dishes from the uploaded menu card (OCR) — no manual button needed.
+        if (typeof autoGenerateFromCard === 'function') {
+          setTimeout(() => { autoGenerateFromCard(true); }, 300);
+        }
       } catch (err) {
         toast(err.message, true);
       } finally {
@@ -2466,6 +2613,43 @@
       return items;
     }
 
+    function preprocessForOcr(imageUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const maxDim = 2200;
+            let w = img.naturalWidth || img.width || 1;
+            let h = img.naturalHeight || img.height || 1;
+            const scale = Math.min(1, maxDim / Math.max(w, h));
+            w = Math.max(1, Math.round(w * scale));
+            h = Math.max(1, Math.round(h * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const data = ctx.getImageData(0, 0, w, h);
+            const px = data.data;
+            for (let i = 0; i < px.length; i += 4) {
+              const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+              let v = (g - 128) * 1.35 + 128;
+              if (v < 0) v = 0; else if (v > 255) v = 255;
+              // binarize lightly to help OCR on menu cards
+              v = v > 150 ? 255 : (v < 95 ? 0 : v);
+              px[i] = px[i + 1] = px[i + 2] = v;
+            }
+            ctx.putImageData(data, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (_) {
+            resolve(imageUrl);
+          }
+        };
+        img.onerror = () => resolve(imageUrl);
+        img.src = imageUrl;
+      });
+    }
+
     async function runMenuOcr(imageUrl) {
       const statusEl = $('d-ocr-status');
       const btn = $('d-ocr');
@@ -2475,15 +2659,18 @@
       }
 
       if (btn) btn.disabled = true;
-      if (statusEl) statusEl.textContent = '⏳ Image se menu text padh rahe hain (OCR)...';
+      if (statusEl) statusEl.textContent = '⏳ Menu card se text padh rahe hain (English + Hindi OCR)...';
 
       try {
         if (typeof Tesseract === 'undefined') {
           throw new Error('Tesseract OCR library load nahi hui.');
         }
 
-        const worker = await Tesseract.createWorker('eng');
-        const ret = await worker.recognize(imageUrl);
+        let worker;
+        try { worker = await Tesseract.createWorker('eng+hin'); }
+        catch (_) { worker = await Tesseract.createWorker('eng'); }
+        const processedUrl = await preprocessForOcr(imageUrl);
+        const ret = await worker.recognize(processedUrl);
         await worker.terminate();
 
         const rawText = ret && ret.data && ret.data.text ? ret.data.text : '';
@@ -2653,6 +2840,20 @@
     });
 
     let generatorMenuType = 'image';
+    let genMenuMode = 'card';
+    const gMtCard = $('g-mt-card');
+    const gMtItems = $('g-mt-items');
+    function setGenMenuMode(mode) {
+      genMenuMode = mode === 'items' ? 'items' : 'card';
+      const cardPane = $('g-card-pane');
+      const itemsPane = $('g-items-pane');
+      if (cardPane) cardPane.hidden = (genMenuMode !== 'card');
+      if (itemsPane) itemsPane.hidden = (genMenuMode !== 'items');
+      if (gMtCard) gMtCard.classList.toggle('on', genMenuMode === 'card');
+      if (gMtItems) gMtItems.classList.toggle('on', genMenuMode === 'items');
+    }
+    if (gMtCard) gMtCard.addEventListener('click', () => setGenMenuMode('card'));
+    if (gMtItems) gMtItems.addEventListener('click', () => setGenMenuMode('items'));
     $('g-menu-file').addEventListener('change', async (e) => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
@@ -2772,9 +2973,24 @@
       const pass = $('g-pass').value.trim();
       const menu = $('g-menu').value.trim();
       const logo = $('g-logo').value.trim();
+      const genItemsText = ($('g-items') && $('g-items').value) ? $('g-items').value.trim() : '';
+      let genItems = [];
+      if (genMenuMode === 'items') {
+        genItems = (typeof parseItemsText === 'function') ? parseItemsText(genItemsText) : [];
+        // auto photos
+        genItems.forEach(it => { if (!it.image) { const a = (typeof autoDishPhoto === 'function') ? autoDishPhoto(it.name) : ''; if (a) it.image = a; } });
+      }
 
-      if (!rest || !phone || !pass || !menu) {
-        genError('Kripya zaroori fields (* waale) bhariye — restaurant name, contact number, password aur menu.');
+      if (!rest || !phone || !pass) {
+        genError('Kripya zaroori fields (* waale) bhariye — restaurant name, contact number, password.');
+        return;
+      }
+      if (genMenuMode === 'card' && !menu) {
+        genError('Menu photo / PDF upload karein.');
+        return;
+      }
+      if (genMenuMode === 'items' && !genItems.length) {
+        genError('Kam se kam ek dish daalein (Naam, price, category).');
         return;
       }
 
@@ -2850,8 +3066,9 @@
             password: pass,
             otp: otp,
             logo_url: logo || null,
-            menu_data: menu,
-            menu_type: generatorMenuType,
+            menu_data: genMenuMode === 'items' ? '' : menu,
+            menu_type: genMenuMode === 'items' ? 'items' : generatorMenuType,
+            items: genMenuMode === 'items' ? genItems : undefined,
             whatsapp: $('g-whatsapp').value.trim() || null,
             instagram: $('g-instagram').value.trim() || null,
             facebook: $('g-facebook').value.trim() || null,
@@ -2924,5 +3141,461 @@
       }
     })();
   </script>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const AUTO_PHOTOS = {
+    'paneer tikka': '/img/demo/paneer-tikka.jpg',
+    'chicken tikka': '/img/demo/chicken-tikka.jpg',
+    'butter chicken': '/img/demo/butter-chicken.jpg',
+    'paneer butter masala': '/img/demo/paneer-butter-masala.jpg',
+    'dal makhani': '/img/demo/dal-makhani.jpg',
+    'kadai chicken': '/img/demo/kadai-chicken.jpg',
+    'veg kolhapuri': '/img/demo/veg-kolhapuri.jpg',
+    'spring roll': '/img/demo/veg-spring-rolls.jpg',
+    'mushroom': '/img/demo/tandoori-mushroom.jpg',
+    'butter naan': '/img/demo/butter-naan.jpg',
+    'garlic naan': '/img/demo/garlic-naan.jpg',
+    'jeera rice': '/img/demo/jeera-rice.jpg',
+    'pulao': '/img/demo/veg-pulao.jpg',
+    'gulab jamun': '/img/demo/gulab-jamun.jpg',
+    'rasgulla': '/img/demo/rasgulla.jpg',
+    'masala chai': '/img/demo/masala-chai.jpg',
+    'lassi': '/img/demo/sweet-lassi.jpg',
+    'lime soda': '/img/demo/fresh-lime-soda.jpg',
+    'biryani': '/img/landing/biryani.jpg',
+    'thali': '/img/landing/thali.jpg',
+    'curry': '/img/landing/curry.jpg',
+  };
+  function autoDishPhoto(name) {
+    const n = String(name || '').toLowerCase();
+    for (const k in AUTO_PHOTOS) {
+      if (n.includes(k)) return AUTO_PHOTOS[k];
+    }
+    if (n.includes('paneer')) return '/img/demo/paneer-butter-masala.jpg';
+    if (n.includes('chicken') || n.includes('mutton')) return '/img/demo/chicken-tikka.jpg';
+    if (n.includes('naan') || n.includes('roti') || n.includes('paratha')) return '/img/demo/butter-naan.jpg';
+    if (n.includes('rice') || n.includes('biryani') || n.includes('pulao')) return '/img/demo/jeera-rice.jpg';
+    if (n.includes('dal') || n.includes('curry') || n.includes('masala')) return '/img/demo/dal-makhani.jpg';
+    if (n.includes('gulab') || n.includes('rasgulla') || n.includes('halwa') || n.includes('kheer') || n.includes('dessert')) return '/img/demo/gulab-jamun.jpg';
+    if (n.includes('chai') || n.includes('lassi') || n.includes('soda') || n.includes('drink') || n.includes('juice')) return '/img/demo/masala-chai.jpg';
+    if (n.includes('roll') || n.includes('spring') || n.includes('tikka')) return '/img/demo/veg-spring-rolls.jpg';
+    return '';
+  }
+  function dishThumbHtml(item) {
+    if (item && item.image) return '<img src="' + esc(item.image) + '" alt="" />';
+    return String((item && item.name) || '?').charAt(0).toUpperCase();
+  }
+  function renderDishes() {
+    const container = document.getElementById('d-items');
+    const countEl = document.getElementById('d-item-count');
+    if (!container) return;
+    const items = Array.isArray(currentItems) ? currentItems : [];
+    if (countEl) countEl.textContent = items.length ? '(' + items.length + ')' : '';
+    if (!items.length) {
+      container.innerHTML = '<div class="dish-empty"><div class="title">Koi dish nahi hai abhi</div>Add karne ke liye "+ Add dish" dabayein, ya "Paste list" se bulk add karein.</div>';
+      return;
+    }
+    container.innerHTML = items.map((it, idx) => (
+      '<div class="dish-row" data-idx="' + idx + '">' +
+      '<div class="dish-thumb">' + dishThumbHtml(it) + '</div>' +
+      '<div class="dish-meta">' +
+        '<div class="nm">' + esc(it.name) + '</div>' +
+        '<div class="sub">' + esc(it.category || 'Uncategorized') + (it.available === false ? ' · hidden' : '') + '</div>' +
+      '</div>' +
+      '<div class="dish-price">₹' + (Number(it.price) || 0) + '</div>' +
+      '<button class="btn btn-outline btn-sm" data-act="dish-edit" data-idx="' + idx + '" type="button">Edit</button>' +
+      '<button class="btn btn-ghost btn-sm" data-act="dish-del" data-idx="' + idx + '" type="button">X</button>' +
+      '</div>'
+    )).join('');
+  }
+  window.renderDishes = renderDishes;
+  window.autoDishPhoto = autoDishPhoto;
+  window.dishThumbHtml = dishThumbHtml;
+
+  function setMenuTab(tab) {
+    const card = document.getElementById('d-pane-card');
+    const items = document.getElementById('d-pane-items');
+    const bCard = document.getElementById('d-mt-card');
+    const bItems = document.getElementById('d-mt-items');
+    if (!card || !items) return;
+    const showCard = tab === 'card';
+    card.hidden = !showCard;
+    items.hidden = showCard;
+    if (bCard) bCard.classList.toggle('on', showCard);
+    if (bItems) bItems.classList.toggle('on', !showCard);
+    try { localStorage.setItem('fq_menu_tab', tab); } catch (_) {}
+  }
+  window.setMenuTab = setMenuTab;
+
+  function initMenuTab() {
+    let tab = 'card';
+    try { tab = localStorage.getItem('fq_menu_tab') || tab; } catch (_) {}
+    if (currentItems && currentItems.length && !(current && current.menu_urls && current.menu_urls.length)) tab = 'items';
+    setMenuTab(tab);
+  }
+  window.initMenuTab = initMenuTab;
+
+  // Wrap renderDashboard to call renderDishes + initMenuTab after it runs.
+  if (typeof window.renderDashboard === 'function') {
+    const orig = window.renderDashboard;
+    window.renderDashboard = function () {
+      const r = orig.apply(this, arguments);
+      try { initMenuTab(); } catch (_) {}
+      try { renderDishes(); } catch (_) {}
+      return r;
+    };
+  }
+})();
+
+</script>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  let editingDishIdx = -1;
+  let pendingDishImage = undefined;
+
+  function openDishModal(idx) {
+    editingDishIdx = (typeof idx === 'number' && idx >= 0) ? idx : -1;
+    const modal = $('dish-modal');
+    const title = $('dish-title');
+    const name = $('dish-name');
+    const price = $('dish-price');
+    const cat = $('dish-cat');
+    const avail = $('dish-available');
+    const thumb = $('dish-thumb');
+    const delBtn = $('dish-delete');
+    pendingDishImage = undefined;
+
+    const cats = [...new Set((currentItems || []).map(i => i.category).filter(Boolean))];
+    const dl = $('dish-cat-list');
+    if (dl) dl.innerHTML = cats.map(c => '<option value="' + esc(c) + '"></option>').join('');
+
+    if (editingDishIdx >= 0 && currentItems[editingDishIdx]) {
+      const it = currentItems[editingDishIdx];
+      if (title) title.textContent = 'Edit dish';
+      if (name) name.value = it.name || '';
+      if (price) price.value = it.price || 0;
+      if (cat) cat.value = it.category || '';
+      if (avail) avail.checked = it.available !== false;
+      if (thumb) thumb.innerHTML = it.image ? '<img src="' + esc(it.image) + '" alt="" />' : (String(it.name || '?').charAt(0).toUpperCase());
+      if (delBtn) delBtn.style.display = '';
+    } else {
+      if (title) title.textContent = 'Add dish';
+      if (name) name.value = '';
+      if (price) price.value = '';
+      if (cat) cat.value = '';
+      if (avail) avail.checked = true;
+      if (thumb) thumb.innerHTML = 'dish';
+      if (delBtn) delBtn.style.display = 'none';
+    }
+    const err = $('dish-error');
+    if (err) err.textContent = '';
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => { if (name) name.focus(); }, 50);
+  }
+  function closeDishModal() {
+    const modal = $('dish-modal');
+    if (modal) modal.classList.add('hidden');
+    editingDishIdx = -1;
+    pendingDishImage = undefined;
+  }
+  window.openDishModal = openDishModal;
+  window.closeDishModal = closeDishModal;
+
+  function setDishPhoto(dataUrl) {
+    pendingDishImage = dataUrl;
+    const thumb = $('dish-thumb');
+    if (thumb) {
+      if (dataUrl) thumb.innerHTML = '<img src="' + dataUrl + '" alt="" />';
+      else thumb.innerHTML = String(($('dish-name').value || '?')).charAt(0).toUpperCase() || 'dish';
+    }
+  }
+  window.setDishPhoto = setDishPhoto;
+
+  async function saveDish() {
+    const name = ($('dish-name').value || '').trim();
+    const price = Number($('dish-price').value) || 0;
+    const cat = ($('dish-cat').value || '').trim();
+    const avail = $('dish-available').checked;
+    const err = $('dish-error');
+    if (!name) { if (err) err.textContent = 'Dish ka naam zaroori hai.'; return; }
+    if (price < 0) { if (err) err.textContent = 'Price galat hai.'; return; }
+
+    const items = (currentItems || []).slice();
+    const dish = { name, price, category: cat, available: avail };
+    if (pendingDishImage !== undefined) dish.image = pendingDishImage;
+    if (editingDishIdx < 0 && pendingDishImage === undefined) {
+      const auto = autoDishPhoto(name);
+      if (auto) dish.image = auto;
+    }
+    if (editingDishIdx >= 0 && items[editingDishIdx]) {
+      dish.id = items[editingDishIdx].id;
+      if (pendingDishImage === undefined) delete dish.image;
+      items[editingDishIdx] = { ...items[editingDishIdx], ...dish };
+    } else {
+      items.push(dish);
+    }
+
+    const saveBtn = $('dish-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+    try {
+      const out = await saveItems({ items });
+      applyOwnerPayload(out);
+      revision = Date.now();
+      renderDashboard();
+      closeDishModal();
+      toast('Dish save ho gaya!');
+    } catch (e) {
+      if (err) err.textContent = e.message || 'Save nahi hua';
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save dish'; }
+    }
+  }
+  async function deleteDish(idx) {
+    if (!confirm('Is dish ko delete karna hai?')) return;
+    const items = (currentItems || []).slice();
+    items.splice(idx, 1);
+    try {
+      const out = await saveItems({ items });
+      applyOwnerPayload(out);
+      revision = Date.now();
+      renderDashboard();
+      toast('Dish delete ho gaya');
+    } catch (e) {
+      toast(e.message || 'Delete nahi hua', true);
+    }
+  }
+  window.saveDish = saveDish;
+  window.deleteDish = deleteDish;
+  window.editingDishIdxRef = () => editingDishIdx;
+  window.setEditingDishIdx = (v) => { editingDishIdx = v; };
+})();
+
+</script>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  function openBulkModal() {
+    const m = $('bulk-modal');
+    const t = $('bulk-text');
+    if (t) t.value = '';
+    const e = $('bulk-error');
+    if (e) e.textContent = '';
+    if (m) m.classList.remove('hidden');
+    setTimeout(() => { if (t) t.focus(); }, 50);
+  }
+  function closeBulkModal() {
+    const m = $('bulk-modal');
+    if (m) m.classList.add('hidden');
+  }
+  async function saveBulk() {
+    const text = ($('bulk-text').value || '').trim();
+    const err = $('bulk-error');
+    if (!text) { if (err) err.textContent = 'Kuch paste karein.'; return; }
+    const parsed = parseItemsText(text);
+    if (!parsed.length) { if (err) err.textContent = 'Koi dish nahi pehchana. Format: Naam, price, category'; return; }
+    parsed.forEach(it => { if (!it.image) { const a = autoDishPhoto(it.name); if (a) it.image = a; } });
+    const items = (currentItems || []).slice().concat(parsed);
+    const btn = $('bulk-save');
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+    try {
+      const out = await saveItems({ items });
+      applyOwnerPayload(out);
+      revision = Date.now();
+      renderDashboard();
+      closeBulkModal();
+      toast(parsed.length + ' dishes add ho gaye!');
+    } catch (e) {
+      if (err) err.textContent = e.message || 'Add nahi hua';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Add dishes'; }
+    }
+  }
+  async function autoPhotosAll() {
+    const items = (currentItems || []).slice();
+    let changed = 0;
+    items.forEach(it => {
+      if (!it.image) {
+        const a = autoDishPhoto(it.name);
+        if (a) { it.image = a; changed++; }
+      }
+    });
+    if (!changed) { toast('Sab dishes ke paas pehle se photo hai (ya koi match nahi mila).', true); return; }
+    try {
+      const out = await saveItems({ items });
+      applyOwnerPayload(out);
+      revision = Date.now();
+      renderDashboard();
+      toast(changed + ' dishes ko sample photo mil gaya!');
+    } catch (e) {
+      toast(e.message || 'Save nahi hua', true);
+    }
+  }
+
+  // Wrap runMenuOcr (defined in first script) to switch to items tab after.
+  if (typeof window.runMenuOcr === 'function') {
+    const orig = window.runMenuOcr;
+    window.runMenuOcr = function () {
+      const r = orig.apply(this, arguments);
+      if (r && typeof r.then === 'function') {
+        r.then(() => { try { setMenuTab('items'); renderDishes(); } catch (_) {} }).catch(() => {});
+      }
+      return r;
+    };
+  }
+
+  window.openBulkModal = openBulkModal;
+  window.closeBulkModal = closeBulkModal;
+  window.saveBulk = saveBulk;
+  window.autoPhotosAll = autoPhotosAll;
+})();
+
+</script>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  function wireDishUI() {
+    const mtCard = $('d-mt-card');
+    const mtItems = $('d-mt-items');
+    if (mtCard) mtCard.addEventListener('click', () => setMenuTab('card'));
+    if (mtItems) mtItems.addEventListener('click', () => setMenuTab('items'));
+
+    const addBtn = $('d-item-add');
+    if (addBtn) addBtn.addEventListener('click', () => openDishModal(-1));
+    const pasteBtn = $('d-item-paste');
+    if (pasteBtn) pasteBtn.addEventListener('click', openBulkModal);
+    const autoBtn = $('d-item-auto');
+    if (autoBtn) autoBtn.addEventListener('click', autoPhotosAll);
+
+    const dishClose = $('dish-close');
+    if (dishClose) dishClose.addEventListener('click', closeDishModal);
+    const dishCancel = $('dish-cancel');
+    if (dishCancel) dishCancel.addEventListener('click', closeDishModal);
+    const dishSave = $('dish-save');
+    if (dishSave) dishSave.addEventListener('click', saveDish);
+    const dishDelete = $('dish-delete');
+    if (dishDelete) dishDelete.addEventListener('click', () => {
+      const idx = (typeof editingDishIdx !== 'undefined') ? editingDishIdx : -1;
+      // editingDishIdx is in chunk B scope; re-derive from modal title? Use a global mirror.
+      if (window._editingDishIdx >= 0) deleteDish(window._editingDishIdx);
+      else closeDishModal();
+    });
+
+    const dishPhoto = $('dish-photo');
+    if (dishPhoto) dishPhoto.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (!/^image\//i.test(file.type || '')) { toast('Sirf image upload kar sakte hain', true); return; }
+      try {
+        const dataUrl = await prepareImageFile(file, { maxDim: 900, quality: 0.78, keepUnder: 120 * 1024 });
+        if (dataUrl && dataUrl.length > 1.8 * 1024 * 1024) throw new Error('Photo bahut badi hai');
+        setDishPhoto(dataUrl);
+      } catch (err) {
+        toast(err.message || 'Photo upload nahi hui', true);
+      }
+    });
+    const dishPhotoAuto = $('dish-photo-auto');
+    if (dishPhotoAuto) dishPhotoAuto.addEventListener('click', () => {
+      const name = ($('dish-name').value || '').trim();
+      const auto = autoDishPhoto(name);
+      if (auto) setDishPhoto(auto);
+      else toast('Is naam ke liye sample photo nahi mila. Photo upload karein.', true);
+    });
+    const dishPhotoClear = $('dish-photo-clear');
+    if (dishPhotoClear) dishPhotoClear.addEventListener('click', () => setDishPhoto(''));
+
+    const dishName = $('dish-name');
+    if (dishName) dishName.addEventListener('input', () => {
+      const thumb = $('dish-thumb');
+      if (thumb && !thumb.querySelector('img') && !pendingDishImage) {
+        thumb.textContent = String(dishName.value || '?').charAt(0).toUpperCase() || 'dish';
+      }
+    });
+
+    const dishList = $('d-items');
+    if (dishList) dishList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const idx = Number(btn.getAttribute('data-idx'));
+      const act = btn.getAttribute('data-act');
+      if (act === 'dish-edit') openDishModal(idx);
+      else if (act === 'dish-del') deleteDish(idx);
+    });
+
+    const bulkClose = $('bulk-close');
+    if (bulkClose) bulkClose.addEventListener('click', closeBulkModal);
+    const bulkCancel = $('bulk-cancel');
+    if (bulkCancel) bulkCancel.addEventListener('click', closeBulkModal);
+    const bulkSave = $('bulk-save');
+    if (bulkSave) bulkSave.addEventListener('click', saveBulk);
+
+    const dishModal = $('dish-modal');
+    if (dishModal) dishModal.addEventListener('click', (e) => { if (e.target === dishModal) closeDishModal(); });
+    const bulkModal = $('bulk-modal');
+    if (bulkModal) bulkModal.addEventListener('click', (e) => { if (e.target === bulkModal) closeBulkModal(); });
+  }
+
+  // Keep a global mirror of editingDishIdx for chunk D delete button.
+  // Monkeypatch openDishModal to record it.
+  const _open = window.openDishModal;
+  window.openDishModal = function (idx) {
+    window._editingDishIdx = (typeof idx === 'number' && idx >= 0) ? idx : -1;
+    return _open.apply(this, arguments);
+  };
+  const _close = window.closeDishModal;
+  window.closeDishModal = function () {
+    window._editingDishIdx = -1;
+    return _close.apply(this, arguments);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireDishUI);
+  } else {
+    wireDishUI();
+  }
+})();
+
+</script>
+
+<script>
+(function () {
+  async function autoGenerateFromCard(askConfirm) {
+    try {
+      if (!current || !current.menu_url) {
+        toast('Pehle menu card photo upload karein', true);
+        return;
+      }
+      if (isPdf()) {
+        toast('PDF se auto dish list nahi ban sakta — image upload karein', true);
+        return;
+      }
+      if (currentItems && currentItems.length) {
+        if (askConfirm && !confirm('Purane ' + currentItems.length + ' dishes replace ho jayenge. Continue?')) return;
+      }
+      toast('Menu card se dishes detect ho rahi hain (OCR)...');
+      await runMenuOcr(withRev(current.menu_url));
+      setMenuTab('items');
+      renderDishes();
+      const n = (currentItems || []).length;
+      if (n) toast('✅ ' + n + ' dishes menu card se auto-generate ho gaye!');
+      else toast('Koi dish detect nahi hua. Clear image try karein.', true);
+    } catch (e) {
+      toast((e && e.message) ? e.message : 'Auto-generate nahi hua', true);
+    }
+  }
+  window.autoGenerateFromCard = autoGenerateFromCard;
+})();
+
+</script>
 </body>
 </html>

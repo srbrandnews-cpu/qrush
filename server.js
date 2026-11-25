@@ -129,6 +129,7 @@ app.get('/m/:slug', publicRouter.hostedMenuPage);
 app.get('/m/:slug/logo', publicRouter.hostedMenuLogo);
 app.get('/m/:slug/menu', publicRouter.hostedMenuMenu);
 app.get('/m/:slug/menu/:idx', publicRouter.hostedMenuMenu);
+app.get('/m/:slug/item-photo/:id', publicRouter.hostedItemPhoto);
 app.get('/m/:slug/go/:network', publicRouter.hostedMenuGo);
 
 // Search engines: sitemap lists the homepage, the demo and every live menu.

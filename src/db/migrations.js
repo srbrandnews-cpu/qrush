@@ -157,6 +157,10 @@ const MIGRATIONS = [
         await exec('CREATE INDEX IF NOT EXISTS idx_freeqr_items ON free_qr_items(free_qr_id)');
       }
 
+      // Optional food photo per item (customer menu shows it when present).
+      // Additive and nullable — old rows stay valid.
+      await addColumn('free_qr_items', 'image_url', 'TEXT');
+
       if (!(await tableExists('free_qr_orders'))) {
         const created = dialect() === 'postgres'
           ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`

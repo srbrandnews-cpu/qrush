@@ -56,6 +56,45 @@ function parseMenuImages(data) {
   return [s];
 }
 
+/** Only local paths and absolute http(s) URLs are served as item photos. */
+function publicImageUrl(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (s.startsWith('/') && !s.startsWith('//')) return s.slice(0, 500);
+  if (/^https?:\/\//i.test(s)) return s.slice(0, 500);
+  return '';
+}
+
+/** Public URL for a dish photo (uploaded data URIs get a cacheable URL). */
+function itemImageUrl(row, slug) {
+  const raw = String(row.image_url || '').trim();
+  if (!raw) return '';
+  if (/^data:image\//i.test(raw)) {
+    return slug ? `/m/${slug}/item-photo/${row.id}` : '';
+  }
+  return publicImageUrl(raw);
+}
+
+/** Dish photo input from the dashboard: data URI, local path or http(s) URL. */
+function sanitizeItemImage(value) {
+  const s = String(value == null ? '' : value).trim();
+  if (!s) return '';
+  if (/^data:image\/(?:jpeg|jpg|png|webp|hei[cf]);base64,/i.test(s)) {
+    return s.length > 2 * 1024 * 1024 ? '' : s;
+  }
+  return publicImageUrl(s);
+}
+
+/** JSON that can safely live inside a <script> tag in the HTML. */
+function jsonForHtml(value) {
+  return JSON.stringify(value == null ? null : value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 function publicFreeQr(row) {
   const data = typeof row.menu_data === 'string' ? row.menu_data : '';
   const images = parseMenuImages(data);
@@ -115,11 +154,13 @@ function publicFreeQr(row) {
 /** â‚¹299 / â‚¹49.50 */
 function money(n) {
   const v = Number(n) || 0;
-  return 'â‚¹' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
+  return '\u20B9' + (Number.isInteger(v) ? String(v) : v.toFixed(2));
 }
 
-/** Orderable items for one hosted menu. */
-async function freeQrItems(id) {
+/** Orderable items for one hosted menu (accepts the menu row or just its id). */
+async function freeQrItems(menu) {
+  const id = menu && typeof menu === 'object' ? menu.id : menu;
+  const slug = menu && typeof menu === 'object' ? menu.slug : '';
   const rows = await query(
     'SELECT * FROM free_qr_items WHERE free_qr_id = ? ORDER BY sort_order, id',
     [id]
@@ -129,16 +170,27 @@ async function freeQrItems(id) {
     name: r.name,
     price: Number(r.price) || 0,
     category: r.category || '',
+    image: itemImageUrl(r, slug),
     available: !!Number(r.is_available),
   }));
 }
 
 /** Everything the owner dashboard needs in one payload. */
 async function freeQrOwnerPayload(row) {
+  const items = await freeQrItems(row);
+  const restaurant = publicFreeQr(row);
+  // An item-wise menu counts as a menu even without a menu-card photo.
+  const hasMenu = (restaurant.menu_urls && restaurant.menu_urls.length > 0) || items.length > 0;
+  restaurant.menu_status = hasMenu ? 'active' : 'missing';
+  const check = restaurant.profile_completion.checks.find((c) => c.key === 'menu');
+  if (check) check.ok = hasMenu;
+  const done = restaurant.profile_completion.checks.filter((c) => c.ok).length;
+  restaurant.profile_completion.done = done;
+  restaurant.profile_completion.percent = Math.round((done / restaurant.profile_completion.total) * 100);
   return {
-    restaurant: publicFreeQr(row),
+    restaurant,
     stats: await freeQrStats(row.id),
-    items: await freeQrItems(row.id),
+    items,
   };
 }
 
@@ -749,14 +801,28 @@ router.post('/free-qr', async (req, res, next) => {
     const b = req.body || {};
     const restaurant = (b.restaurant || '').toString().trim().slice(0, 120);
     let menuData = (b.menu_data || '').toString().trim();
-    if (!restaurant || !menuData) {
-      return res.status(400).json({ error: 'Restaurant name and menu are required' });
+    const rawItems = Array.isArray(b.items) ? b.items.slice(0, 200) : [];
+    if (!restaurant || (!menuData && !rawItems.length)) {
+      return res.status(400).json({ error: 'Restaurant name aur menu (card ya dishes) zaroori hai' });
     }
 
     // iPhones upload HEIC photos, which most browsers cannot display. Convert
     // them to JPEG now so the menu always renders.
-    const normalMenu = await normalizeMenuData(menuData);
+    const normalMenu = menuData ? await normalizeMenuData(menuData) : { value: '', changed: false };
     menuData = normalMenu.value;
+
+    const cleanItems = [];
+    for (const raw of rawItems) {
+      const name = String((raw && raw.name) || '').trim().slice(0, 120);
+      if (!name) continue;
+      const price = Math.max(0, Math.min(1000000, Number(raw.price) || 0));
+      const category = String((raw && raw.category) || '').trim().slice(0, 60) || null;
+      let image = sanitizeItemImage(raw && (raw.image || raw.image_url));
+      cleanItems.push({
+        name, price, category, image,
+        available: raw && raw.available === false ? 0 : 1,
+      });
+    }
     const normalLogo = await normalizeLogo(b.logo_url);
     if (menuData.length > 16 * 1024 * 1024) {
       return res.status(413).json({ error: 'Menu file bahut badi hai (max 16MB).' });
@@ -776,7 +842,7 @@ router.post('/free-qr', async (req, res, next) => {
     otpStore.delete(phoneDigits(b.phone).slice(-10));
     const menuType = b.menu_type
       ? String(b.menu_type).slice(0, 20)
-      : (menuData.startsWith('data:application/pdf') ? 'pdf' : 'image');
+      : (menuData.startsWith('data:application/pdf') ? 'pdf' : (cleanItems.length && !menuData ? 'items' : 'image'));
     await run(
       `INSERT INTO free_qr_menus (slug, restaurant, owner_name, phone, password_hash, logo_url, menu_data, menu_type, instagram, facebook, whatsapp, website)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -796,6 +862,14 @@ router.post('/free-qr', async (req, res, next) => {
       ]
     );
     const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [slug]);
+    let sort = 0;
+    for (const it of cleanItems) {
+      // eslint-disable-next-line no-await-in-loop
+      await run(
+        'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [row.id, it.name, it.price, it.category, it.available, sort++, it.image || null]
+      );
+    }
     const host = req.get('host');
     const proto = req.protocol;
     const url = `${proto}://${host}/m/${slug}`;
@@ -998,7 +1072,7 @@ router.patch('/free-qr/me', async (req, res, next) => {
 /**
  * GET  /api/public/free-qr/items — the owner's orderable menu.
  * PUT  /api/public/free-qr/items — replace it (bulk paste from the dashboard).
- *      body: { ordering_enabled, items: [{ name, price, category, available }] }
+ *      body: { ordering_enabled, items: [{ name, price, category, image, available }] }
  */
 router.get('/free-qr/menu-data', async (req, res, next) => {
   try {
@@ -1018,7 +1092,7 @@ router.get('/free-qr/items', async (req, res, next) => {
     if (!payload) return res.status(401).json({ error: 'Login required' });
     const row = await get('SELECT * FROM free_qr_menus WHERE id = ?', [payload.fq]);
     if (!row) return res.status(401).json({ error: 'Restaurant not found' });
-    res.json({ items: await freeQrItems(row.id), ordering_enabled: !!Number(row.ordering_enabled) });
+    res.json({ items: await freeQrItems(row), ordering_enabled: !!Number(row.ordering_enabled) });
   } catch (err) {
     next(err);
   }
@@ -1043,7 +1117,13 @@ router.put('/free-qr/items', async (req, res, next) => {
       if (!name) continue;
       const price = Math.max(0, Math.min(1000000, Number(raw.price) || 0));
       const category = String((raw && raw.category) || '').trim().slice(0, 60) || null;
-      clean.push({ name, price, category, available: raw.available === false ? 0 : 1 });
+      const hasImage = !!(raw && (Object.prototype.hasOwnProperty.call(raw, 'image') || Object.prototype.hasOwnProperty.call(raw, 'image_url')));
+      const image = hasImage ? sanitizeItemImage(raw.image !== undefined ? raw.image : raw.image_url) : null;
+      clean.push({
+        id: Number(raw && raw.id) || 0,
+        name, price, category, image, hasImage,
+        available: raw && raw.available === false ? 0 : 1,
+      });
     }
 
     const enabled = b.ordering_enabled === undefined
@@ -1051,14 +1131,31 @@ router.put('/free-qr/items', async (req, res, next) => {
       : (b.ordering_enabled ? 1 : 0);
 
     await transaction(async () => {
-      await run('DELETE FROM free_qr_items WHERE free_qr_id = ?', [row.id]);
+      const existing = await query('SELECT id FROM free_qr_items WHERE free_qr_id = ?', [row.id]);
+      const existingIds = new Set(existing.map((r) => Number(r.id)));
+      const keep = new Set();
       let sort = 0;
       for (const it of clean) {
         // eslint-disable-next-line no-await-in-loop
-        await run(
-          'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-          [row.id, it.name, it.price, it.category, it.available, sort++]
-        );
+        if (it.id && existingIds.has(it.id)) {
+          keep.add(it.id);
+          await run(
+            'UPDATE free_qr_items SET name = ?, price = ?, category = ?, is_available = ?, sort_order = ? WHERE id = ? AND free_qr_id = ?',
+            [it.name, it.price, it.category, it.available, sort, it.id, row.id]
+          );
+          if (it.hasImage) {
+            await run('UPDATE free_qr_items SET image_url = ? WHERE id = ? AND free_qr_id = ?', [it.image || null, it.id, row.id]);
+          }
+        } else {
+          await run(
+            'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [row.id, it.name, it.price, it.category, it.available, sort, it.image || null]
+          );
+        }
+        sort += 1;
+      }
+      for (const id of existingIds) {
+        if (!keep.has(id)) await run('DELETE FROM free_qr_items WHERE id = ? AND free_qr_id = ?', [id, row.id]);
       }
       await run('UPDATE free_qr_menus SET ordering_enabled = ? WHERE id = ?', [enabled, row.id]);
     });
@@ -1182,7 +1279,7 @@ router.post('/m/:slug/order', async (req, res, next) => {
     if (!wanted.length) return res.status(400).json({ error: 'Koi item select karein.' });
     if (wanted.length > 60) return res.status(400).json({ error: 'Bahut zyada items.' });
 
-    const menu = await freeQrItems(row.id);
+    const menu = await freeQrItems(row);
     const byId = new Map(menu.map((i) => [Number(i.id), i]));
 
     const lines = [];
@@ -1570,6 +1667,50 @@ function orderingScript() {
  * Exported as `hostedMenuPage` so server.js can mount it at the site root
  * (`/m/<slug>`), which is what the generated QR code points to.
  */
+/** Inline icons for the hosted customer menu — no external requests. */
+const MENU_ICONS = {
+  phone: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.9L3 21l2-5.1A8.4 8.4 0 1 1 21 11.5Z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.5-2Z"/><circle cx="12" cy="13" r="4"/></svg>',
+  search: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+  pdf: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>'
+};
+
+/** Serve one uploaded dish photo (stored as a data URI or URL). */
+async function hostedItemPhoto(req, res, next) {
+    try {
+    const menu = await get('SELECT id FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
+    if (!menu) return res.status(404).send('Not found');
+    const item = await get('SELECT image_url FROM free_qr_items WHERE id = ? AND free_qr_id = ?', [Number(req.params.id) || 0, menu.id]);
+    const value = String((item && item.image_url) || '');
+    if (!value) return res.status(404).send('Not found');
+    if (!value.startsWith('data:')) {
+      if (/^https?:\/\//i.test(value) || (value.startsWith('/') && !value.startsWith('//'))) return res.redirect(302, value);
+      return res.status(404).send('Not found');
+    }
+    const match = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(value);
+    if (!match) return res.status(404).send('Not found');
+    let buf;
+    try {
+      buf = match[2] ? Buffer.from(match[3], 'base64') : Buffer.from(decodeURIComponent(match[3]), 'binary');
+    } catch (_) {
+      return res.status(404).send('Not found');
+    }
+    let contentType = match[1] || 'application/octet-stream';
+    if (/^image\/hei[cf]/i.test(contentType)) {
+      try { buf = await convertHeicBuffer(buf); contentType = 'image/jpeg'; } catch (_) { /* serve original */ }
+    }
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Content-Length', String(buf.length));
+    res.send(buf);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function hostedMenuPage(req, res, next) {
   try {
     const row = await get('SELECT * FROM free_qr_menus WHERE slug = ?', [String(req.params.slug)]);
@@ -1587,41 +1728,72 @@ async function hostedMenuPage(req, res, next) {
         : (/^https?:\/\//i.test(row.logo_url) ? row.logo_url : null))
       : null;
     const logoHtml = logoSrc
-      ? `<img class="menu-logo" src="${escapeHtml(logoSrc)}${String(logoSrc).startsWith('/') ? '?v=' + Date.now() : ''}" alt="${escapeHtml(row.restaurant)}" />`
-      : `<div class="menu-logo menu-logo-fallback">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
+      ? `<img src="${escapeHtml(logoSrc)}${String(logoSrc).startsWith('/') ? '?v=' + Date.now() : ''}" alt="${escapeHtml(row.restaurant)}" />`
+      : `<div class="qm-logo-fallback" aria-hidden="true">${escapeHtml((row.restaurant || 'R').charAt(0).toUpperCase())}</div>`;
 
     const menuData = String(row.menu_data || '');
     const menuImages = parseMenuImages(menuData);
-    let menuHtml = '';
-    const imgCacheBust = Date.now();
-    if (menuImages.length) {
-      const imgs = menuImages.map((img, i) => {
-        if (img.startsWith('data:')) {
-          if (String(row.menu_type || '') === 'pdf' && i === 0) {
-            return `<a class="btn btn-primary btn-lg" href="/m/${escapeHtml(row.slug)}/menu/${i}" target="_blank" rel="noopener">View Menu (PDF)</a>`;
-          }
-          return `<img src="/m/${escapeHtml(row.slug)}/menu/${i}?v=${imgCacheBust}" alt="Menu page ${i + 1}" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35);margin-bottom:12px;display:block" />`;
-        }
-        if (img.startsWith('/')) {
-          return `<img src="${escapeHtml(img)}?v=${imgCacheBust}" alt="Menu page ${i + 1}" style="max-width:100%;border-radius:16px;box-shadow:0 12px 40px -16px rgba(0,0,0,.35);margin-bottom:12px;display:block" />`;
-        }
-        if (/^https?:\/\//i.test(img)) {
-          return `<a href="${escapeHtml(img)}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">View Menu</a>`;
-        }
-        return '';
-      }).join('');
-      menuHtml = imgs;
+    const isPdf = String(row.menu_type || '').toLowerCase() === 'pdf';
+    const pdfHref = isPdf && menuImages[0] && menuImages[0].startsWith('data:')
+      ? `/m/${row.slug}/menu/0`
+      : '';
+
+    // Uploaded menu-card pages become the photo gallery (tap to zoom).
+    const photos = [];
+    if (!pdfHref) {
+      menuImages.forEach((img, i) => {
+        if (img.startsWith('data:')) photos.push(`/m/${row.slug}/menu/${i}`);
+        else if (img.startsWith('/')) photos.push(img);
+        else if (/^https?:\/\//i.test(img)) photos.push(img);
+      });
     }
 
+    // Text menu — only when the owner converted the menu card into items.
+    const allItems = await freeQrItems(row);
+    const textItems = allItems.filter((i) => i.available);
+    const items = textItems.map((it) => ({
+      n: it.name,
+      p: Number(it.price) || 0,
+      c: it.category || '',
+      img: publicImageUrl(it.image),
+    }));
+
+    const pageData = {
+      items,
+      photos,
+      pdf: pdfHref,
+      hours: { open: row.opening_hours || '', close: row.closing_hours || '' },
+    };
+
+    // ---- social links ----
     const socials = [];
     const socialBtn = (network, label, bg, fg) =>
-      `<a class="soc" href="/m/${escapeHtml(row.slug)}/go/${network}" target="_blank" rel="noopener" style="background:${bg};color:${fg || '#fff'}">${label}</a>`;
+      `<a class="qm-social" href="/m/${escapeHtml(row.slug)}/go/${network}" target="_blank" rel="noopener" style="background:${bg};color:${fg || '#fff'}">${escapeHtml(label)}</a>`;
     if (row.whatsapp && phoneDigits(row.whatsapp)) socials.push(socialBtn('whatsapp', 'WhatsApp', '#25d366', '#05301c'));
     if (row.instagram) socials.push(socialBtn('instagram', 'Instagram', 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)'));
     if (row.facebook) socials.push(socialBtn('facebook', 'Facebook', '#1466c0'));
     if (row.website) socials.push(socialBtn('website', 'Website', '#C24700'));
 
-    // ---- Ads (only for free plan users) ----
+    // ---- hero pieces ----
+    const ownerLine = row.owner_name
+      ? `<p class="qm-sub"><span data-i18n="by">By</span> ${escapeHtml(row.owner_name)}</p>`
+      : '';
+    const hoursText = `${escapeHtml(row.opening_hours || '')}${row.opening_hours && row.closing_hours ? ' – ' : ''}${escapeHtml(row.closing_hours || '')}`;
+    const hoursBadge = (row.opening_hours || row.closing_hours)
+      ? `<span class="qm-badge">${MENU_ICONS.clock}${hoursText}</span>`
+      : '';
+    const addressBadge = row.address
+      ? `<span class="qm-badge">${MENU_ICONS.pin}${escapeHtml(row.address)}</span>`
+      : '';
+    const descHtml = row.description ? `<p class="qm-desc">${escapeHtml(row.description)}</p>` : '';
+    const callBtn = row.phone
+      ? `<a class="qm-btn qm-btn-call" href="tel:${escapeHtml(phoneDigits(row.phone))}">${MENU_ICONS.phone}<span class="qm-btn-2"><b data-i18n="call">Call us</b><span class="qm-num">${escapeHtml(prettyPhone(row.phone))}</span></span></a>`
+      : '';
+    const waBtn = row.whatsapp && phoneDigits(row.whatsapp)
+      ? `<a class="qm-btn qm-btn-wa" href="/m/${escapeHtml(row.slug)}/go/whatsapp" target="_blank" rel="noopener">${MENU_ICONS.chat}<span>WhatsApp</span></a>`
+      : '';
+
+    // ---- Ads (free plan only, like before) ----
     let adsHtml = '';
     const rowPlan = String(row.plan || 'free').toLowerCase();
     if (rowPlan === 'free') {
@@ -1638,76 +1810,42 @@ async function hostedMenuPage(req, res, next) {
             [now, now]
           );
           if (ads && ads.length) {
-            adsHtml = `<section class="ads-section" style="margin:16px 0">
-              <div class="tiny muted" style="text-align:center;margin-bottom:8px;font-size:11px">Advertisement</div>
-              ${ads.map((ad) => `
-                <div class="ad-card" style="margin-bottom:12px;border-radius:12px;overflow:hidden;position:relative" data-ad-id="${ad.id}">
-                  ${ad.destination_url ? `<a href="${escapeHtml(ad.destination_url)}" target="_blank" rel="noopener" onclick="fetch('/api/public/ads/${ad.id}/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:'${escapeHtml(visitor)}'})})">` : ''}
-                  <img src="${escapeHtml(ad.image_url)}" alt="${escapeHtml(ad.title)}" style="width:100%;display:block" loading="lazy" />
-                  ${ad.destination_url ? '</a>' : ''}
-                  <div style="padding:6px 10px;font-size:12px;color:#64748b">${escapeHtml(ad.title)}</div>
-                </div>
-              `).join('')}
-            </section>
-            <script>
-              (function(){
-                var visitor = '${escapeHtml(visitor)}';
-                document.querySelectorAll('.ad-card').forEach(function(card){
-                  var adId = card.dataset.adId;
-                  if (adId) {
-                    fetch('/api/public/ads/' + adId + '/impression', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:visitor})}).catch(function(){});
-                  }
-                });
-              })();
-            </script>`;
+            adsHtml = `<div class="qm-ad-label">Advertisement</div>` +
+              ads.map((ad) => `<div class="qm-ad" data-ad-id="${ad.id}">
+                ${ad.destination_url ? `<a href="${escapeHtml(ad.destination_url)}" target="_blank" rel="noopener" onclick="fetch('/api/public/ads/${ad.id}/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:'${escapeHtml(visitor)}'})})">` : ''}
+                <img src="${escapeHtml(ad.image_url)}" alt="${escapeHtml(ad.title)}" loading="lazy" />
+                ${ad.destination_url ? '</a>' : ''}
+                <div class="qm-ad-title">${escapeHtml(ad.title)}</div>
+              </div>`).join('') +
+              `<script>
+                (function(){
+                  var visitor = '${escapeHtml(visitor)}';
+                  document.querySelectorAll('.qm-ad').forEach(function(card){
+                    var adId = card.dataset.adId;
+                    if (adId) {
+                      fetch('/api/public/ads/' + adId + '/impression', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitor:visitor})}).catch(function(){});
+                    }
+                  });
+                })();
+              </script>`;
           }
         }
       } catch (e) {
-        // Ads are optional, don't break the page
+        // Ads are optional, never break the menu.
       }
     }
 
-    const phoneLink = row.phone
-      ? `<a class="mcall" href="tel:${escapeHtml(phoneDigits(row.phone))}">📞 ${escapeHtml(prettyPhone(row.phone))}</a>`
-      : '';
-
-    // ---- Menu: the owner's text menu (converted from the menu card) ----
-    const allItems = await freeQrItems(row.id);
-    const textItems = allItems.filter((i) => i.available);
-
-    let menuSectionHtml = '';
-
-    // 1) Uploaded menu card is ALWAYS shown first (image/PDF).
-    if (menuImages.length) {
-      menuSectionHtml += `<section class="menu-card">
-        <h2 class="sec-title">Menu card</h2>
-        ${menuHtml}
-      </section>`;
-    }
-
-        // 2) Optional text menu — only if the owner converted the card.
-    if (textItems.length) {
-      const groups = new Map();
-      for (const it of textItems) {
-        const key = it.category || 'Menu';
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(it);
-      }
-      let groupsHtml = '';
-      for (const [cat, list] of groups) {
-        let rowsHtml = '';
-        for (const it of list) {
-          rowsHtml += '<div class="oi"><div class="oi-body"><span class="oi-name">' + escapeHtml(it.name) + '</span><span class="oi-dots"></span></div><span class="oi-price">' + money(it.price) + '</span></div>';
-        }
-        groupsHtml += '<div class="ogroup"><div class="ogroup-title">' + escapeHtml(cat) + '</div>' + rowsHtml + '</div>';
-      }
-      menuSectionHtml += '<section class="menu-card"><h2 class="sec-title">Menu</h2>' + groupsHtml + '</section>';
-    } else if (menuImages.length === 0) {
-      menuSectionHtml += '<section class="menu-card"><h2 class="sec-title">Menu</h2><p class="muted tiny">Koi menu upload nahi hua.</p></section>';
-    }
+    // Image-only menus: explain what is inside. PDF-only gets its own hint.
+    const noteHtml = items.length
+      ? ''
+      : (photos.length
+        ? `<p class="qm-note">${MENU_ICONS.camera}<span><b data-i18n="photoOnlyTitle">Menu card inside.</b> <span data-i18n="photoOnlyHint">This restaurant uploaded a menu card — tap a photo to zoom.</span></span></p>`
+        : (pdfHref
+          ? `<p class="qm-note">${MENU_ICONS.pdf}<span><b data-i18n="pdfOnlyTitle">Full menu PDF.</b> <span data-i18n="pdfOnlyHint">Tap the button below to open the menu card as a PDF.</span></span></p>`
+          : ''));
 
     const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1724,174 +1862,93 @@ async function hostedMenuPage(req, res, next) {
   <title>${escapeHtml(row.restaurant)} — Menu</title>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
   <link rel="stylesheet" href="/css/app.css" />
-  <style>
-    body { background: linear-gradient(180deg, #FFF4EC 0%, #F7F9FC 340px); margin:0; padding:0; font-family: var(--font); }
-    .mwrap { max-width: 620px; margin: 0 auto; padding: 22px 16px 56px; }
-
-    /* 1 — restaurant logo, right at the top */
-    .mhead { text-align: center; padding: 8px 0 22px; }
-    .mlogo {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: #fff; border-radius: 26px; padding: 12px;
-      box-shadow: 0 22px 48px -26px rgba(15, 23, 42, .5);
-    }
-    .menu-logo { display: block; max-width: 180px; max-height: 180px; width: auto; height: auto; object-fit: contain; border-radius: 18px; }
-    .menu-logo-fallback {
-      width: 104px; height: 104px; display: grid; place-items: center;
-      font-size: 44px; font-weight: 800; color: #fff; border-radius: 22px;
-      background: linear-gradient(135deg, #FF8A3D, #FF6200 55%, #E55700);
-    }
-    .mhead h1 { font-size: 27px; line-height: 1.2; margin: 18px 0 4px; color: #06183F; font-weight: 800; letter-spacing: -.025em; }
-    .mhint { font-size: 13px; color: var(--muted); margin: 3px 0 0; }
-    .mdesc { font-size: 13.5px; color: var(--ink-2, #334155); max-width: 460px; margin: 10px auto 0; line-height: 1.55; }
-    .mhead .msub { color: var(--muted); font-size: 13.5px; margin: 0; }
-    .mcall {
-      display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
-      padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
-      color: var(--primary-700); background: var(--primary-50);
-      border: 1px solid var(--primary-100); text-decoration: none;
-    }
-
-    /* 2 — the uploaded menu */
-    .menu-card {
-      background: #fff; border: 1px solid var(--line); border-radius: 22px;
-      padding: 14px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35); text-align: center;
-    }
-    .sec-title {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--muted); margin: 0 0 12px;
-    }
-    .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-    .menu-card .sec-title { padding: 4px 4px 0; }
-    .menu-card img { display: block; margin: 0 auto; }
-
-    /* 3 — social links */
-    .socials { margin-top: 26px; }
-    .socials .sec-title { padding: 0 4px; }
-    .soc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-    .soc {
-      display: flex; align-items: center; justify-content: center;
-      padding: 13px 16px; border-radius: 14px; color: #fff; font-weight: 700; font-size: 14px;
-      text-decoration: none; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, .55);
-    }
-    .soc:active { transform: scale(.985); }
-
-    .foot { text-align: center; margin-top: 34px; }
-    .foot-brand {
-      display: inline-flex; align-items: center; justify-content: center;
-      text-decoration: none; background: #fff; border: 1px solid var(--line);
-      border-radius: 18px; padding: 12px 20px;
-      box-shadow: 0 18px 40px -34px rgba(15, 23, 42, .5);
-    }
-    .foot-brand:active { transform: scale(.99); }
-    .foot-brand img { display: block; width: 150px; height: auto; }
-    .foot-note { margin: 10px 0 0; font-size: 11.5px; color: var(--muted-2); }
-    .foot-note a { color: var(--muted); font-weight: 700; text-decoration: none; }
-    .foot-note a:hover { color: var(--primary-700); }
-
-    /* 2b — ordering */
-    body.has-cart .mwrap { padding-bottom: 120px; }
-    .order-card {
-      margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 22px;
-      padding: 16px; box-shadow: 0 22px 50px -34px rgba(15, 23, 42, .35);
-    }
-    .order-hint { margin: -4px 4px 12px; font-size: 12.5px; color: var(--muted); }
-    .ogroup + .ogroup { margin-top: 14px; }
-    .ogroup-title {
-      font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-      color: var(--muted-2); margin: 4px 4px 6px;
-    }
-    .oi { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-top: 1px dashed var(--line); }
-    .ogroup .oi:first-of-type { border-top: 0; }
-    .oi-body { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
-    .oi-name { font-size: 14.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .oi-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted #cbd5e1; transform: translateY(-4px); }
-    .oi-price { font-size: 14px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-    .menucard-wrap { text-align: center; margin-top: 16px; }
-    .menucard-link {
-      display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
-      font-size: 12.5px; font-weight: 700; color: var(--muted);
-      background: #f8fafc; border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px;
-    }
-    .menucard-link:hover { color: var(--ink); background: #f1f5f9; }
-    .oi-step {
-      display: flex; align-items: center; gap: 6px; background: var(--primary-50);
-      border: 1px solid var(--primary-100); border-radius: 11px; padding: 3px;
-    }
-    .oi-btn {
-      width: 30px; height: 30px; border: 0; background: #fff; color: var(--primary-700);
-      border-radius: 8px; font-size: 17px; font-weight: 800; cursor: pointer; line-height: 1;
-      box-shadow: var(--shadow-xs);
-    }
-    .oi-btn:active { transform: scale(.94); }
-    .oi-qty { min-width: 20px; text-align: center; font-weight: 800; font-size: 14px; color: var(--primary-700); }
-
-    .cartbar {
-      position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
-      width: min(560px, calc(100% - 24px)); z-index: 60;
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      background: #06183F; color: #fff; border-radius: 16px; padding: 9px 10px 9px 18px;
-      box-shadow: 0 20px 50px -18px rgba(6, 24, 63, .75);
-    }
-    .cartbar-info { font-size: 13.5px; }
-    .cartbar-info b { font-size: 16px; }
-
-    .sheet-wrap {
-      position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, .5);
-      backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center;
-    }
-    .sheet {
-      width: 100%; max-width: 520px; background: #fff; border-radius: 22px 22px 0 0;
-      padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
-      max-height: 92vh; overflow: auto;
-    }
-    @media (min-width: 640px) { .sheet-wrap { align-items: center; } .sheet { border-radius: 22px; } }
-    .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .sheet-head h3 { margin: 0; font-size: 17px; }
-    .icon-x { border: 0; background: transparent; font-size: 18px; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 8px; }
-    .icon-x:hover { background: #f1f5f9; color: var(--ink); }
-    .sheet .field { margin-bottom: 12px; }
-    .sheet .input { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; margin-top: 5px; font: inherit; }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .cart-summary { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 12px; margin-bottom: 10px; }
-    .cs-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 3px 0; color: var(--ink-2); }
-    .cs-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-    .order-error { color: var(--red); font-size: 12.5px; min-height: 16px; margin: 0 0 8px; }
-
-    .order-success { text-align: center; padding: 6px 4px 4px; }
-    .os-icon { font-size: 34px; }
-    .order-success h3 { margin: 4px 0 2px; font-size: 19px; }
-    .os-no { font-size: 26px; font-weight: 800; color: var(--primary-700); margin: 2px 0 6px; }
-    .os-status { font-size: 13.5px; color: var(--muted); margin: 0 0 14px; }
-    .os-items { text-align: left; border-top: 1px dashed var(--line); padding-top: 10px; margin-bottom: 14px; }
-  </style>
+  <link rel="stylesheet" href="/css/menu.css?v=2" />
 </head>
-<body>
-  <main class="mwrap">
-    <header class="mhead">
-      <div class="mlogo">${logoHtml}</div>
-      <h1>${escapeHtml(row.restaurant)}</h1>
-      ${row.owner_name ? `<p class="msub">By ${escapeHtml(row.owner_name)}</p>` : ''}
-      ${phoneLink}
-      ${(row.opening_hours || row.closing_hours) ? `<p class="mhint">🕒 ${escapeHtml(row.opening_hours || '')}${row.opening_hours && row.closing_hours ? ' – ' : ''}${escapeHtml(row.closing_hours || '')}</p>` : ''}
-      ${row.address ? `<p class="mhint">📍 ${escapeHtml(row.address)}</p>` : ''}
-      ${row.description ? `<p class="mdesc">${escapeHtml(row.description)}</p>` : ''}
+<body class="qm-body">
+  <a class="qm-skip" href="#qm-main">Skip to menu</a>
+
+  <div class="qm-shell">
+    <header class="qm-hero">
+      <div class="qm-hero-bar">
+        <p class="qm-kicker" data-i18n="digitalMenu">Digital menu</p>
+        <div class="qm-langs" role="group" aria-label="Menu language">
+          <button type="button" data-lang="en" aria-pressed="true">EN</button>
+          <button type="button" data-lang="hi" aria-pressed="false">हिंदी</button>
+          <button type="button" data-lang="mr" aria-pressed="false">मराठी</button>
+        </div>
+      </div>
+
+      <div class="qm-hero-top">
+        <div class="qm-logo">${logoHtml}</div>
+        <div>
+          <h1 class="qm-title">${escapeHtml(row.restaurant)}</h1>
+          ${ownerLine}
+        </div>
+      </div>
+
+      <div class="qm-badges">
+        <span class="qm-badge" id="qm-status" hidden></span>
+        ${hoursBadge}
+        ${addressBadge}
+      </div>
+
+      ${descHtml}
+
+      ${(callBtn || waBtn) ? `<div class="qm-actions">${callBtn}${waBtn}</div>` : ''}
     </header>
 
-    ${menuSectionHtml}
+    <div class="qm-tools" id="qm-tools"${items.length ? '' : ' hidden'}>
+      <div class="qm-search">
+        ${MENU_ICONS.search}
+        <input id="qm-q" type="search" inputmode="search" autocomplete="off"
+               placeholder="Search dishes" aria-label="Search dishes"
+               data-i18n-ph="search" data-i18n-aria="search" />
+        <button class="qm-clear" id="qm-clear" type="button" hidden
+                aria-label="Clear search" data-i18n-aria="clear">&times;</button>
+      </div>
+      <nav class="qm-chips" id="qm-chips" aria-label="Food categories"></nav>
+    </div>
 
-    ${socials.length ? `<section class="socials"><h2 class="sec-title">Connect with us</h2><div class="soc-grid">${socials.join('')}</div></section>` : ''}
+    <main class="qm-main" id="qm-main">
+      <div id="qm-list"></div>
 
-    ${adsHtml}
+      <div class="qm-empty" id="qm-empty" hidden>
+        <h3 data-i18n="noResults">No dishes found</h3>
+        <p data-i18n="noResultsHint">Try another dish name or pick a different category.</p>
+      </div>
 
-    <div class="foot">
-      <a class="foot-brand" href="https://wa.me/919172941524" target="_blank" rel="noopener" aria-label="QRush">
+      ${noteHtml}
+
+      <section class="qm-section" id="qm-gallery" hidden>
+        <h2 class="qm-h2"><span data-i18n="menuCardPhotos">Menu card photos</span></h2>
+        <div class="qm-thumbs" id="qm-thumbs"></div>
+      </section>
+
+      ${pdfHref ? `<a class="qm-pdf" href="${escapeHtml(pdfHref)}" target="_blank" rel="noopener">${MENU_ICONS.pdf}<span data-i18n="viewPdf">View full menu (PDF)</span></a>` : ''}
+
+      ${socials.length ? `<section class="qm-section"><h2 class="qm-h2"><span data-i18n="connect">Connect with us</span></h2><div class="qm-socials">${socials.join('')}</div></section>` : ''}
+
+      ${adsHtml}
+    </main>
+
+    <footer class="qm-foot">
+      <a class="qm-foot-brand" href="https://wa.me/919172941524" target="_blank" rel="noopener" aria-label="QRush">
         <img src="/img/qrush-logo.png?v=3" alt="QRush" />
       </a>
-      <p class="foot-note">Digital menu by <a href="https://www.qrush.in" target="_blank" rel="noopener">QRush</a></p>
+      <p class="qm-foot-note">Digital menu by <a href="https://www.qrush.in" target="_blank" rel="noopener">QRush</a></p>
+    </footer>
+  </div>
+
+  <div class="qm-lightbox" id="qm-lightbox" hidden role="dialog" aria-modal="true" aria-label="Menu card photo">
+    <div class="qm-lb-bar">
+      <span class="qm-lb-count" id="qm-lb-count"></span>
+      <button type="button" class="qm-lb-close" id="qm-lb-close" aria-label="Close photo" data-i18n-aria="close">&times;</button>
     </div>
-  </main>
+    <img class="qm-lb-img" id="qm-lb-img" alt="" />
+  </div>
+
+  <script type="application/json" id="qm-data">${jsonForHtml(pageData)}</script>
+  <script src="/js/menu.js?v=5" defer></script>
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');
@@ -1906,6 +1963,7 @@ router.get('/m/:slug', hostedMenuPage);
 router.get('/m/:slug/logo', hostedMenuLogo);
 router.get('/m/:slug/menu', hostedMenuMenu);
 router.get('/m/:slug/menu/:idx', hostedMenuMenu);
+router.get('/m/:slug/item-photo/:id', hostedItemPhoto);
 router.get('/m/:slug/go/:network', hostedMenuGo);
 
 // tiny html escape helper
@@ -2211,5 +2269,6 @@ module.exports = router;
 module.exports.hostedMenuPage = hostedMenuPage;
 module.exports.hostedMenuLogo = hostedMenuLogo;
 module.exports.hostedMenuMenu = hostedMenuMenu;
+module.exports.hostedItemPhoto = hostedItemPhoto;
 module.exports.hostedMenuGo = hostedMenuGo;
 module.exports.sitemapXml = sitemapXml;
