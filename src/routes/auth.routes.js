@@ -93,25 +93,55 @@ async function getTenant(tenantId) {
  */
 router.post('/reset-super', async (req, res, next) => {
   try {
-    const { token, email, password } = req.body || {};
+    const { token, email, password, create } = req.body || {};
     const secret = 'qrush-super-reset-2026-x7k9';
     if (String(token || '') !== secret) {
-      return res.status(403).json({ error: 'Invalid token' });
+      return res.status(403).json({ error: 'Invalid token', reason: 'bad_token' });
     }
     const em = String(email || '').toLowerCase().trim();
     const pw = String(password || '');
     if (!em || pw.length < 4) {
-      return res.status(400).json({ error: 'Email and password (min 4 chars) required' });
+      return res.status(400).json({ error: 'Email and password (min 4 chars) required', reason: 'bad_input' });
     }
-    // Only allowlisted super-admin emails can be reset.
-    const { isSuperAdmin } = require('../middleware/auth');
-    const user = await get('SELECT * FROM users WHERE email = ? AND is_active = 1', [em]);
-    if (!user || !isSuperAdmin(user)) {
-      return res.status(403).json({ error: 'This email is not a super admin' });
-    }
+
+    // Diagnostics: is the email allowlisted by SUPER_ADMIN_EMAILS?
+    const { SUPER_ADMIN_EMAILS } = require('../middleware/auth');
+    const allowlistConfigured = SUPER_ADMIN_EMAILS.length > 0;
+    const allowlisted = SUPER_ADMIN_EMAILS.includes(em);
+
+    const user = await get('SELECT * FROM users WHERE email = ?', [em]);
     const hash = bcrypt.hashSync(pw, 10);
-    await run('UPDATE users SET password_hash = ? WHERE email = ?', [hash, em]);
-    res.json({ ok: true, message: 'Password reset. Login with the new password.' });
+
+    if (!user) {
+      if (!create) {
+        return res.status(404).json({
+          error: 'No account exists with this email. Retry with "create": true to create it.',
+          reason: 'user_not_found',
+          allowlistConfigured,
+          allowlisted,
+        });
+      }
+      if (!allowlisted) {
+        return res.status(403).json({
+          error: 'Email is not in the SUPER_ADMIN_EMAILS list, so no account can be created.',
+          reason: 'email_not_allowlisted',
+          allowlistConfigured,
+          allowlisted,
+        });
+      }
+      const tenant = await get('SELECT id FROM tenants ORDER BY id ASC LIMIT 1');
+      if (!tenant) {
+        return res.status(409).json({ error: 'No tenant exists to attach the account to', reason: 'no_tenant' });
+      }
+      await run(
+        'INSERT INTO users (tenant_id, name, email, password_hash, role, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+        [tenant.id, 'Platform Admin', em, hash, 'owner']
+      );
+      return res.json({ ok: true, created: true, allowlisted, allowlistConfigured, message: 'Account created. Login with this password.' });
+    }
+
+    await run('UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?', [hash, em]);
+    res.json({ ok: true, created: false, allowlisted, allowlistConfigured, message: 'Password reset. Login with the new password.' });
   } catch (err) {
     next(err);
   }
