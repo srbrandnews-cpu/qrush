@@ -1,0 +1,30 @@
+services:
+  # Pre-production copy of the platform. Uses its OWN database - never point
+  # this service at the production DATABASE_URL.
+  - type: web
+    name: qrush-staging
+    env: node
+    plan: free
+    branch: staging
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: DB_CLIENT
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SUPER_ADMIN_EMAILS
+        sync: false
+      - key: SUPPORT_WHATSAPP
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

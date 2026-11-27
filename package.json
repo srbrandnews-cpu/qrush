@@ -7,6 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "build": "node -e \"process.exit(0)\"",
+    "test": "node scripts/smoke-test.js",
+    "check:syntax": "node scripts/check-syntax.js",
+    "verify": "npm run check:syntax && npm test && npm audit --omit=dev",
+    "predeploy": "node scripts/predeploy.js",
     "tunnel": "node scripts/start-tunnel.js",
     "setup:domain": "node scripts/setup-domain.js",
     "dev": "nodemon server.js",
