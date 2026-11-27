@@ -161,6 +161,13 @@ const MIGRATIONS = [
       // Additive and nullable — old rows stay valid.
       await addColumn('free_qr_items', 'image_url', 'TEXT');
 
+      // Optional portion prices (half / full). Null = single price (legacy).
+      await addColumn('free_qr_items', 'half_price', 'REAL');
+      await addColumn('free_qr_items', 'full_price', 'REAL');
+
+      // Optional dish description shown in the detail view.
+      await addColumn('free_qr_items', 'description', 'TEXT');
+
       if (!(await tableExists('free_qr_orders'))) {
         const created = dialect() === 'postgres'
           ? `to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')`

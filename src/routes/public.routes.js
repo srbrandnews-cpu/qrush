@@ -169,7 +169,10 @@ async function freeQrItems(menu) {
     id: r.id,
     name: r.name,
     price: Number(r.price) || 0,
+    half: Number(r.half_price) || 0,
+    full: Number(r.full_price) || 0,
     category: r.category || '',
+    description: String(r.description || '').trim(),
     image: itemImageUrl(r, slug),
     available: !!Number(r.is_available),
   }));
@@ -818,8 +821,16 @@ router.post('/free-qr', async (req, res, next) => {
       const price = Math.max(0, Math.min(1000000, Number(raw.price) || 0));
       const category = String((raw && raw.category) || '').trim().slice(0, 60) || null;
       let image = sanitizeItemImage(raw && (raw.image || raw.image_url));
+      const half = raw && (raw.half != null || raw.half_price != null || raw.price_half != null)
+        ? Math.max(0, Math.min(1000000, Number(raw.half != null ? raw.half : (raw.half_price != null ? raw.half_price : raw.price_half)) || 0))
+        : null;
+      const full = raw && (raw.full != null || raw.full_price != null || raw.price_full != null)
+        ? Math.max(0, Math.min(1000000, Number(raw.full != null ? raw.full : (raw.full_price != null ? raw.full_price : raw.price_full)) || 0))
+        : null;
+      const description = raw && raw.description != null ? String(raw.description).trim().slice(0, 2000) || null : null;
+      const effectivePrice = (full && full > 0) ? full : (price || (half || 0));
       cleanItems.push({
-        name, price, category, image,
+        name, price: effectivePrice, category, image, half, full, description,
         available: raw && raw.available === false ? 0 : 1,
       });
     }
@@ -866,8 +877,8 @@ router.post('/free-qr', async (req, res, next) => {
     for (const it of cleanItems) {
       // eslint-disable-next-line no-await-in-loop
       await run(
-        'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [row.id, it.name, it.price, it.category, it.available, sort++, it.image || null]
+        'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url, half_price, full_price, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [row.id, it.name, it.price, it.category, it.available, sort++, it.image || null, it.half, it.full, it.description]
       );
     }
     const host = req.get('host');
@@ -1117,11 +1128,17 @@ router.put('/free-qr/items', async (req, res, next) => {
       if (!name) continue;
       const price = Math.max(0, Math.min(1000000, Number(raw.price) || 0));
       const category = String((raw && raw.category) || '').trim().slice(0, 60) || null;
+      const hasDescription = !!(raw && Object.prototype.hasOwnProperty.call(raw, 'description'));
+      const description = hasDescription ? String(raw.description || '').trim().slice(0, 2000) || null : null;
       const hasImage = !!(raw && (Object.prototype.hasOwnProperty.call(raw, 'image') || Object.prototype.hasOwnProperty.call(raw, 'image_url')));
       const image = hasImage ? sanitizeItemImage(raw.image !== undefined ? raw.image : raw.image_url) : null;
+      const hasHalf = !!(raw && (Object.prototype.hasOwnProperty.call(raw, 'half') || Object.prototype.hasOwnProperty.call(raw, 'half_price') || Object.prototype.hasOwnProperty.call(raw, 'price_half')));
+      const hasFull = !!(raw && (Object.prototype.hasOwnProperty.call(raw, 'full') || Object.prototype.hasOwnProperty.call(raw, 'full_price') || Object.prototype.hasOwnProperty.call(raw, 'price_full')));
+      const half = hasHalf ? Math.max(0, Math.min(1000000, Number(raw.half != null ? raw.half : (raw.half_price != null ? raw.half_price : raw.price_half)) || 0)) : null;
+      const full = hasFull ? Math.max(0, Math.min(1000000, Number(raw.full != null ? raw.full : (raw.full_price != null ? raw.full_price : raw.price_full)) || 0)) : null;
       clean.push({
         id: Number(raw && raw.id) || 0,
-        name, price, category, image, hasImage,
+        name, price, category, image, hasImage, half, full, hasHalf, hasFull, description, hasDescription,
         available: raw && raw.available === false ? 0 : 1,
       });
     }
@@ -1137,19 +1154,30 @@ router.put('/free-qr/items', async (req, res, next) => {
       let sort = 0;
       for (const it of clean) {
         // eslint-disable-next-line no-await-in-loop
+        // Effective single price for ordering/cart: prefer full price when portions exist.
+        const effectivePrice = (it.full && it.full > 0) ? it.full : (it.price || (it.half || 0));
         if (it.id && existingIds.has(it.id)) {
           keep.add(it.id);
           await run(
             'UPDATE free_qr_items SET name = ?, price = ?, category = ?, is_available = ?, sort_order = ? WHERE id = ? AND free_qr_id = ?',
-            [it.name, it.price, it.category, it.available, sort, it.id, row.id]
+            [it.name, effectivePrice, it.category, it.available, sort, it.id, row.id]
           );
           if (it.hasImage) {
             await run('UPDATE free_qr_items SET image_url = ? WHERE id = ? AND free_qr_id = ?', [it.image || null, it.id, row.id]);
           }
+          if (it.hasHalf) {
+            await run('UPDATE free_qr_items SET half_price = ? WHERE id = ? AND free_qr_id = ?', [it.half, it.id, row.id]);
+          }
+          if (it.hasFull) {
+            await run('UPDATE free_qr_items SET full_price = ? WHERE id = ? AND free_qr_id = ?', [it.full, it.id, row.id]);
+          }
+          if (it.hasDescription) {
+            await run('UPDATE free_qr_items SET description = ? WHERE id = ? AND free_qr_id = ?', [it.description, it.id, row.id]);
+          }
         } else {
           await run(
-            'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [row.id, it.name, it.price, it.category, it.available, sort, it.image || null]
+            'INSERT INTO free_qr_items (free_qr_id, name, price, category, is_available, sort_order, image_url, half_price, full_price, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [row.id, it.name, effectivePrice, it.category, it.available, sort, it.image || null, it.half, it.full, it.description]
           );
         }
         sort += 1;
@@ -1754,11 +1782,16 @@ async function hostedMenuPage(req, res, next) {
     const items = textItems.map((it) => ({
       n: it.name,
       p: Number(it.price) || 0,
+      half: Number(it.half) || 0,
+      full: Number(it.full) || 0,
       c: it.category || '',
+      d: String(it.description || '').trim(),
       img: publicImageUrl(it.image),
     }));
 
     const pageData = {
+      restaurant: row.restaurant || '',
+      whatsapp: row.whatsapp || '',
       items,
       photos,
       pdf: pdfHref,
@@ -1861,11 +1894,24 @@ async function hostedMenuPage(req, res, next) {
   <meta name="twitter:card" content="summary" />
   <title>${escapeHtml(row.restaurant)} — Menu</title>
   <link rel="icon" type="image/png" href="/img/favicon.png?v=3" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/app.css" />
-  <link rel="stylesheet" href="/css/menu.css?v=2" />
+  <link rel="stylesheet" href="/css/menu.css?v=7" />
 </head>
 <body class="qm-body">
   <a class="qm-skip" href="#qm-main">Skip to menu</a>
+
+  <div class="qm-welcome" id="qm-welcome" hidden aria-live="polite" role="dialog" aria-label="Welcome">
+    <div class="qm-welcome-inner">
+      <div class="qm-welcome-logo">${logoHtml}</div>
+      <p class="qm-welcome-kicker" data-i18n="welcomeKicker">Welcome</p>
+      <h2 class="qm-welcome-title" id="qm-welcome-title"></h2>
+      <p class="qm-welcome-sub" data-i18n="welcomeSub">Loading your menu…</p>
+      <button type="button" class="qm-welcome-skip" id="qm-welcome-skip" data-i18n="welcomeSkip">Tap to enter</button>
+    </div>
+  </div>
 
   <div class="qm-shell">
     <header class="qm-hero">
@@ -1947,8 +1993,22 @@ async function hostedMenuPage(req, res, next) {
     <img class="qm-lb-img" id="qm-lb-img" alt="" />
   </div>
 
+  <div class="qm-detail" id="qm-detail" hidden role="dialog" aria-modal="true" aria-label="Dish details">
+    <div class="qm-detail-card">
+      <button type="button" class="qm-detail-close" id="qm-detail-close" aria-label="Close" data-i18n-aria="close">&times;</button>
+      <div class="qm-detail-photo" id="qm-detail-photo"></div>
+      <div class="qm-detail-body">
+        <h3 class="qm-detail-name" id="qm-detail-name"></h3>
+        <p class="qm-detail-cat" id="qm-detail-cat"></p>
+        <p class="qm-detail-price" id="qm-detail-price"></p>
+        <p class="qm-detail-avail" id="qm-detail-avail"></p>
+        <p class="qm-detail-desc" id="qm-detail-desc"></p>
+      </div>
+    </div>
+  </div>
+
   <script type="application/json" id="qm-data">${jsonForHtml(pageData)}</script>
-  <script src="/js/menu.js?v=5" defer></script>
+  <script src="/js/menu.js?v=11" defer></script>
 </body>
 </html>`;
     res.set('Content-Type', 'text/html; charset=utf-8');

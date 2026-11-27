@@ -18,6 +18,10 @@
   var T = {
     en: {
       digitalMenu: 'Digital menu',
+      welcomeKicker: 'Welcome',
+      welcomeTo: 'Welcome to',
+      welcomeSub: 'Loading your menu…',
+      welcomeSkip: 'Tap to enter',
       by: 'By',
       search: 'Search dishes',
       clear: 'Clear search',
@@ -43,6 +47,10 @@
     },
     hi: {
       digitalMenu: 'डिजिटल मेनू',
+      welcomeKicker: 'स्वागत है',
+      welcomeTo: 'स्वागत है',
+      welcomeSub: 'आपका मेनू लोड हो रहा है…',
+      welcomeSkip: 'आगे बढ़ें',
       by: 'द्वारा',
       search: 'व्यंजन खोजें',
       clear: 'खोज साफ़ करें',
@@ -68,6 +76,10 @@
     },
     mr: {
       digitalMenu: 'डिजिटल मेनू',
+      welcomeKicker: 'स्वागत आहे',
+      welcomeTo: 'स्वागत आहे',
+      welcomeSub: 'तुमचा मेनू लोड होत आहे…',
+      welcomeSkip: 'पुढे जा',
       by: 'यांनी',
       search: 'पदार्थ शोधा',
       clear: 'शोध साफ करा',
@@ -108,7 +120,15 @@
     lb: document.getElementById('qm-lightbox'),
     lbImg: document.getElementById('qm-lb-img'),
     lbCount: document.getElementById('qm-lb-count'),
-    lbClose: document.getElementById('qm-lb-close')
+    lbClose: document.getElementById('qm-lb-close'),
+    detail: document.getElementById('qm-detail'),
+    detailClose: document.getElementById('qm-detail-close'),
+    detailPhoto: document.getElementById('qm-detail-photo'),
+    detailName: document.getElementById('qm-detail-name'),
+    detailCat: document.getElementById('qm-detail-cat'),
+    detailPrice: document.getElementById('qm-detail-price'),
+    detailAvail: document.getElementById('qm-detail-avail'),
+    detailDesc: document.getElementById('qm-detail-desc')
   };
 
   function t(key) {
@@ -215,9 +235,23 @@
   }
 
   /* ---------- item cards -------------------------------------------------- */
+  function priceText(item) {
+    if (item.half || item.full) {
+      var parts = [];
+      if (item.half) parts.push('Half ' + money(item.half));
+      if (item.full) parts.push('Full ' + money(item.full));
+      return parts.join('  ·  ');
+    }
+    return money(item.p);
+  }
+
   function makeCard(item, eager) {
-    var card = document.createElement('article');
+    var card = document.createElement('div');
     card.className = 'qm-card';
+    card.style.cursor = 'pointer';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', (item.n || '') + ' — ' + priceText(item));
 
     var photo = document.createElement('div');
     photo.className = 'qm-photo';
@@ -248,12 +282,18 @@
 
     var price = document.createElement('p');
     price.className = 'qm-price';
-    price.textContent = money(item.p);
+    price.textContent = priceText(item);
 
     body.appendChild(name);
     body.appendChild(price);
     card.appendChild(photo);
     card.appendChild(body);
+
+    function open() { openDetail(item); }
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
     return card;
   }
 
@@ -476,10 +516,134 @@
     }
   });
 
+  /* ---------- welcome splash + voice -------------------------------------- */
+  function showWelcome() {
+    var el = document.getElementById('qm-welcome');
+    if (!el) return;
+    var key = 'qm.welcomed';
+    try { if (sessionStorage.getItem(key)) { el.hidden = true; return; } } catch (e) { /* private mode */ }
+    el.hidden = false;
+    var title = document.getElementById('qm-welcome-title');
+    if (title) title.textContent = t('welcomeTo') + ' ' + (DATA.restaurant || '');
+
+    var dismissed = false;
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      try { sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
+      if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+      el.style.transition = 'opacity .35s ease';
+      el.style.opacity = '0';
+      setTimeout(function () { el.hidden = true; el.style.opacity = ''; }, 360);
+    }
+    var skipBtn = document.getElementById('qm-welcome-skip');
+
+    var canSpeak = 'speechSynthesis' in window;
+    var spoken = false;
+    function trySpeak() {
+      if (spoken || !canSpeak) return;
+      spoken = true;
+      try {
+        var utt = new SpeechSynthesisUtterance(t('welcomeTo') + ' ' + (DATA.restaurant || '') + '. ' + t('welcomeSub'));
+        var langMap = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' };
+        utt.lang = langMap[state.lang] || 'en-IN';
+        utt.rate = 0.92;
+        utt.pitch = 1.0;
+        utt.volume = 1;
+        utt.onend = dismiss;
+        utt.onerror = function () { setTimeout(dismiss, 1800); };
+        window.speechSynthesis.speak(utt);
+      } catch (e) {
+        setTimeout(dismiss, 2000);
+      }
+    }
+    // Auto-speak only if the browser grants user activation (avoids deprecated
+    // speak-without-activation). Otherwise speak on the first tap.
+    var ua = (navigator.userActivation || {});
+    if (ua.isActive) {
+      setTimeout(trySpeak, 600);
+    }
+    // Tap anywhere on the splash to speak (and dismiss) — keeps voice working
+    // on browsers that require a gesture.
+    el.addEventListener('click', function (e) {
+      if (e.target === el || (skipBtn && e.target === skipBtn)) {
+        if (!spoken) trySpeak();
+        else dismiss();
+      }
+    });
+    if (skipBtn) {
+      skipBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!spoken) trySpeak();
+        else dismiss();
+      });
+    }
+    if (!canSpeak) {
+      setTimeout(dismiss, 2400);
+    }
+    setTimeout(dismiss, 6500);
+  }
+
+  /* ---------- dish detail modal ------------------------------------------ */
+  var detailLastFocus = null;
+  function openDetail(item) {
+    if (!els.detail) return;
+    detailLastFocus = document.activeElement;
+    if (els.detailPhoto) {
+      els.detailPhoto.innerHTML = '';
+      if (item.img) {
+        var img = document.createElement('img');
+        img.src = item.img;
+        img.alt = item.n || '';
+        img.addEventListener('error', function () {
+          img.remove();
+          els.detailPhoto.classList.add('qm-noimg');
+          els.detailPhoto.appendChild(initial(item));
+        });
+        els.detailPhoto.appendChild(img);
+      } else {
+        els.detailPhoto.classList.add('qm-noimg');
+        els.detailPhoto.appendChild(initial(item));
+      }
+    }
+    if (els.detailName) els.detailName.textContent = item.n || '';
+    if (els.detailCat) els.detailCat.textContent = item.c || '';
+    if (els.detailPrice) els.detailPrice.textContent = priceText(item);
+    if (els.detailAvail) {
+      els.detailAvail.textContent = item.available === false ? (t('closedNow') || 'Unavailable') : (t('openNow') || 'Available');
+      els.detailAvail.className = 'qm-detail-avail' + (item.available === false ? ' off' : '');
+    }
+    if (els.detailDesc) {
+      els.detailDesc.textContent = item.d || '';
+      els.detailDesc.hidden = !item.d;
+    }
+    els.detail.hidden = false;
+    document.body.style.overflow = 'hidden';
+    if (els.detailClose) els.detailClose.focus();
+  }
+  function closeDetail() {
+    if (!els.detail) return;
+    els.detail.hidden = true;
+    document.body.style.overflow = '';
+    if (detailLastFocus && typeof detailLastFocus.focus === 'function') detailLastFocus.focus();
+    detailLastFocus = null;
+  }
+  if (els.detail) {
+    els.detail.addEventListener('click', function (e) {
+      if (e.target === els.detail) closeDetail();
+    });
+  }
+  if (els.detailClose) els.detailClose.addEventListener('click', closeDetail);
+  document.addEventListener('keydown', function (e) {
+    if (!els.detail || els.detail.hidden) return;
+    if (e.key === 'Escape') closeDetail();
+  });
+
   /* ---------- boot -------------------------------------------------------- */
   if (els.tools && !DATA.items.length) els.tools.hidden = true;
   buildGallery();
   applyLang(preferredLang(), false);
+  showWelcome();
   renderStatus();
   setInterval(renderStatus, 60 * 1000);
 })();

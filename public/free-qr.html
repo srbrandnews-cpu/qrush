@@ -1510,16 +1510,35 @@ Gulab Jamun, 90, Desserts" style="min-height:120px"></textarea>
           <label>Dish name *</label>
           <input class="input" id="dish-name" placeholder="e.g. Paneer Tikka" />
         </div>
-        <div class="row">
+        <div class="field">
+          <label>Price type</label>
+          <div class="menu-type-switch" style="margin:0 0 8px">
+            <button type="button" data-ptype="single" class="on" id="dish-pt-single">Single price</button>
+            <button type="button" data-ptype="halfull" id="dish-pt-halfull">Half + Full</button>
+          </div>
+        </div>
+        <div id="dish-price-single">
           <div class="field">
             <label>Price (Rs.) *</label>
             <input class="input" id="dish-price" type="number" min="0" step="1" placeholder="240" />
           </div>
-          <div class="field">
-            <label>Category</label>
-            <input class="input" id="dish-cat" list="dish-cat-list" placeholder="e.g. Starters" />
-            <datalist id="dish-cat-list"></datalist>
+        </div>
+        <div id="dish-price-halffull" hidden>
+          <div class="row">
+            <div class="field">
+              <label>Half price (Rs.)</label>
+              <input class="input" id="dish-half" type="number" min="0" step="1" placeholder="120" />
+            </div>
+            <div class="field">
+              <label>Full price (Rs.) *</label>
+              <input class="input" id="dish-full" type="number" min="0" step="1" placeholder="240" />
+            </div>
           </div>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <input class="input" id="dish-cat" list="dish-cat-list" placeholder="e.g. Starters" />
+          <datalist id="dish-cat-list"></datalist>
         </div>
         <div class="field">
           <label>Dish photo <span class="tiny muted">(optional)</span></label>
@@ -1535,6 +1554,10 @@ Gulab Jamun, 90, Desserts" style="min-height:120px"></textarea>
               <p class="auto-photo-note">Real photo na ho to hum naam ke hisaab se sample photo laga denge.</p>
             </div>
           </div>
+        </div>
+        <div class="field">
+          <label>Description <span class="tiny muted">(optional)</span></label>
+          <textarea class="input" id="dish-desc" rows="3" placeholder="Dish ke baare mein short description" style="resize:vertical"></textarea>
         </div>
         <label class="check-row"><input type="checkbox" id="dish-available" checked /> Available (customer ko dikhe)</label>
         <p class="login-error" id="dish-error" style="margin-top:12px"></p>
@@ -3205,7 +3228,7 @@ Gulab Jamun, 90, Desserts"></textarea>
         '<div class="nm">' + esc(it.name) + '</div>' +
         '<div class="sub">' + esc(it.category || 'Uncategorized') + (it.available === false ? ' · hidden' : '') + '</div>' +
       '</div>' +
-      '<div class="dish-price">₹' + (Number(it.price) || 0) + '</div>' +
+      '<div class="dish-price">' + ( (it.half || it.full) ? ('H ₹' + (Number(it.half)||0) + (it.full ? ' · F ₹' + Number(it.full) : '')) : ('₹' + (Number(it.price) || 0)) ) + '</div>' +
       '<button class="btn btn-outline btn-sm" data-act="dish-edit" data-idx="' + idx + '" type="button">Edit</button>' +
       '<button class="btn btn-ghost btn-sm" data-act="dish-del" data-idx="' + idx + '" type="button">X</button>' +
       '</div>'
@@ -3280,7 +3303,22 @@ Gulab Jamun, 90, Desserts"></textarea>
       if (title) title.textContent = 'Edit dish';
       if (name) name.value = it.name || '';
       if (price) price.value = it.price || 0;
+      var halfIn = document.getElementById('dish-half');
+      var fullIn = document.getElementById('dish-full');
+      if (halfIn) halfIn.value = it.half || '';
+      if (fullIn) fullIn.value = it.full || '';
+      var isHalfFull = !!(it.half || it.full);
+      var singlePane = document.getElementById('dish-price-single');
+      var halfPane = document.getElementById('dish-price-halffull');
+      if (singlePane) singlePane.hidden = isHalfFull;
+      if (halfPane) halfPane.hidden = !isHalfFull;
+      var ptSingle = document.getElementById('dish-pt-single');
+      var ptHalf = document.getElementById('dish-pt-halfull');
+      if (ptSingle) ptSingle.classList.toggle('on', !isHalfFull);
+      if (ptHalf) ptHalf.classList.toggle('on', isHalfFull);
       if (cat) cat.value = it.category || '';
+      var descIn = document.getElementById('dish-desc');
+      if (descIn) descIn.value = it.description || '';
       if (avail) avail.checked = it.available !== false;
       if (thumb) thumb.innerHTML = it.image ? '<img src="' + esc(it.image) + '" alt="" />' : (String(it.name || '?').charAt(0).toUpperCase());
       if (delBtn) delBtn.style.display = '';
@@ -3288,7 +3326,21 @@ Gulab Jamun, 90, Desserts"></textarea>
       if (title) title.textContent = 'Add dish';
       if (name) name.value = '';
       if (price) price.value = '';
+      var halfIn2 = document.getElementById('dish-half');
+      var fullIn2 = document.getElementById('dish-full');
+      if (halfIn2) halfIn2.value = '';
+      if (fullIn2) fullIn2.value = '';
+      var sp = document.getElementById('dish-price-single');
+      var hp = document.getElementById('dish-price-halffull');
+      if (sp) sp.hidden = false;
+      if (hp) hp.hidden = true;
+      var pts = document.getElementById('dish-pt-single');
+      var pth = document.getElementById('dish-pt-halfull');
+      if (pts) pts.classList.add('on');
+      if (pth) pth.classList.remove('on');
       if (cat) cat.value = '';
+      var descIn2 = document.getElementById('dish-desc');
+      if (descIn2) descIn2.value = '';
       if (avail) avail.checked = true;
       if (thumb) thumb.innerHTML = 'dish';
       if (delBtn) delBtn.style.display = 'none';
@@ -3319,8 +3371,19 @@ Gulab Jamun, 90, Desserts"></textarea>
 
   async function saveDish() {
     const name = ($('dish-name').value || '').trim();
-    const price = Number($('dish-price').value) || 0;
+    const ptHalfull = document.getElementById('dish-pt-halfull');
+    const isHalfFull = !!(ptHalfull && ptHalfull.classList.contains('on'));
+    var price = 0, half = null, full = null;
+    if (isHalfFull) {
+      half = Number((document.getElementById('dish-half').value) || 0) || 0;
+      full = Number((document.getElementById('dish-full').value) || 0) || 0;
+      if (full <= 0) { if (err) err.textContent = 'Full price zaroori hai.'; if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save dish'; } return; }
+      price = full;
+    } else {
+      price = Number($('dish-price').value) || 0;
+    }
     const cat = ($('dish-cat').value || '').trim();
+    const desc = (document.getElementById('dish-desc').value || '').trim();
     const avail = $('dish-available').checked;
     const err = $('dish-error');
     if (!name) { if (err) err.textContent = 'Dish ka naam zaroori hai.'; return; }
@@ -3328,6 +3391,9 @@ Gulab Jamun, 90, Desserts"></textarea>
 
     const items = (currentItems || []).slice();
     const dish = { name, price, category: cat, available: avail };
+    dish.description = desc;
+    if (isHalfFull) { dish.half = half; dish.full = full; }
+    else { dish.half = null; dish.full = null; }
     if (pendingDishImage !== undefined) dish.image = pendingDishImage;
     if (editingDishIdx < 0 && pendingDishImage === undefined) {
       const auto = autoDishPhoto(name);
@@ -3475,6 +3541,20 @@ Gulab Jamun, 90, Desserts"></textarea>
     if (pasteBtn) pasteBtn.addEventListener('click', openBulkModal);
     const autoBtn = $('d-item-auto');
     if (autoBtn) autoBtn.addEventListener('click', autoPhotosAll);
+
+    // portion switch
+    var ptS = document.getElementById('dish-pt-single');
+    var ptH = document.getElementById('dish-pt-halfull');
+    if (ptS) ptS.addEventListener('click', function () {
+      ptS.classList.add('on'); if (ptH) ptH.classList.remove('on');
+      var sp = document.getElementById('dish-price-single'); var hp = document.getElementById('dish-price-halffull');
+      if (sp) sp.hidden = false; if (hp) hp.hidden = true;
+    });
+    if (ptH) ptH.addEventListener('click', function () {
+      ptH.classList.add('on'); if (ptS) ptS.classList.remove('on');
+      var sp = document.getElementById('dish-price-single'); var hp = document.getElementById('dish-price-halffull');
+      if (sp) sp.hidden = true; if (hp) hp.hidden = false;
+    });
 
     const dishClose = $('dish-close');
     if (dishClose) dishClose.addEventListener('click', closeDishModal);
