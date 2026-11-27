@@ -419,6 +419,9 @@ const FREE_QR_MAX_TRIES = 8;
 // In-memory OTP store for first-time phone verification (no SMS provider).
 const otpStore = new Map(); // phone(last10) -> { otp, expires, attempts }
 
+// Platform support WhatsApp used in "forgot password" and OTP messages.
+const SUPPORT_WHATSAPP = process.env.SUPPORT_WHATSAPP || '919172941524';
+
 function freeQrThrottled(key) {
   const now = Date.now();
   const rec = freeQrAttempts.get(key);
@@ -771,7 +774,18 @@ router.post('/free-qr/send-otp', async (req, res, next) => {
     const key = 'otp:' + (req.ip || 'ip') + ':' + phone.slice(-10);
     if (freeQrThrottled(key)) return res.status(429).json({ error: 'Bahut zyada attempts. 10 minute baad try karein.' });
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    // Never hand out an OTP for a number that already has an account: that
+    // would let anyone walk into somebody else's restaurant dashboard.
+    const existing = await get('SELECT id FROM free_qr_menus WHERE phone = ?', [phone]);
+    if (existing) {
+      return res.status(409).json({
+        error: 'Is number par account pehle se hai. Password bhool gaye ho to WhatsApp support se reset karwayein.',
+        code: 'account_exists',
+        support_whatsapp: SUPPORT_WHATSAPP,
+      });
+    }
+
+    const otp = String(crypto.randomInt(100000, 1000000));
     otpStore.set(phone.slice(-10), { otp, expires: Date.now() + 5 * 60 * 1000, attempts: 0 });
     res.json({ ok: true, otp, message: 'OTP bhej diya gaya.' });
   } catch (err) {
@@ -944,22 +958,21 @@ router.post('/free-qr/reset-password', async (req, res, next) => {
   try {
     const b = req.body || {};
     const phone = String(b.phone || '').trim();
-    const password = String(b.password || '');
-    if (!phone) return res.status(400).json({ error: 'Phone number zaroori hai.' });
-    if (password.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 characters ka ho.' });
 
     const key = 'reset:' + (req.ip || 'ip') + ':' + phoneDigits(phone);
     if (freeQrThrottled(key)) {
       return res.status(429).json({ error: 'Bahut zyada attempts. 10 minute baad try karein.' });
     }
 
-    const rows = await query('SELECT * FROM free_qr_menus');
-    const target = rows.find((r) => samePhone(r.phone, phone));
-    if (!target) return res.status(404).json({ error: 'Is phone number se koi account nahi mila.' });
-
-    const hash = await bcrypt.hash(password, 10);
-    await run('UPDATE free_qr_menus SET password_hash = ? WHERE id = ?', [hash, target.id]);
-    res.json({ ok: true, message: 'Password reset ho gaya. Ab login karein.' });
+    // Self-serve reset is disabled on purpose. Anyone who knows a restaurant's
+    // phone number (it is printed on the public menu page) could otherwise take
+    // over the dashboard. Resets are handled by the platform team through the
+    // Super Admin console after verifying the owner on WhatsApp.
+    res.status(403).json({
+      error: 'Security ke liye password reset ab support ke through hota hai. WhatsApp par humse contact karein, team verify karke naya password de degi.',
+      code: 'contact_support',
+      support_whatsapp: SUPPORT_WHATSAPP,
+    });
   } catch (err) {
     next(err);
   }

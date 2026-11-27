@@ -398,6 +398,7 @@
         <td class="right">
           <div class="sa-actions">
             <a class="sa-icon-btn" href="/m/${esc(r.slug)}" target="_blank" rel="noopener" title="Open menu">🔗</a>
+            <button class="btn btn-sm" data-freeqr-pass="${r.id}" title="Reset owner password">🔑</button>
             <button class="btn btn-sm" data-plan="${r.id}" data-kind="freeqr">Plan</button>
             <button class="btn btn-sm btn-danger" data-freeqr-remove="${r.id}">Remove</button>
           </div>
@@ -406,6 +407,62 @@
     `).join('');
     body.querySelectorAll('[data-freeqr-remove]').forEach((btn) => {
       btn.addEventListener('click', () => removeFreeQr(Number(btn.getAttribute('data-freeqr-remove'))));
+    });
+    body.querySelectorAll('[data-freeqr-pass]').forEach((btn) => {
+      btn.addEventListener('click', () => resetFreeQrPassword(Number(btn.getAttribute('data-freeqr-pass'))));
+    });
+  }
+
+  /**
+   * "Forgot password" for a free-QR owner. The team verifies the owner on
+   * WhatsApp, then sets a fresh password here and shares it.
+   */
+  function resetFreeQrPassword(id) {
+    const row = (state.freeqr || []).find((x) => Number(x.id) === Number(id)) || {};
+    const password = suggestPassword();
+    openModal({
+      title: 'Reset owner password',
+      sub: `${row.restaurant || 'Free QR menu'} · ${row.phone || 'no phone'}`,
+      body: `
+        <p class="tiny muted" style="margin:0 0 12px;line-height:1.6">
+          Owner ko WhatsApp par verify karne ke baad ye password set karein, phir unhe bhej dein.
+          Purana password turant kaam karna band kar dega.
+        </p>
+        <div class="field" style="margin-bottom:0">
+          <label for="fq-newpass">New password</label>
+          <input class="input" id="fq-newpass" value="${esc(password)}" readonly />
+        </div>`,
+      actions: [
+        { label: 'Cancel', onClick: closeModal },
+        {
+          label: 'Set password',
+          class: 'btn-primary',
+          onClick: async (btn) => {
+            const value = ($('fq-newpass').value || '').trim();
+            btn.disabled = true;
+            try {
+              const data = await saApi(`/api/admin/super-admin/free-qr/${id}/password`, {
+                method: 'POST',
+                body: { password: value },
+              });
+              openModal({
+                title: 'Password updated',
+                sub: `${data.restaurant || row.restaurant || ''} · ${data.phone || row.phone || ''}`,
+                body: `
+                  <p class="tiny muted" style="margin:0 0 12px">Ye password owner ko WhatsApp par bhej dein.</p>
+                  <div class="field" style="margin-bottom:0">
+                    <label>New password</label>
+                    <input class="input" id="fq-pass-result" value="${esc(data.password || value)}" readonly />
+                  </div>`,
+                actions: [{ label: 'Done', class: 'btn-primary', onClick: closeModal }],
+              });
+            } catch (err) {
+              btn.disabled = false;
+              alert(err.message || 'Password reset nahi hua');
+            }
+          },
+        },
+      ],
     });
   }
 

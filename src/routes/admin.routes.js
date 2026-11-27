@@ -2,6 +2,7 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { query, get, run, transaction, dialect, utcToday } = require('../config/db');
 const { requireAuth, requireRole, requireSuperAdmin, SUPER_ADMIN_EMAILS } = require('../middleware/auth');
 const { OPEN_STATUSES } = require('../utils/constants');
@@ -358,6 +359,34 @@ router.delete('/super-admin/free-qr/:id', async (req, res, next) => {
     await run('DELETE FROM free_qr_events WHERE free_qr_id = ?', [id]);
     await run('DELETE FROM free_qr_menus WHERE id = ?', [id]);
     res.json({ ok: true, deleted: id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/super-admin/free-qr/:id/password
+ * Support flow for "forgot password": the team verifies the owner on WhatsApp
+ * and then issues a fresh temporary password from the platform console.
+ * Body: { password } (optional - otherwise a random one is generated).
+ */
+router.post('/super-admin/free-qr/:id/password', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const row = await get('SELECT id, phone, restaurant FROM free_qr_menus WHERE id = ?', [id]);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    if (!row.phone) return res.status(400).json({ error: 'Is menu par koi phone number saved nahi hai.' });
+
+    let password = String((req.body && req.body.password) || '').trim();
+    if (password) {
+      if (password.length < 8) return res.status(400).json({ error: 'Password kam se kam 8 characters ka ho.' });
+    } else {
+      password = 'qr' + crypto.randomInt(100000, 1000000);
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await run('UPDATE free_qr_menus SET password_hash = ? WHERE id = ?', [hash, id]);
+    res.json({ ok: true, id, phone: row.phone, restaurant: row.restaurant, password });
   } catch (err) {
     next(err);
   }

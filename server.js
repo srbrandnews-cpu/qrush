@@ -16,9 +16,13 @@ const { runWithOrigin } = require('./src/utils/request-context');
 const {
   securityHeaders,
   blockBadRequests,
+  limitBodySize,
   loginLimiter,
+  loginAccountLimiter,
   ownerLoginLimiter,
+  ownerLoginAccountLimiter,
   otpLimiter,
+  resetAccountLimiter,
   writeLimiter,
   apiLimiter,
 } = require('./src/middleware/security');
@@ -91,11 +95,11 @@ const legacyOnly = (req, res, next) => {
 // endpoints. Write requests (orders, menu edits, signup, upgrades) get their
 // own bucket so a single phone cannot flood the database.
 app.use('/api', apiLimiter);
-app.use('/api/auth/login', loginLimiter);
-app.use('/api/public/free-qr/login', ownerLoginLimiter);
-app.use('/api/public/free-qr/send-otp', otpLimiter);
-app.use('/api/public/free-qr/verify-otp', otpLimiter);
-app.use('/api/public/free-qr/reset-password', otpLimiter);
+app.use('/api/auth/login', limitBodySize(16 * 1024), loginLimiter, loginAccountLimiter);
+app.use('/api/public/free-qr/login', limitBodySize(16 * 1024), ownerLoginLimiter, ownerLoginAccountLimiter);
+app.use('/api/public/free-qr/send-otp', limitBodySize(8 * 1024), otpLimiter);
+app.use('/api/public/free-qr/verify-otp', limitBodySize(8 * 1024), otpLimiter);
+app.use('/api/public/free-qr/reset-password', limitBodySize(8 * 1024), otpLimiter, resetAccountLimiter);
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   return writeLimiter(req, res, next);

@@ -41,8 +41,28 @@ function securityHeaders(req, res, next) {
 /*  Rate limiting                                                      */
 /* ------------------------------------------------------------------ */
 
-/** One Map per limiter, keyed by client IP (+ optional extra key). */
-function createRateLimiter({ windowMs, max, message, extraKey }) {
+/**
+ * Real client IP for rate limiting.
+ *
+ * `trust proxy` is enabled (Render + Cloudflare in front), which makes
+ * `req.ip` come from the client-supplied X-Forwarded-For header - so a
+ * caller can rotate fake IPs and never hit a limit. Cloudflare always
+ * overwrites `CF-Connecting-IP` with the real edge IP and strips copies
+ * sent by the browser, so that header is authoritative when present.
+ */
+function clientIp(req) {
+  const cf = String(req.headers['cf-connecting-ip'] || '').trim();
+  if (cf) return cf;
+  return req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+/**
+ * One Map per limiter.
+ *   keyMode 'ip'      -> key = client IP (+ optional extraKey suffix)
+ *   keyMode 'account' -> key = extraKey(req) only (e.g. the email or phone
+ *                        being targeted), so rotating IPs does not help.
+ */
+function createRateLimiter({ windowMs, max, message, extraKey, keyMode }) {
   const hits = new Map();
 
   // Drop expired entries periodically so memory stays bounded.
@@ -56,8 +76,16 @@ function createRateLimiter({ windowMs, max, message, extraKey }) {
 
   return function rateLimiter(req, res, next) {
     const now = Date.now();
-    let key = req.ip || req.socket.remoteAddress || 'unknown';
-    if (extraKey) key += '|' + extraKey(req);
+    let key;
+    if (keyMode === 'account') {
+      const value = extraKey ? String(extraKey(req) || '').trim().toLowerCase() : '';
+      // Nothing to key on (missing email/phone) - let the route validate it.
+      if (!value) return next();
+      key = 'acc:' + value;
+    } else {
+      key = clientIp(req);
+      if (extraKey) key += '|' + extraKey(req);
+    }
 
     let entry = hits.get(key);
     if (!entry || entry.resetAt <= now) {
@@ -104,6 +132,34 @@ const otpLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: 'Too many OTP requests. Try again in 15 minutes.',
+});
+
+// Per-account buckets: brute force from many IPs still hits these.
+// Staff login: 12 tries per 15 minutes for the same email.
+const loginAccountLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 12,
+  keyMode: 'account',
+  extraKey: (req) => (req.body && req.body.email) || '',
+  message: 'Is account par bahut zyada attempts ho gaye. 15 minute baad try karein.',
+});
+
+// Free-QR owner login: 12 tries per 15 minutes for the same phone.
+const ownerLoginAccountLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 12,
+  keyMode: 'account',
+  extraKey: (req) => (req.body && req.body.phone) || '',
+  message: 'Is number par bahut zyada attempts ho gaye. 15 minute baad try karein.',
+});
+
+// Password reset requests: 3 per hour per phone.
+const resetAccountLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  keyMode: 'account',
+  extraKey: (req) => (req.body && req.body.phone) || '',
+  message: 'Is number ke liye bahut zyada reset requests. 1 ghante baad try karein.',
 });
 
 // Signup / upgrade requests: 20 per hour per IP.
@@ -162,13 +218,34 @@ function blockBadRequests(req, res, next) {
   next();
 }
 
+/* ------------------------------------------------------------------ */
+/*  Request size guard                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The global JSON parser allows 20 MB (menu photos are sent as data URLs).
+ * Auth / OTP routes never need that much, so keep them tiny to remove an
+ * easy memory-exhaustion vector.
+ */
+function limitBodySize(maxBytes) {
+  return function bodySizeGuard(req, res, next) {
+    const len = Number(req.headers['content-length'] || 0);
+    if (len > maxBytes) return res.status(413).json({ error: 'Payload too large' });
+    next();
+  };
+}
+
 module.exports = {
   securityHeaders,
   blockBadRequests,
   createRateLimiter,
+  limitBodySize,
   loginLimiter,
+  loginAccountLimiter,
   ownerLoginLimiter,
+  ownerLoginAccountLimiter,
   otpLimiter,
+  resetAccountLimiter,
   signupLimiter,
   writeLimiter,
   apiLimiter,

@@ -1597,28 +1597,19 @@ Gulab Jamun, 90, Desserts"></textarea>
   <div class="modal-backdrop hidden" id="reset-modal">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>🔑 Reset password</h3>
+        <h3>🔑 Password reset</h3>
         <button class="icon-btn" id="reset-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="modal-body">
-        <p class="tiny muted" style="margin:0 0 12px">Apna registered phone number daal kar naya password set karein.</p>
-        <div class="field">
-          <label>Contact Number</label>
-          <input class="input" id="r-phone" type="tel" placeholder="9172941524" />
-        </div>
-        <div class="field">
-          <label>New Password</label>
-          <input class="input" id="r-pass" type="password" placeholder="Kam se kam 4 characters" />
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <label>Confirm Password</label>
-          <input class="input" id="r-pass2" type="password" placeholder="Dobara likhein" />
-        </div>
-        <p class="login-error" id="reset-error" style="margin-top:10px"></p>
+        <p style="margin:0 0 10px;font-weight:700">Security ke liye password reset ab support ke through hota hai.</p>
+        <p class="tiny muted" style="margin:0 0 14px;line-height:1.6">
+          WhatsApp par apna registered phone number aur restaurant ka naam bhejein.
+          Team verify karke naya password de degi — uske baad login karein.
+        </p>
+        <a class="btn btn-primary btn-block" id="reset-wa" href="https://wa.me/919172941524" target="_blank" rel="noopener">WhatsApp par support se baat karein</a>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-ghost" id="reset-cancel" type="button">Cancel</button>
-        <button class="btn btn-primary" id="reset-submit" type="button">Reset password</button>
+        <button class="btn btn-ghost" id="reset-cancel" type="button">Close</button>
       </div>
     </div>
   </div>
@@ -2940,12 +2931,11 @@ Gulab Jamun, 90, Desserts"></textarea>
 
     /* ----------------------------- reset password ---------------------------- */
     function openReset() {
-      $('reset-error').textContent = '';
-      $('r-phone').value = $('l-phone').value.trim();
-      $('r-pass').value = '';
-      $('r-pass2').value = '';
+      const phone = $('l-phone').value.trim();
+      const text = 'Hi QRush, password bhool gaya. Phone: ' + (phone || '____') + '. Restaurant ka naam bhi de raha hoon.';
+      $('reset-wa').href = 'https://wa.me/919172941524?text=' + encodeURIComponent(text);
       $('reset-modal').classList.remove('hidden');
-      setTimeout(() => $('r-phone').focus(), 60);
+      setTimeout(() => $('reset-wa').focus(), 60);
     }
     function closeReset() { $('reset-modal').classList.add('hidden'); }
 
@@ -2953,39 +2943,6 @@ Gulab Jamun, 90, Desserts"></textarea>
     $('reset-close').addEventListener('click', closeReset);
     $('reset-cancel').addEventListener('click', closeReset);
     $('reset-modal').addEventListener('click', (e) => { if (e.target === $('reset-modal')) closeReset(); });
-
-    $('reset-submit').addEventListener('click', async () => {
-      const phone = $('r-phone').value.trim();
-      const pass = $('r-pass').value;
-      const pass2 = $('r-pass2').value;
-      if (!phone) { $('reset-error').textContent = 'Phone number zaroori hai.'; return; }
-      if (pass.length < 4) { $('reset-error').textContent = 'Password kam se kam 4 characters ka ho.'; return; }
-      if (pass !== pass2) { $('reset-error').textContent = 'Passwords match nahi kar rahe.'; return; }
-
-      $('reset-error').textContent = '';
-      $('reset-submit').disabled = true;
-      $('reset-submit').textContent = 'Resetting...';
-      try {
-        const res = await fetch('/api/public/free-qr/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone, password: pass }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Reset nahi hua');
-        closeReset();
-        $('l-phone').value = phone;
-        $('l-pass').value = '';
-        toast('✅ Password reset ho gaya! Ab login karein.');
-        $('login-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => $('l-pass').focus(), 400);
-      } catch (err) {
-        $('reset-error').textContent = err.message;
-      } finally {
-        $('reset-submit').disabled = false;
-        $('reset-submit').textContent = 'Reset password';
-      }
-    });
 
         /* -------------------------------- generate -------------------------------- */
     let otpSent = false;
