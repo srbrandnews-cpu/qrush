@@ -3,9 +3,12 @@ services:
   # this service at the production DATABASE_URL.
   - type: web
     name: qrush-staging
-    env: node
+    runtime: node
     plan: free
     branch: staging
+    # Must match the staging Postgres region, otherwise Render's internal
+    # DATABASE_URL hostname does not resolve.
+    region: singapore
     buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/health
@@ -23,7 +26,7 @@ services:
       - key: SUPPORT_WHATSAPP
         sync: false
       - key: VAPID_SUBJECT
-        sync: false
+        value: mailto:support@qrush.in
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
